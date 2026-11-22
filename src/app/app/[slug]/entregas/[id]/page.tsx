@@ -8,6 +8,7 @@ import { AvisoGmail } from "@/components/aviso-gmail";
 import { meuGmail } from "@/lib/envio";
 import { registrarDocumento } from "@/lib/registro";
 import { gmailConfigurado } from "@/lib/gmail";
+import { notaDoConceito } from "@/lib/moodle/cliente";
 import { contextoDaEmpresa } from "@/lib/empresa";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { dataHoraBR, passouMaisDe, tamanhoLegivel } from "@/lib/textos";
@@ -21,14 +22,14 @@ type Entrega = {
   etapa_id: string;
   grupo_id: string;
   enviada_em: string;
-  origem: "email" | "manual";
+  origem: "email" | "manual" | "moodle";
   remetente: string;
   assunto: string;
   atrasada: boolean;
   status: "recebida" | "substituida";
   comentario: string;
   links: string[];
-  etapas: { numero: number; titulo: string } | null;
+  etapas: { numero: number; titulo: string; moodle_tarefa: number | null; moodle_nota_max: number | null } | null;
   grupos: { nome: string; tema: string } | null;
   arquivos_entrega: { id: string; caminho: string; nome: string; tamanho: number }[];
 };
@@ -56,6 +57,10 @@ type Analise = {
   devolutiva: string;
   aprovada_em: string | null;
   atualizada_em: string;
+  moodle_status: "enviando" | "enviada" | "erro" | null;
+  moodle_enviada_em: string | null;
+  moodle_nota: number | null;
+  moodle_erro: string;
 };
 
 export default async function FolhaDaEquipe({ params, searchParams }: PageProps<"/app/[slug]/entregas/[id]">) {
@@ -70,7 +75,7 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
   const { data } = await supabase
     .from("entregas")
     .select(
-      "id, etapa_id, grupo_id, enviada_em, origem, remetente, assunto, atrasada, status, comentario, links, etapas(numero, titulo), grupos(nome, tema), arquivos_entrega(id, caminho, nome, tamanho)",
+      "id, etapa_id, grupo_id, enviada_em, origem, remetente, assunto, atrasada, status, comentario, links, etapas(numero, titulo, moodle_tarefa, moodle_nota_max), grupos(nome, tema), arquivos_entrega(id, caminho, nome, tamanho)",
     )
     .eq("org_id", empresa.id)
     .eq("id", id)
@@ -78,7 +83,7 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
   const entrega = data as Entrega | null;
   if (!entrega) notFound();
 
-  const [{ data: analiseBruta }, { data: daEtapa }, { data: doGrupo }, gmail, { data: destinos }] = await Promise.all([
+  const [{ data: analiseBruta }, { data: daEtapa }, { data: doGrupo }, gmail, { data: destinos }, { data: org }] = await Promise.all([
     supabase.from("analises").select("*").eq("entrega_id", entrega.id).maybeSingle(),
     // Outras equipes desta etapa (para as setas ‹ ›) e envios anteriores desta equipe.
     supabase
@@ -94,6 +99,7 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
       .eq("status", "recebida"),
     meuGmail(supabase),
     supabase.rpc("destinatarios_da_entrega", { p_entrega: entrega.id }).maybeSingle<{ para: string[]; copia: string[] }>(),
+    supabase.from("organizacoes").select("notas_moodle").eq("id", empresa.id).single(),
   ]);
   const a = analiseBruta as Analise | null;
 
@@ -225,7 +231,7 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
         )}
       </Dobra>
 
-      <Dobra titulo={entrega.origem === "email" ? "E-mail recebido" : "Registro à mão"}>
+      <Dobra titulo={entrega.origem === "email" ? "E-mail recebido" : entrega.origem === "moodle" ? "Enviada no Moodle" : "Registro à mão"}>
         <p className="break-words text-xs text-suave">
           {entrega.origem === "email" ? "De" : "Por"}: {entrega.remetente || "—"} · {dataHoraBR(entrega.enviada_em)}
         </p>
@@ -295,8 +301,8 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
         <h1 className="break-words text-2xl font-bold tracking-tight">{nome}</h1>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-suave">
           <span>
-            {v.etapa} {entrega.etapas?.numero} · {entrega.origem === "email" ? "recebida" : "registrada"} {dataHoraBR(entrega.enviada_em)}{" "}
-            {entrega.origem === "email" ? "por e-mail" : "à mão"}
+            {v.etapa} {entrega.etapas?.numero} · {entrega.origem === "manual" ? "registrada" : "recebida"} {dataHoraBR(entrega.enviada_em)}{" "}
+            {entrega.origem === "email" ? "por e-mail" : entrega.origem === "moodle" ? "pelo Moodle" : "à mão"}
           </span>
           <PilulaAtraso atrasada={entrega.atrasada} />
         </div>
@@ -337,6 +343,20 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
           destinos={destinos ?? { para: [], copia: [] }}
           motivo={a.motivo_mudanca ?? ""}
           conectarHref={`/api/gmail/conectar?voltar=${encodeURIComponent(`${base}/${entrega.id}`)}`}
+          moodle={
+            entrega.etapas?.moodle_tarefa
+              ? {
+                  enviada: Boolean(a.moodle_enviada_em),
+                  em: a.moodle_enviada_em ? dataHoraBR(a.moodle_enviada_em) : "",
+                  nota: a.moodle_nota === null ? null : String(a.moodle_nota).replace(".", ","),
+                  erro: a.moodle_status === "erro" || (a.moodle_status === "enviada" && a.moodle_erro) ? a.moodle_erro : "",
+                  notaPrevista: (() => {
+                    const n = notaDoConceito(entrega.etapas?.moodle_nota_max, (org?.notas_moodle as Record<string, number> | null)?.[a.conceito ?? ""]);
+                    return n === null ? null : `${String(n).replace(".", ",")} (de ${String(entrega.etapas?.moodle_nota_max).replace(".", ",")})`;
+                  })(),
+                }
+              : null
+          }
         >
           {checklist}
           {arquivos}

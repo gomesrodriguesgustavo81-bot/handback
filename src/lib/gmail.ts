@@ -1,5 +1,5 @@
 import "server-only";
-import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from "node:crypto";
+import { cifrarTexto, criptoPronta, decifrarTexto } from "./cripto";
 
 /**
  * Conexão com o Gmail de quem avalia, só com permissão de ENVIAR
@@ -33,7 +33,7 @@ export class ErroGmail extends Error {
 }
 
 export function gmailConfigurado(): boolean {
-  return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && chave());
+  return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && criptoPronta());
 }
 
 export function urlDeAutorizacao(redirectUri: string, estado: string, dica?: string): string {
@@ -119,37 +119,15 @@ export async function revogar(renovacao: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------
-// Cifra do token (AES-256-GCM)
+// Cifra do token (AES-256-GCM, em ./cripto)
 // ---------------------------------------------------------------------
-function chave(): Buffer | null {
-  const propria = process.env.HANDBACK_CRIPTO_CHAVE;
-  if (propria) {
-    const b = Buffer.from(propria, "base64");
-    if (b.length === 32) return b;
-  }
-  const segredo = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!segredo) return null;
-  return Buffer.from(hkdfSync("sha256", segredo, "handback", "token-gmail", 32));
-}
-
 export function cifrar(texto: string): string {
-  const k = chave();
-  if (!k) throw new ErroGmail("Falta a chave para guardar a conexão no servidor.");
-  const iv = randomBytes(12);
-  const c = createCipheriv("aes-256-gcm", k, iv);
-  const dados = Buffer.concat([c.update(texto, "utf8"), c.final()]);
-  return ["v1", iv.toString("base64"), c.getAuthTag().toString("base64"), dados.toString("base64")].join(".");
+  if (!criptoPronta()) throw new ErroGmail("Falta a chave para guardar a conexão no servidor.");
+  return cifrarTexto(texto);
 }
 
 export function decifrar(guardado: string): string {
-  const k = chave();
-  const [v, iv, tag, dados] = guardado.split(".");
-  if (!k || v !== "v1") throw new ErroGmail("A conexão com o Gmail precisa ser refeita.", true);
-  try {
-    const d = createDecipheriv("aes-256-gcm", k, Buffer.from(iv, "base64"));
-    d.setAuthTag(Buffer.from(tag, "base64"));
-    return Buffer.concat([d.update(Buffer.from(dados, "base64")), d.final()]).toString("utf8");
-  } catch {
-    throw new ErroGmail("A conexão com o Gmail precisa ser refeita.", true);
-  }
+  const t = decifrarTexto(guardado);
+  if (t === null) throw new ErroGmail("A conexão com o Gmail precisa ser refeita.", true);
+  return t;
 }

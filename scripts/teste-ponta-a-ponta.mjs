@@ -835,6 +835,99 @@ try {
   await ana.p.getByRole("navigation", { name: "Turma" }).getByRole("button", { name: "Turma A" }).and(ana.p.locator("[aria-current]")).waitFor();
   confere(await ana.p.getByRole("link", { name: /Equipe Azul/ }).first().isVisible(), "voltando para a Turma A, as equipes dela voltam");
 
+  // 7e) Ligação com o Moodle (Moodle de mentira em 4558)
+  if (process.env.REGISTRO_MOODLE) {
+    const MOODLE = "http://127.0.0.1:4558";
+    const sql = (q) => execFileSync("psql", [DB, "-Atc", q]).toString().trim();
+    await ana.p.goto(`${APP}/app/${SLUG}/ajustes`);
+    await ana.p.getByRole("link", { name: "Ligar ao Moodle" }).click();
+    await ana.p.getByRole("heading", { name: "Ligar ao Moodle" }).waitFor();
+    await ana.p.getByLabel("Endereço do Moodle").fill(`${MOODLE}/login/index.php`);
+    await ana.p.getByLabel("Usuário do Moodle").fill("prof.moodle");
+    await ana.p.getByLabel("Senha do Moodle").fill("senha errada");
+    await ana.p.getByRole("button", { name: "Conectar ao Moodle" }).click();
+    await ana.p.getByText("Usuário ou senha do Moodle incorretos.").waitFor();
+    confere(true, "Moodle: senha errada mostra mensagem clara");
+    await largura(ana.p, "ligar ao Moodle");
+    await ana.p.screenshot({ path: `${FOTOS}/26-moodle-entrar.png`, fullPage: true });
+    await ana.p.getByLabel("Senha do Moodle").fill("senha moodle");
+    await ana.p.getByRole("button", { name: "Conectar ao Moodle" }).click();
+    await ana.p.getByText("Conectado como Marina Teixeira").waitFor();
+    confere(true, "Moodle: conecta com usuário e senha");
+    const guardado = sql(`select token_cifrado from public.contas_moodle c join public.organizacoes o on o.id = c.org_id where o.slug = '${SLUG}'`);
+    confere(guardado.startsWith("v1.") && !guardado.includes("senha") && !guardado.includes("chavemoodle"), "Moodle: só a chave fica guardada, cifrada (a senha não)");
+    await ana.p.getByRole("radio", { name: /Design de Interação/ }).check();
+    await largura(ana.p, "escolher disciplina do Moodle");
+    await ana.p.screenshot({ path: `${FOTOS}/27-moodle-disciplina.png`, fullPage: true });
+    await ana.p.getByRole("button", { name: "Criar turma com esta disciplina" }).click();
+    await ana.p.getByText("“Design de Interação” criada").waitFor();
+    const resumo = await ana.p.getByText(/Vieram do Moodle/).innerText();
+    confere(/4 alunos em 3 \S+, 2 tarefas e 1 entregas/.test(resumo), `Moodle: alunos, grupos, tarefas e entregas vieram juntos (${resumo.slice(0, 70)})`);
+    await ana.p.screenshot({ path: `${FOTOS}/28-moodle-pronta.png`, fullPage: true });
+    confere(sql(`select string_agg(g.nome || ':' || coalesce((select string_agg(i.email, ',' order by i.email) from public.integrantes i where i.grupo_id = g.id), ''), ' | ' order by g.nome)
+      from public.grupos g join public.turmas t on t.id = g.turma_id where t.nome = 'Design de Interação' and t.org_id = (select id from public.organizacoes where slug = '${SLUG}')`)
+      === "Diego Rocha: | Grupo Azul:ana.souza@aluno.test,bruno.lima@aluno.test | Grupo Verde:carla.dias@aluno.test", "Moodle: grupos com os e-mails; aluno sem grupo vira o próprio grupo; professora fica de fora");
+
+    await ana.p.getByRole("link", { name: "Ver as entregas" }).click();
+    const faixa = ana.p.getByRole("region", { name: "Moodle" });
+    await faixa.getByText("Ligada ao Moodle · Design de Interação").waitFor();
+    await faixa.getByText("Tarefas do Moodle que o Handback corrige").click();
+    const forum = faixa.getByRole("listitem").filter({ hasText: "Fórum de apresentação" });
+    await forum.getByRole("checkbox").uncheck();
+    await forum.getByText("Fora").waitFor();
+    await ana.p.reload();
+    await ana.p.getByRole("region", { name: "Moodle" }).getByText("Tarefas do Moodle que o Handback corrige").click();
+    confere(!(await ana.p.getByRole("region", { name: "Moodle" }).getByRole("listitem").filter({ hasText: "Fórum de apresentação" }).getByRole("checkbox").isChecked()), "Moodle: tarefa desmarcada fica fora");
+    await largura(ana.p, "painel ligado ao Moodle");
+    await ana.p.screenshot({ path: `${FOTOS}/29-moodle-painel.png`, fullPage: true });
+
+    const etapaMoodle = sql(`select e.id from public.etapas e join public.organizacoes o on o.id = e.org_id where o.slug = '${SLUG}' and e.moodle_tarefa = 901`);
+    await ana.p.goto(`${APP}/app/${SLUG}/etapas/${etapaMoodle}`);
+    confere((await ana.p.getByLabel("Título").inputValue()) === "Protótipo navegável", "Moodle: tarefa virou etapa com o mesmo nome");
+    await ana.p.getByLabel("O que deve ser entregue (checklist)").fill("Link do protótipo\nRelatório do teste");
+    await ana.p.getByRole("button", { name: "Salvar" }).click();
+    await ana.p.getByText("Alterações salvas.").waitFor();
+
+    await ana.p.goto(`${APP}/app/${SLUG}/entregas?etapa=${etapaMoodle}`);
+    await ana.p.getByRole("link", { name: /Grupo Azul/ }).click();
+    await ana.p.waitForURL(/\/entregas\/[0-9a-f-]{36}$/);
+    confere(await ana.p.getByText(/recebida .* pelo Moodle/).isVisible(), "Moodle: folha mostra que veio do Moodle");
+    confere(await ana.p.getByText("relatório do grupo.pdf").first().isVisible(), "Moodle: arquivo da entrega foi trazido");
+    await ana.p.getByRole("button", { name: "Analisar com IA" }).click();
+    await ana.p.getByRole("button", { name: "Aprovar devolutiva" }).waitFor({ timeout: 60000 });
+    await ana.p.getByRole("button", { name: "Aprovar devolutiva" }).click();
+    await ana.p.getByText("Como devolver").waitFor();
+    const rotuloNota = await ana.p.getByText(/Lançar a nota no Moodle:/).innerText();
+    const notaEsperada = rotuloNota.match(/: ([\d,]+) \(de 10\)/)?.[1];
+    confere(Boolean(notaEsperada), `Moodle: mostra a nota do conceito antes de lançar (${rotuloNota})`);
+    await largura(ana.p, "devolver no Moodle");
+    await ana.p.screenshot({ path: `${FOTOS}/30-moodle-devolver.png`, fullPage: true });
+    await ana.p.getByRole("button", { name: "Devolver", exact: true }).click();
+    await ana.p.getByText(/Devolvida no Moodle em/).waitFor();
+    const gravou = readFileSync(process.env.REGISTRO_MOODLE, "utf8").trim().split("\n").map((l) => JSON.parse(l)).at(-1);
+    confere(gravou.assignmentid === "901" && gravou.applytoall === "1" && ["101", "102"].includes(gravou.userid), "Moodle: devolutiva vai para a tarefa, valendo para o grupo todo");
+    confere(gravou.grade === notaEsperada.replace(",", "."), `Moodle: nota lançada (${gravou.grade})`);
+    confere(/^<p><strong>Conceito: \w+<\/strong><\/p><p>/.test(gravou["plugindata[assignfeedbackcomments_editor][text]"] ?? ""), "Moodle: comentário com o conceito e o texto");
+
+    await ana.p.goto(`${APP}/app/${SLUG}/entregas?etapa=${etapaMoodle}`);
+    await ana.p.getByRole("button", { name: "Buscar entregas agora" }).click();
+    await ana.p.getByText(/Nada novo no Moodle|Acabou de buscar/).waitFor();
+    await fetch(`${MOODLE}/__envio`, {
+      method: "POST",
+      body: JSON.stringify({ tarefa: 901, envio: { id: 7003, userid: 0, groupid: 13, status: "submitted", plugins: [{ type: "onlinetext", editorfields: [{ name: "onlinetext", text: "<p>Nosso protótipo: https://figma.com/proto/verde</p>" }] }] } }),
+    });
+    await espera(21000);
+    await ana.p.getByRole("button", { name: "Buscar entregas agora" }).click();
+    await ana.p.getByText("1 entrega nova chegou do Moodle.").waitFor();
+    await ana.p.getByRole("link", { name: /Grupo Verde/ }).waitFor();
+    confere(true, "Moodle: “Buscar entregas agora” traz o envio novo");
+    await ana.p.goto(`${APP}/app/${SLUG}/registro?ver=avaliacoes`);
+    confere((await ana.p.locator("main ol").innerText()).includes("Devolveu no Moodle a devolutiva de"), "Moodle: devolução aparece no registro de atividades");
+    await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
+    await ana.p.getByRole("navigation", { name: "Turma" }).getByRole("button", { name: "Turma A" }).click();
+    await ana.p.getByRole("navigation", { name: "Turma" }).getByRole("button", { name: "Turma A" }).and(ana.p.locator("[aria-current]")).waitFor();
+  }
+
   // 8) O dono bloqueia a escola; a Ana vê o aviso
   await dono.p.goto(`${APP}/admin`);
   const linha = dono.p.locator("li", { hasText: SLUG });

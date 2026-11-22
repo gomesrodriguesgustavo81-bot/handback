@@ -17,7 +17,7 @@ import { Vazio } from "@/components/ui";
 import { contextoDaEmpresa } from "@/lib/empresa";
 import { lerConfigSupabase } from "@/lib/supabase/config";
 import { criarClienteServidor } from "@/lib/supabase/server";
-import { dataHoraBR, hojeISO, minusc, passouMaisDe } from "@/lib/textos";
+import { dataBR, dataHoraBR, hojeISO, minusc, passouMaisDe } from "@/lib/textos";
 import {
   etapaDaVez,
   etapasDaEmpresa,
@@ -30,6 +30,10 @@ import { AvisoGmail } from "@/components/aviso-gmail";
 import { EnviarVarias } from "@/components/envio";
 import { meuGmail } from "@/lib/envio";
 import { gmailConfigurado } from "@/lib/gmail";
+import { after } from "next/server";
+import { FaixaMoodle } from "./faixa-moodle";
+import { sincronizarTurma } from "@/lib/moodle/sincronizar";
+import { criarClienteAdmin } from "@/lib/supabase/admin";
 
 export const metadata: Metadata = { title: "Entregas" };
 export const maxDuration = 300;
@@ -55,6 +59,7 @@ type EntregaLinha = {
     checklist: { status: string }[];
     iniciada_em: string;
     enviada_em: string | null;
+    moodle_enviada_em: string | null;
   } | null;
 };
 
@@ -75,7 +80,7 @@ export default async function PainelDaAula({
     typeof filtroPedido === "string" && filtroPedido in FILTROS
       ? (filtroPedido as Filtro)
       : "todas";
-  const { empresa, podeAvaliar } = await contextoDaEmpresa(slug);
+  const { empresa, podeAvaliar, podeGerir } = await contextoDaEmpresa(slug);
   const config = lerConfigSupabase();
   if (!podeAvaliar || !config) notFound();
   const v = empresa.vocabulario;
@@ -92,12 +97,52 @@ export default async function PainelDaAula({
       .eq("turma_id", tId)
       .eq("status", "confirmar"),
   ]);
+  // Turma ligada ao Moodle: busca sozinha as novidades (no máximo a cada 15 minutos), sem segurar a tela.
+  let faixaMoodle = null;
+  if (turma?.moodle_conta) {
+    const turmaId = turma.id;
+    if (!turma.moodle_buscado_em || passouMaisDe(turma.moodle_buscado_em, 15)) {
+      after(async () => {
+        const admin = criarClienteAdmin();
+        if (admin) await sincronizarTurma(admin, turmaId, 15 * 60).catch((e) => console.error("[moodle] busca automática", e));
+      });
+    }
+    const { data: tarefas } = await supabase
+      .from("etapas")
+      .select("id, numero, titulo, recebe_ate, moodle_corrigir")
+      .eq("turma_id", turma.id)
+      .not("moodle_tarefa", "is", null)
+      .order("numero");
+    faixaMoodle = (
+      <FaixaMoodle
+        slug={slug}
+        disciplina={turma.moodle_curso_nome || turma.nome}
+        ultimaBusca={
+          turma.moodle_buscado_em
+            ? `Olhou o Moodle em ${dataHoraBR(turma.moodle_buscado_em)} · busca sozinho quando você abre a turma`
+            : "Ainda não olhou o Moodle"
+        }
+        erro={turma.moodle_erro}
+        podeMarcar={podeGerir}
+        ajustesHref={podeGerir ? `/app/${slug}/moodle` : null}
+        tarefas={(tarefas ?? []).map((t) => ({
+          id: t.id,
+          nome: `${v.etapa} ${t.numero} · ${t.titulo}`,
+          detalhe: t.recebe_ate ? `Prazo ${dataBR(t.recebe_ate)}` : "Sem prazo",
+          corrigir: t.moodle_corrigir,
+        }))}
+      />
+    );
+  }
   const nav = (
-    <NavEntregas
-      slug={slug}
-      atual="painel"
-      paraConfirmar={paraConfirmar ?? 0}
-    />
+    <>
+      <NavEntregas
+        slug={slug}
+        atual="painel"
+        paraConfirmar={paraConfirmar ?? 0}
+      />
+      {faixaMoodle}
+    </>
   );
 
   if (!etapas.length) {
@@ -132,7 +177,7 @@ export default async function PainelDaAula({
     supabase
       .from("entregas")
       .select(
-        "id, grupo_id, enviada_em, atrasada, status, origem, analises(status, conceito, checklist, iniciada_em, enviada_em)",
+        "id, grupo_id, enviada_em, atrasada, status, origem, analises(status, conceito, checklist, iniciada_em, enviada_em, moodle_enviada_em)",
       )
       .eq("etapa_id", etapa.id)
       .eq("status", "recebida"),
@@ -146,7 +191,7 @@ export default async function PainelDaAula({
     if (!e) return prazoPassou ? "nao-entregou" : "aguardando";
     const a = e.analises;
     if (!a) return "sem-analise";
-    if (a.status === "aprovada") return a.enviada_em ? "enviada" : "aprovada";
+    if (a.status === "aprovada") return a.enviada_em || a.moodle_enviada_em ? "enviada" : "aprovada";
     if (a.status === "pronta") return "revisar";
     if (a.status === "analisando")
       return passouMaisDe(a.iniciada_em, 5) ? "falhou" : "analisando";
@@ -221,7 +266,7 @@ export default async function PainelDaAula({
           id: e.id,
           nome: `${v.etapa} ${e.numero} · ${e.titulo}`,
         }))}
-        detalhe={`${situacaoDoPrazo(etapa)[0].toUpperCase()}${situacaoDoPrazo(etapa).slice(1)} · recebe por e-mail`}
+        detalhe={`${situacaoDoPrazo(etapa)[0].toUpperCase()}${situacaoDoPrazo(etapa).slice(1)} · ${turma?.moodle_conta ? "recebe pelo Moodle" : "recebe por e-mail"}`}
       />
 
       <dl className="grid grid-cols-4 gap-2 sm:max-w-2xl">

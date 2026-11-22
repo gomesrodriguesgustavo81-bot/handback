@@ -4,7 +4,7 @@ import { useActionState, useEffect, useState, useTransition, startTransition, ty
 import { useRouter } from "next/navigation";
 import { analisarComIA, aprovarProntas, reabrirDevolutiva, revisarDevolutiva } from "@/app/app/[slug]/entregas/acoes";
 import { CONCEITOS_REVISAO, ESTILO_CONCEITO } from "./conceito";
-import { BotaoEnviar } from "./envio";
+import { BotaoEnviar, DevolverMoodle, type InfoMoodle } from "./envio";
 import type { Resultado } from "./form-acao";
 import { Aviso, Botao, LinkBotao } from "./ui";
 
@@ -153,6 +153,7 @@ export function FolhaDevolutiva({
   destinos,
   conectarHref,
   motivo,
+  moodle = null,
   children,
 }: {
   slug: string;
@@ -172,6 +173,8 @@ export function FolhaDevolutiva({
   conectarHref: string;
   /** Motivo já salvo de ter mudado o conceito da IA. */
   motivo: string;
+  /** Entrega de uma tarefa do Moodle: dá para devolver por lá. */
+  moodle?: InfoMoodle | null;
   children: ReactNode;
 }) {
   const router = useRouter();
@@ -275,7 +278,25 @@ export function FolhaDevolutiva({
               className={`max-h-[60vh] min-h-32 w-full rounded-xl border border-borda px-3 py-2.5 text-base leading-relaxed text-texto [field-sizing:content] sm:min-h-40 ${aprovada ? "bg-fundo" : "bg-cartao"}`}
             />
           </label>
-          {aprovada ? (
+          {aprovada && moodle ? (
+            <div className="flex flex-col gap-2 rounded-xl border border-borda p-3 text-sm">
+              {envio.enviada ? (
+                <p className="break-words font-semibold text-marca-forte">
+                  E-mail enviado em {envio.em} para {envio.para.join(", ")}
+                </p>
+              ) : null}
+              <DevolverMoodle
+                slug={slug}
+                entregaId={entregaId}
+                moodle={moodle}
+                emailPronto={gmail.configurado && Boolean(gmail.email) && destinos.para.length > 0}
+                conectarHref={conectarHref}
+              />
+              <div className="flex flex-wrap gap-2">
+                <BotaoCopiar texto={devolutiva} />
+              </div>
+            </div>
+          ) : aprovada ? (
             <div className="flex flex-col gap-2 rounded-xl border border-borda p-3 text-sm">
               {envio.enviada ? (
                 <p className="break-words font-semibold text-marca-forte">
@@ -332,7 +353,9 @@ export function FolhaDevolutiva({
             >
               {reabrindo ? "Reabrindo…" : "Reabrir para editar"}
             </Botao>
-            {!envio.enviada && gmail.configurado && gmail.email && destinos.para.length ? (
+            {moodle ? (
+              <LinkBotao href={proxima ?? painel} variante={moodle.enviada ? "primario" : "secundario"}>{proxima ? "Seguinte →" : "Voltar ao painel"}</LinkBotao>
+            ) : !envio.enviada && gmail.configurado && gmail.email && destinos.para.length ? (
               <BotaoEnviar slug={slug} entregaId={entregaId} conectarHref={conectarHref} />
             ) : !envio.enviada && gmail.configurado && !gmail.email ? (
               <a
