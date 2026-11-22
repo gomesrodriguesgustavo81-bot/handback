@@ -49,6 +49,9 @@ function modoLocal() {
 export function normalizarSite(digitado: string): string {
   let t = digitado.trim();
   if (!t) throw new ErroMoodle("Coloque o endereço do Moodle.");
+  if (/^[^\s/@]+@[^\s/@]+\.[^\s/@]+$/.test(t)) {
+    throw new ErroMoodle("Isso é um e-mail. Coloque o endereço do site do Moodle, o que aparece no navegador quando você abre o Moodle (ex.: edisciplinas.usp.br).");
+  }
   if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(t)) t = `https://${t}`;
   let u: URL;
   try {

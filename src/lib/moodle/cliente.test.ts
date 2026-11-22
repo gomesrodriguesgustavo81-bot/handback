@@ -32,6 +32,7 @@ describe("endereço do Moodle", () => {
   });
   it("recusa endereços estranhos", () => {
     expect(() => normalizarSite("")).toThrow(ErroMoodle);
+    expect(() => normalizarSite("rodrigues@usp.br")).toThrow(/Isso é um e-mail/);
     expect(() => normalizarSite("ftp://ava.edu.br")).toThrow(/https/);
     expect(() => normalizarSite("https://eu:senha@ava.edu.br")).toThrow(/sem usuário/);
   });
