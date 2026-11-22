@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FormEntrega } from "@/components/form-entrega";
+import { AnalisarVarias } from "@/components/analise";
 import { Aviso, Cartao, Selo, Vazio } from "@/components/ui";
 import { contextoDaEmpresa } from "@/lib/empresa";
 import { lerConfigSupabase } from "@/lib/supabase/config";
@@ -10,6 +11,7 @@ import { dataHoraBR, minusc } from "@/lib/textos";
 import { etapaDaVez, etapasDaEmpresa, opcoesDeEtapa, situacaoDoPrazo } from "./dados";
 
 export const metadata: Metadata = { title: "Entregas" };
+export const maxDuration = 300;
 
 export default async function QuadroEntregas({ params, searchParams }: PageProps<"/app/[slug]/entregas">) {
   const { slug } = await params;
@@ -54,7 +56,7 @@ export default async function QuadroEntregas({ params, searchParams }: PageProps
     supabase.from("grupos").select("id, nome").eq("org_id", empresa.id).eq("ativo", true).order("nome"),
     supabase
       .from("entregas")
-      .select("id, grupo_id, enviada_em, atrasada, status, origem, remetente, arquivos_entrega(id), links")
+      .select("id, grupo_id, enviada_em, atrasada, status, origem, remetente, arquivos_entrega(id), links, analises(status, conceito)")
       .eq("etapa_id", etapa.id)
       .order("enviada_em", { ascending: false }),
   ]);
@@ -63,6 +65,16 @@ export default async function QuadroEntregas({ params, searchParams }: PageProps
   for (const e of entregas ?? []) if (e.status === "substituida") reenvios.set(e.grupo_id, (reenvios.get(e.grupo_id) ?? 0) + 1);
   const total = grupos?.length ?? 0;
   const entregues = (grupos ?? []).filter((g) => valendo.has(g.id)).length;
+  const analiseDe = (e: { analises: unknown }) =>
+    (Array.isArray(e.analises) ? e.analises[0] : e.analises) as { status: string; conceito: string | null } | null | undefined;
+  const semAnalise = (grupos ?? [])
+    .map((g) => ({ g, e: valendo.get(g.id) }))
+    .filter((x) => x.e && (!analiseDe(x.e) || analiseDe(x.e)!.status === "erro"))
+    .map((x) => ({ id: x.e!.id, nome: x.g.nome }));
+  const aprovadas = (grupos ?? []).filter((g) => {
+    const e = valendo.get(g.id);
+    return e && analiseDe(e)?.status === "aprovada";
+  }).length;
 
   return (
     <div className="flex flex-col gap-6">
@@ -97,9 +109,10 @@ export default async function QuadroEntregas({ params, searchParams }: PageProps
               {v.etapa} {etapa.numero} · {etapa.titulo}
             </h2>
             <p className="text-sm text-suave">
-              {entregues} de {total} entregaram · {situacaoDoPrazo(etapa)}
+              {entregues} de {total} entregaram · {aprovadas} devolutiva(s) aprovada(s) · {situacaoDoPrazo(etapa)}
             </p>
           </div>
+          <AnalisarVarias slug={slug} entregas={semAnalise} rotulo={`Analisar com IA as ${semAnalise.length} entrega(s) sem análise`} />
           {!total ? (
             <Vazio>
               Cadastre {minusc(v.grupos)} em{" "}
@@ -124,6 +137,13 @@ export default async function QuadroEntregas({ params, searchParams }: PageProps
                           <span aria-hidden className="text-marca">✓</span> {g.nome}
                           {e.atrasada ? <Selo>Com atraso</Selo> : null}
                           {e.origem === "manual" ? <Selo>Registrada à mão</Selo> : null}
+                          {analiseDe(e)?.status === "aprovada" ? (
+                            <Selo>Aprovada · {analiseDe(e)?.conceito}</Selo>
+                          ) : analiseDe(e)?.status === "pronta" ? (
+                            <Selo>Para revisar · {analiseDe(e)?.conceito}</Selo>
+                          ) : analiseDe(e)?.status === "analisando" ? (
+                            <Selo>Analisando…</Selo>
+                          ) : null}
                         </span>
                         <span className="break-words text-sm text-suave">
                           {dataHoraBR(e.enviada_em)}

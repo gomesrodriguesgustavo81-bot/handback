@@ -4,7 +4,7 @@
 // Uso: node scripts/teste-ponta-a-ponta.mjs [endereco-do-app] [pasta-das-fotos]
 // Precisa do Playwright instalado e do Mailpit do Supabase local (porta 54324).
 import { execFileSync } from "node:child_process";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
@@ -279,6 +279,7 @@ try {
   await ana.p.getByLabel("Nº").fill("2");
   await ana.p.getByLabel("Título").fill("Protótipo");
   await ana.p.getByLabel("Recebe entregas até").fill("2099-12-31");
+  await ana.p.getByLabel("O que deve ser entregue (checklist)").fill("Protótipo navegável\nRoteiro de teste");
   await ana.p.getByRole("button", { name: "Salvar" }).click();
   await ana.p.getByText("Cadastro salvo.").waitFor();
   await ana.p.goto(`${APP}/app/${SLUG}/grupos`);
@@ -336,7 +337,7 @@ try {
   await ana.p.waitForURL(/\/entregas\/[0-9a-f-]{36}$/);
   confere(await ana.p.getByRole("link", { name: /docs\.google\.com\/presentation/ }).isVisible(), "entrega mostra o link do e-mail");
   await ana.p.getByRole("link", { name: /\d\d\/\d\d\/\d{4} às/ }).first().click(); // a primeira versão
-  await ana.p.getByText("Substituída por um reenvio").waitFor();
+  await ana.p.getByText("Substituída por um reenvio", { exact: true }).waitFor();
   const urlPrimeira = ana.p.url();
   const href = await ana.p.getByRole("link", { name: "relatório final.pdf" }).getAttribute("href");
   const baixado = await ana.p.request.get(href);
@@ -378,6 +379,70 @@ try {
   confere((await curioso.p.goto(`${APP}/app/${SLUG}/entregas`)).status() === 404, "curioso não abre o quadro");
   confere((await curioso.p.goto(`${APP}/app/${SLUG}/entregas/caixa`)).status() === 404, "curioso não abre a caixa de e-mails");
   confere((await curioso.p.goto(urlPrimeira)).status() === 404, "curioso não abre a entrega pelo endereço");
+
+  // ===================== FASE 3: análise com IA e devolutivas =====================
+  // (A IA é o "Gemini de mentira" de scripts/gemini-falso.mjs; o modelo configurado
+  //  simula cota esgotada, então o Handback precisa trocar para o modelo reserva.)
+  await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
+  await ana.p.getByRole("button", { name: /Analisar com IA as 2 entrega/ }).click();
+  await ana.p.getByText("Para revisar · EXCELENTE").first().waitFor({ timeout: 60000 });
+  await ana.p.waitForFunction(() => document.querySelectorAll("li").length && ![...document.querySelectorAll("button")].some((b) => /Analisando/.test(b.textContent)), null, { timeout: 60000 });
+  await ana.p.reload();
+  confere((await ana.p.getByText("Para revisar · EXCELENTE").count()) === 2, "análise em lote das 2 entregas");
+  const pedidos = readFileSync(process.env.REGISTRO_IA, "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  confere(pedidos.every((x) => x.temRegras && x.temEsquema), "pedido à IA leva as regras (sem notas) e o formato de resposta");
+  confere(pedidos.some((x) => x.modelo === "modelo-sem-cota") && pedidos.some((x) => x.modelo === "gemini-flash-latest"), "sem cota no modelo principal, troca para o reserva");
+  confere(pedidos.some((x) => x.anexos.includes("image/jpeg")), "a foto registrada à mão foi enviada para a IA ler");
+  confere(pedidos.some((x) => x.texto.includes("1. Protótipo navegável\n2. Roteiro de teste")), "a IA recebe o checklist na ordem");
+  confere(!pedidos.some((x) => /RG|bolsista/.test(x.texto)), "documento pessoal nunca chega à IA");
+
+  await ana.p.getByRole("link", { name: /Equipe Azul/ }).click();
+  await ana.p.waitForURL(/\/entregas\/[0-9a-f-]{36}$/);
+  await ana.p.getByText("Sugestão: EXCELENTE").waitFor();
+  confere(await ana.p.getByText("✅ Protótipo navegável").isVisible() || await ana.p.getByText("Protótipo navegável").first().isVisible(), "checklist item a item");
+  confere(await ana.p.getByText("Link externo não lido pela IA").isVisible(), "aviso de leitura do link aparece");
+  confere(await ana.p.getByText(/gemini-flash-latest/).isVisible(), "mostra o modelo usado");
+  await largura(ana.p, "análise e devolutiva");
+  await ana.p.screenshot({ path: `${FOTOS}/15-analise.png`, fullPage: true });
+
+  // Revisão: muda o conceito, edita, salva rascunho, aprova, reabre, aprova de novo.
+  await ana.p.getByLabel("Conceito").selectOption("BOM");
+  await ana.p.getByLabel("Devolutiva para o grupo").fill("Pessoal, ótima entrega! Ajustem o roteiro de teste e seguimos.");
+  await ana.p.getByRole("button", { name: "Salvar rascunho" }).click();
+  await ana.p.getByText("Rascunho salvo.").waitFor();
+  await ana.p.reload();
+  confere((await ana.p.getByLabel("Devolutiva para o grupo").inputValue()).startsWith("Pessoal, ótima entrega!"), "rascunho editado fica salvo");
+  await ana.p.getByRole("button", { name: "Aprovar devolutiva" }).click();
+  await ana.p.getByText("Aprovada · BOM").waitFor();
+  confere(await ana.p.getByRole("button", { name: "Copiar devolutiva" }).isVisible(), "devolutiva aprovada com botão de copiar");
+  confere(!(await ana.p.getByRole("button", { name: "Analisar de novo" }).count()), "aprovada não é reanalisada sem reabrir");
+  await ana.p.getByRole("button", { name: "Reabrir para editar" }).click();
+  await ana.p.getByRole("button", { name: "Aprovar devolutiva" }).waitFor();
+  await ana.p.getByRole("button", { name: "Aprovar devolutiva" }).click();
+  await ana.p.getByText("Aprovada · BOM").waitFor();
+  confere(true, "reabrir e aprovar de novo");
+  await ana.p.screenshot({ path: `${FOTOS}/16-devolutiva-aprovada.png`, fullPage: true });
+  await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
+  confere(await ana.p.getByText("1 devolutiva(s) aprovada(s)").isVisible(), "quadro conta as devolutivas aprovadas");
+  confere(await ana.p.getByText("Aprovada · BOM").isVisible(), "quadro mostra o conceito aprovado");
+
+  // Professor vê a análise interna; falha da IA aparece com mensagem clara.
+  await prof.p.goto(`${APP}/app/${SLUG}/entregas`);
+  await prof.p.getByRole("link", { name: /Equipe Roxa/ }).click();
+  await prof.p.getByText("Análise interna (só para quem avalia)").click();
+  confere(await prof.p.getByText(/Pontos fortes/).isVisible(), "professor lê a análise interna");
+  await ana.p.getByLabel("Equipe", { exact: true }).selectOption({ label: "Equipe Roxa" });
+  await ana.p.getByLabel("Comentário (opcional)").fill("FORCAR_ERRO nesta versão");
+  await ana.p.getByRole("button", { name: "Registrar entrega" }).click();
+  await ana.p.getByText("Entrega registrada.").waitFor();
+  await ana.p.reload();
+  await ana.p.getByRole("link", { name: /Equipe Roxa/ }).click();
+  await ana.p.waitForURL(/\/entregas\/[0-9a-f-]{36}$/);
+  await ana.p.getByRole("button", { name: "Analisar com IA" }).click();
+  await ana.p.getByText(/A IA não respondeu/).first().waitFor({ timeout: 90000 });
+  confere(true, "falha da IA aparece com mensagem clara");
+  await ana.p.reload();
+  confere(await ana.p.getByRole("button", { name: "Tentar de novo" }).isVisible(), "dá para tentar de novo depois da falha");
 
   // 8) O dono bloqueia a escola; a Ana vê o aviso
   await dono.p.goto(`${APP}/admin`);

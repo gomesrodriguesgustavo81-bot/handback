@@ -6,6 +6,7 @@ import { contextoDaEmpresa } from "@/lib/empresa";
 import { enderecoDeRecebimento } from "@/lib/emails/endereco";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { salvarAjustes } from "./acoes";
+import { ROTULO_REGRA, type RegraChecklist } from "@/lib/ia/regras";
 
 export const metadata: Metadata = { title: "Ajustes" };
 
@@ -17,7 +18,7 @@ export default async function Ajustes({ params }: PageProps<"/app/[slug]/ajustes
   const supabase = await criarClienteServidor();
   const { data: config } = await supabase
     .from("organizacoes")
-    .select("caixa_token, etiqueta_assunto, modo_entrega, assuntos_ignorar")
+    .select("caixa_token, etiqueta_assunto, modo_entrega, assuntos_ignorar, conceitos, regra_checklist, exemplos_devolutiva")
     .eq("id", empresa.id)
     .single();
   const endereco = config ? enderecoDeRecebimento(config.caixa_token) : null;
@@ -107,6 +108,34 @@ export default async function Ajustes({ params }: PageProps<"/app/[slug]/ajustes
             rows={2}
             defaultValue={config?.assuntos_ignorar ?? ""}
             dica="Palavras separadas por vírgula. E-mails com elas no assunto (e sem a etiqueta) são ignorados e os anexos NÃO são guardados — use para documentos pessoais."
+          />
+        </fieldset>
+        <fieldset className="flex flex-col gap-3">
+          <legend className="mb-1 font-medium">Avaliação com IA</legend>
+          <p className="text-sm text-suave">Sem notas: só os quatro conceitos. Descreva o que cada um significa aqui.</p>
+          {(["EXCELENTE", "BOM", "REGULAR", "RUIM"] as const).map((c) => (
+            <AreaTexto
+              key={c}
+              rotulo={c}
+              name={`conceito_${c}`}
+              rows={2}
+              required
+              defaultValue={(config?.conceitos as Record<string, string> | undefined)?.[c] ?? ""}
+            />
+          ))}
+          <Escolha
+            rotulo="Regra do checklist"
+            name="regra_checklist"
+            defaultValue={config?.regra_checklist ?? "flexivel"}
+            opcoes={(Object.keys(ROTULO_REGRA) as RegraChecklist[]).map((r) => ({ valor: r, nome: ROTULO_REGRA[r] }))}
+            dica="Uma observação na etapa que cite um conceito (ex.: “se faltar X, no máximo REGULAR”) sempre tem prioridade."
+          />
+          <AreaTexto
+            rotulo="Exemplos de devolutivas aprovadas (opcional)"
+            name="exemplos_devolutiva"
+            rows={6}
+            defaultValue={config?.exemplos_devolutiva ?? ""}
+            dica="A IA imita o tom e o tamanho destes exemplos. Separe um do outro com uma linha só com ---. Se ficar vazio, ela usa as últimas devolutivas aprovadas aqui no Handback."
           />
         </fieldset>
       </FormAcao>

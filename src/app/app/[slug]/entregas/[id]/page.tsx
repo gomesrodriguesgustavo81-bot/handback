@@ -5,8 +5,11 @@ import { Cartao, Selo } from "@/components/ui";
 import { contextoDaEmpresa } from "@/lib/empresa";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { dataBR, dataHoraBR, tamanhoLegivel } from "@/lib/textos";
+import { SecaoAnalise } from "./secao-analise";
 
 export const metadata: Metadata = { title: "Entrega" };
+// A análise com IA roda a partir desta página e pode levar alguns minutos.
+export const maxDuration = 300;
 
 type Entrega = {
   id: string;
@@ -144,6 +147,8 @@ export default async function DetalheEntrega({ params }: PageProps<"/app/[slug]/
           ) : null}
         </dl>
       </Cartao>
+
+      <SecaoAnalise slug={slug} entregaId={entrega.id} substituida={entrega.status === "substituida"} v={v} />
 
       {historico && historico.length > 1 ? (
         <Cartao>

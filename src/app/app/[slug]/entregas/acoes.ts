@@ -5,6 +5,8 @@ import type { Resultado } from "@/components/form-acao";
 import { contextoDaEmpresa, mensagemDeErro } from "@/lib/empresa";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { lerLinks } from "@/lib/textos";
+import { analisarEntrega } from "@/lib/ia/analisar";
+import { iaConfigurada } from "@/lib/ia/gemini";
 
 export type ArquivoEnviado = { caminho: string; nome: string; tamanho: number; tipo: string };
 
@@ -66,5 +68,46 @@ export async function ignorarEmail(slug: string, emailId: string): Promise<void>
   if (!podeAvaliar) return;
   const supabase = await criarClienteServidor();
   await supabase.rpc("ignorar_email", { p_email: emailId });
+  revalidatePath(`/app/${slug}`, "layout");
+}
+
+/** Analisa uma entrega com a IA (pode levar até 1 ou 2 minutos). */
+export async function analisarComIA(slug: string, entregaId: string): Promise<{ ok: boolean; mensagem: string }> {
+  const { podeAvaliar } = await contextoDaEmpresa(slug);
+  if (!podeAvaliar) return { ok: false, mensagem: "Você não tem permissão para fazer isso." };
+  if (!iaConfigurada()) return { ok: false, mensagem: "A IA ainda não foi configurada no servidor (falta a chave GEMINI_API_KEY)." };
+  const supabase = await criarClienteServidor();
+  try {
+    const r = await analisarEntrega(supabase, entregaId);
+    revalidatePath(`/app/${slug}`, "layout");
+    return { ok: true, mensagem: `Análise pronta (conceito sugerido: ${r.conceito}).` };
+  } catch (erro) {
+    revalidatePath(`/app/${slug}`, "layout");
+    return { ok: false, mensagem: erro instanceof Error ? erro.message : "A análise falhou. Tente de novo." };
+  }
+}
+
+/** Salva a revisão (rascunho) ou aprova a devolutiva. */
+export async function revisarDevolutiva(slug: string, entregaId: string, _a: Resultado, dados: FormData): Promise<Resultado> {
+  const { podeAvaliar } = await contextoDaEmpresa(slug);
+  if (!podeAvaliar) return { ok: false, mensagem: "Você não tem permissão para fazer isso." };
+  const aprovar = dados.get("acao") === "aprovar";
+  const supabase = await criarClienteServidor();
+  const { error } = await supabase.rpc("revisar_devolutiva", {
+    p_entrega: entregaId,
+    p_conceito: String(dados.get("conceito") ?? ""),
+    p_devolutiva: String(dados.get("devolutiva") ?? "").trim(),
+    p_aprovar: aprovar,
+  });
+  if (error) return { ok: false, mensagem: mensagemDeErro(error, "Não foi possível salvar. Tente de novo.") };
+  revalidatePath(`/app/${slug}`, "layout");
+  return { ok: true, mensagem: aprovar ? "Devolutiva aprovada." : "Rascunho salvo." };
+}
+
+export async function reabrirDevolutiva(slug: string, entregaId: string): Promise<void> {
+  const { podeAvaliar } = await contextoDaEmpresa(slug);
+  if (!podeAvaliar) return;
+  const supabase = await criarClienteServidor();
+  await supabase.rpc("reabrir_devolutiva", { p_entrega: entregaId });
   revalidatePath(`/app/${slug}`, "layout");
 }

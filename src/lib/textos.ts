@@ -97,3 +97,8 @@ export function lerLinks(texto: string): { validos: string[]; invalidos: string[
   }
   return { validos: [...new Set(validos)], invalidos };
 }
+
+/** Já se passaram mais de `minutos` desde este instante? */
+export function passouMaisDe(iso: string, minutos: number): boolean {
+  return Date.now() - new Date(iso).getTime() > minutos * 60 * 1000;
+}

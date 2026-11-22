@@ -91,3 +91,24 @@ na primeira vez. Todas as contas ficam no **seu nome**, porque o negócio é seu
   sozinha pela Vercel.
 - **Plano gratuito:** Vercel e Supabase têm planos grátis para testar. Para uso
   comercial com clientes pagando, a Vercel exige o plano pago.
+
+---
+
+## Parte 5 · Ligar a análise com IA (Gemini)
+
+1. Acesse **aistudio.google.com/apikey** e toque em **Create API key**.
+2. **Importante (privacidade):** ative o **faturamento** dessa chave no Google AI
+   Studio. No plano gratuito, o Google pode usar o conteúdo enviado (trabalhos,
+   documentos) para melhorar os produtos dele. Com faturamento, não usa. O custo é de
+   centavos por análise.
+3. Na Vercel, projeto **handback** › **Settings › Environment Variables**, cadastre:
+
+   | Nome | Valor |
+   |---|---|
+   | `GEMINI_API_KEY` | a chave criada no passo 1 |
+   | `HANDBACK_IA_MODELO` (opcional) | o modelo preferido, ex.: `gemini-flash-latest` |
+
+4. Em **Deployments**, toque nos **⋯** do mais recente › **Redeploy**.
+
+A chave fica só no servidor: nunca aparece no navegador nem no GitHub. Se a cota
+de um modelo acabar, o Handback tenta os modelos reserva sozinho.

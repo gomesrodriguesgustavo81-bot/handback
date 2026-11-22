@@ -48,7 +48,7 @@ export function Aviso({ tipo = "info", children }: { tipo?: "info" | "alerta" | 
     erro: "border-erro/30 bg-erro-fundo text-erro",
   }[tipo];
   return (
-    <div role={tipo === "erro" ? "alert" : "status"} className={`rounded-xl border px-4 py-3 text-sm ${estilo}`}>
+    <div role={tipo === "erro" ? "alert" : "status"} className={`rounded-xl border px-4 py-3 text-sm [overflow-wrap:anywhere] ${estilo}`}>
       {children}
     </div>
   );

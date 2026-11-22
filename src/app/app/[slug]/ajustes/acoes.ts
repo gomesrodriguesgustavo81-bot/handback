@@ -28,10 +28,30 @@ export async function salvarAjustes(slug: string, _a: Resultado, dados: FormData
   const assuntosIgnorar = String(dados.get("assuntos_ignorar") ?? "").trim();
   if (assuntosIgnorar.length > 2000) return { ok: false, mensagem: "A lista de assuntos a ignorar está grande demais." };
 
+  const conceitos: Record<string, string> = {};
+  for (const c of ["EXCELENTE", "BOM", "REGULAR", "RUIM"]) {
+    const t = String(dados.get(`conceito_${c}`) ?? "").trim();
+    if (!t || t.length > 1000) return { ok: false, mensagem: `Descreva o conceito ${c} (até 1.000 letras).` };
+    conceitos[c] = t;
+  }
+  const regra = String(dados.get("regra_checklist") ?? "flexivel");
+  if (!["rigida", "flexivel", "livre"].includes(regra)) return { ok: false, mensagem: "Escolha a regra do checklist." };
+  const exemplos = String(dados.get("exemplos_devolutiva") ?? "").trim();
+  if (exemplos.length > 20000) return { ok: false, mensagem: "Os exemplos de devolutiva estão grandes demais." };
+
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase
     .from("organizacoes")
-    .update({ nome, vocabulario, etiqueta_assunto: etiqueta, modo_entrega: modo, assuntos_ignorar: assuntosIgnorar })
+    .update({
+      nome,
+      vocabulario,
+      etiqueta_assunto: etiqueta,
+      modo_entrega: modo,
+      assuntos_ignorar: assuntosIgnorar,
+      conceitos,
+      regra_checklist: regra,
+      exemplos_devolutiva: exemplos,
+    })
     .eq("id", empresa.id)
     .select("id");
   if (error) return { ok: false, mensagem: mensagemDeErro(error, "Não foi possível salvar. Tente de novo.") };
