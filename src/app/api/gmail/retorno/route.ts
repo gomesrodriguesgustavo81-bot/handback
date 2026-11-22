@@ -4,6 +4,7 @@ import { caminhoSeguro, urlDoSite } from "@/lib/caminhos";
 import { cifrar, ErroGmail, trocarCodigo } from "@/lib/gmail";
 import { criarClienteAdmin } from "@/lib/supabase/admin";
 import { criarClienteServidor } from "@/lib/supabase/server";
+import { registrarAcesso } from "@/lib/registro";
 import { COOKIE_ESTADO, comAviso } from "@/lib/gmail-rotas";
 
 /** Volta da tela de permissão do Google: guarda a conexão (cifrada) e devolve a pessoa para onde estava. */
@@ -38,6 +39,7 @@ export async function GET(request: NextRequest) {
       .from("contas_gmail")
       .upsert({ user_id: user.id, email, token_cifrado: cifrar(renovacao), conectada_em: new Date().toISOString(), invalida: false });
     if (error) return ir("erro");
+    await registrarAcesso(supabase, "conectou_gmail");
     return ir("conectado");
   } catch (e) {
     return ir(e instanceof ErroGmail && /permissão/.test(e.message) ? "sem-permissao" : "erro");

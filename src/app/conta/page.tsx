@@ -3,6 +3,7 @@ import { TopoApp } from "@/components/topo-app";
 import { Cartao, LinkBotao } from "@/components/ui";
 import { eDonoDaPlataforma, usuarioAtual } from "@/lib/sessao";
 import { criarClienteServidor } from "@/lib/supabase/server";
+import { dataHoraBR } from "@/lib/textos";
 import { sairDeTodos } from "./acoes";
 import { CadastroDuasEtapas } from "./formularios";
 
@@ -13,6 +14,13 @@ export default async function MinhaConta() {
   const supabase = await criarClienteServidor();
   const { data } = await supabase.auth.mfa.listFactors();
   const temApp = (data?.totp ?? []).some((f) => f.status === "verified");
+  const { data: acessos } = await supabase
+    .from("atividades")
+    .select("id, descricao, ip, aparelho, criado_em")
+    .is("org_id", null)
+    .eq("user_id", eu.id)
+    .order("id", { ascending: false })
+    .limit(10);
   return (
     <>
       <TopoApp email={eu.email} dono={dono} />
@@ -45,6 +53,26 @@ export default async function MinhaConta() {
               <p className="text-sm text-suave">Desativada. Ative para proteger os documentos da sua empresa.</p>
               <CadastroDuasEtapas textoBotao="Ativar agora" />
             </>
+          )}
+        </Cartao>
+        <Cartao className="flex flex-col gap-3">
+          <h2 className="font-semibold">Seus últimos acessos</h2>
+          <p className="text-sm text-suave">Não reconhece algum? Troque a senha e saia de todos os aparelhos.</p>
+          {acessos?.length ? (
+            <ol className="flex flex-col divide-y divide-borda text-sm">
+              {acessos.map((x) => (
+                <li key={x.id} className="flex flex-col py-2">
+                  <span>{x.descricao}</span>
+                  <span className="break-all text-xs text-suave">
+                    {dataHoraBR(x.criado_em)}
+                    {x.aparelho ? ` · ${x.aparelho}` : ""}
+                    {x.ip ? ` · IP ${x.ip}` : ""}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="text-sm text-suave">Nenhum acesso registrado ainda.</p>
           )}
         </Cartao>
         <Cartao className="flex flex-col gap-3">

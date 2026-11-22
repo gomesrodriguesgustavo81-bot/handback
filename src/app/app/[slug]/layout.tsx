@@ -17,6 +17,7 @@ export default async function LayoutEmpresa({ children, params }: LayoutProps<"/
       ? [
           { href: `/app/${slug}/pessoas`, nome: "Pessoas" },
           { href: `/app/${slug}/ajustes`, nome: "Ajustes" },
+          { href: `/app/${slug}/registro`, nome: "Registro" },
         ]
       : []),
   ];

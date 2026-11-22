@@ -6,6 +6,7 @@ import { caminhoSeguro } from "@/lib/caminhos";
 import { sessaoBasica } from "@/lib/sessao";
 import { problemaNaSenha, senhaVazada } from "@/lib/senha";
 import { criarClienteServidor } from "@/lib/supabase/server";
+import { registrarAcesso } from "@/lib/registro";
 
 export type Estado = { ok: boolean; mensagem: string } | null;
 
@@ -32,6 +33,7 @@ export async function definirSenha(_a: Estado, dados: FormData): Promise<Estado>
   // Recarrega a sessão para o servidor enxergar a marca nova.
   await supabase.auth.refreshSession();
   await supabase.rpc("aceitar_convites");
+  await registrarAcesso(supabase, "criou_senha");
   redirect("/app");
 }
 
@@ -56,6 +58,7 @@ export async function conferirCodigo(_a: Estado, dados: FormData): Promise<Estad
       mensagem: error.status === 429 ? "Muitas tentativas. Espere um pouco." : "Código incorreto ou vencido. Confira o app e tente de novo.",
     };
   }
+  await registrarAcesso(supabase, "confirmou_codigo");
   redirect(voltar);
 }
 
@@ -82,15 +85,18 @@ export async function confirmarDuasEtapas(factorId: string, _a: Estado, dados: F
   const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId, code: codigo });
   if (error) return { ok: false, mensagem: "Código incorreto ou vencido. Confira o app e tente de novo." };
   const { fatores } = await fatorDoApp();
-  for (const f of fatores.filter((x) => x.status === "verified" && x.id !== factorId)) {
+  const antigos = fatores.filter((x) => x.status === "verified" && x.id !== factorId);
+  for (const f of antigos) {
     await supabase.auth.mfa.unenroll({ factorId: f.id });
   }
+  await registrarAcesso(supabase, antigos.length ? "trocou_celular" : "ativou_duas_etapas");
   redirect("/app?duas-etapas=ok");
 }
 
 /** Encerra a sessão em todos os aparelhos (útil se perder o celular ou o computador). */
 export async function sairDeTodos(): Promise<void> {
   const supabase = await criarClienteServidor();
+  await registrarAcesso(supabase, "saiu_de_todos");
   await supabase.auth.signOut({ scope: "global" });
   redirect("/entrar");
 }

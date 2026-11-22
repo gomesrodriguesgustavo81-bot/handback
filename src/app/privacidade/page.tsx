@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   description: "Como o Handback trata os dados das empresas, das entregas e da conta do Google de quem avalia.",
 };
 
-const ATUALIZADA = "22 de novembro de 2026";
+const ATUALIZADA = "23 de novembro de 2026";
 
 function Secao({ id, titulo, children }: { id?: string; titulo: string; children: ReactNode }) {
   return (
@@ -198,7 +198,15 @@ export default function Privacidade() {
         <Secao titulo="8. Segurança">
           <p>
             Cada empresa só enxerga os próprios dados (regras de acesso no próprio banco de dados), os arquivos ficam numa
-            área privada, as conexões são criptografadas (HTTPS) e as chaves de acesso ficam só no servidor.
+            área privada, as conexões são criptografadas (HTTPS) e as chaves de acesso ficam só no servidor. O acesso exige
+            senha forte e, por padrão, verificação em duas etapas.
+          </p>
+          <p>
+            <strong>Registro de atividades:</strong> para a segurança das empresas, o Handback registra acessos (data, hora,
+            endereço IP e tipo de aparelho) e ações importantes, como abrir uma entrega, baixar um arquivo, aprovar ou enviar uma
+            devolutiva e convidar pessoas. O administrador da empresa vê o registro da empresa, e cada pessoa vê os próprios
+            acessos em “Minha conta”. O registro não pode ser alterado nem apagado por ninguém e é guardado enquanto a empresa
+            usar o Handback.
           </p>
         </Secao>
 

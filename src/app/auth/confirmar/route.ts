@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { criarClienteServidor } from "@/lib/supabase/server";
+import { registrarAcesso } from "@/lib/registro";
 import { caminhoSeguro, urlDoSite } from "@/lib/caminhos";
 
 /**
@@ -38,5 +39,6 @@ export async function GET(request: NextRequest) {
   }
 
   await supabase.rpc("aceitar_convites");
+  await registrarAcesso(supabase, "entrou_link");
   return NextResponse.redirect(urlDoSite(request, voltar));
 }

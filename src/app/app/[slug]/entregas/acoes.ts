@@ -10,6 +10,7 @@ import { iaConfigurada } from "@/lib/ia/gemini";
 import { enviarDevolutiva } from "@/lib/envio";
 import { decifrar, ErroGmail, revogar } from "@/lib/gmail";
 import { criarClienteAdmin } from "@/lib/supabase/admin";
+import { registrarAcesso } from "@/lib/registro";
 
 export type ArquivoEnviado = { caminho: string; nome: string; tamanho: number; tipo: string };
 
@@ -201,6 +202,7 @@ export async function desconectarGmail(slug: string): Promise<void> {
       /* a permissão some do Handback de qualquer jeito */
     }
     await admin.from("contas_gmail").delete().eq("user_id", user.id);
+    await registrarAcesso(supabase, "desconectou_gmail");
   }
   revalidatePath(`/app/${slug}`, "layout");
 }

@@ -5,6 +5,7 @@ import { origemDoSite } from "@/lib/acesso";
 import { caminhoSeguro } from "@/lib/caminhos";
 import { supabaseConfigurado } from "@/lib/supabase/config";
 import { criarClienteServidor } from "@/lib/supabase/server";
+import { registrarAcesso, registrarFalhaLogin } from "@/lib/registro";
 
 export type EstadoEntrar = { ok: boolean; mensagem: string } | null;
 
@@ -25,6 +26,7 @@ export async function entrarComSenha(_a: EstadoEntrar, dados: FormData): Promise
   const supabase = await criarClienteServidor();
   const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
   if (error) {
+    if (!muitasTentativas(error)) await registrarFalhaLogin(email);
     // Mesma mensagem para e-mail inexistente e senha errada (não revela quem tem conta).
     return {
       ok: false,
@@ -34,6 +36,7 @@ export async function entrarComSenha(_a: EstadoEntrar, dados: FormData): Promise
     };
   }
   await supabase.rpc("aceitar_convites");
+  await registrarAcesso(supabase, "entrou_senha");
   redirect(voltar);
 }
 

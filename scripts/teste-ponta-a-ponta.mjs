@@ -228,7 +228,7 @@ try {
   await ana.p.getByText("Escola Alfa").click();
   await ana.p.waitForURL(new RegExp(`/app/${SLUG}$`));
   const abasAna = await ana.p.getByRole("navigation", { name: "Seções da empresa" }).getByRole("link").allInnerTexts();
-  confere(abasAna.join("|") === "Visão geral|Entregas|Aulas|Equipes|Pessoas|Ajustes", `vocabulário de escola nas abas (${abasAna.join(", ")})`);
+  confere(abasAna.join("|") === "Visão geral|Entregas|Aulas|Equipes|Pessoas|Ajustes|Registro", `vocabulário de escola nas abas (${abasAna.join(", ")})`);
   await largura(ana.p, "painel da empresa");
   await ana.p.screenshot({ path: `${FOTOS}/5-painel-da-empresa.png`, fullPage: true });
   confere((await ana.p.goto(`${APP}/admin`)).status() === 404, "Ana não abre o Painel do dono");
@@ -503,7 +503,7 @@ try {
   await ana.p.getByText(/Substituída por um reenvio/).waitFor();
   const urlPrimeira = ana.p.url();
   const href = await ana.p.getByRole("link", { name: /relatório final\.pdf/ }).getAttribute("href");
-  const baixado = await ana.p.request.get(href);
+  const baixado = await ana.p.request.get(new URL(href, APP).toString());
   confere(baixado.status() === 200 && (await baixado.text()) === "conteudo do relatorio", "anexo do e-mail é baixado da área privada");
   await ana.p.screenshot({ path: `${FOTOS}/13-detalhe-entrega.png`, fullPage: true });
 
@@ -544,7 +544,7 @@ try {
   // E7) Professor vê e baixa; curioso não vê nada
   await prof.p.goto(urlPrimeira);
   const hrefProf = await prof.p.getByRole("link", { name: /relatório final\.pdf/ }).getAttribute("href");
-  confere((await prof.p.request.get(hrefProf)).status() === 200, "professor baixa o anexo");
+  confere((await prof.p.request.get(new URL(hrefProf, APP).toString())).status() === 200, "professor baixa o anexo");
   confere((await curioso.p.goto(`${APP}/app/${SLUG}/entregas`)).status() === 404, "curioso não abre o quadro");
   confere((await curioso.p.goto(`${APP}/app/${SLUG}/entregas/caixa`)).status() === 404, "curioso não abre a caixa de e-mails");
   confere((await curioso.p.goto(urlPrimeira)).status() === 404, "curioso não abre a entrega pelo endereço");
@@ -706,6 +706,39 @@ try {
     await ana.p.goto(`${APP}/app/${SLUG}/entregas/caixa`);
     confere(await ana.p.locator("li.rounded-2xl", { hasText: "nova@aluno.test" }).getByText("trabalho-resend.pdf").isVisible(), "Resend: anexo baixado e guardado");
   }
+
+  // 7c) Registro de atividades
+  {
+    const ctx = await navegador.newContext({ ...devices["Pixel 7"] });
+    const p = await ctx.newPage();
+    await p.goto(`${APP}/entrar`);
+    await p.getByLabel("E-mail").fill(PROF);
+    await p.getByLabel("Senha").fill("Senha errada 2026");
+    await p.getByRole("button", { name: "Entrar", exact: true }).click();
+    await p.getByText("E-mail ou senha incorretos.").waitFor();
+    await ctx.close();
+  }
+  await ana.p.goto(`${APP}/app/${SLUG}/registro`);
+  await ana.p.getByRole("heading", { name: "Registro de atividades" }).waitFor();
+  const registro = await ana.p.locator("main ol").innerText();
+  confere(registro.includes("Tentativa de entrar com senha errada"), "registro mostra a tentativa com senha errada do professor");
+  await ana.p.goto(`${APP}/app/${SLUG}/registro?ver=avaliacoes`);
+  confere((await ana.p.locator("main ol").innerText()).includes("Enviou a devolutiva de Equipe Azul"), "registro mostra o envio da devolutiva e para quem");
+  await ana.p.goto(`${APP}/app/${SLUG}/registro?ver=documentos`);
+  const docs = await ana.p.locator("main ol").innerText();
+  confere(docs.includes("Abriu o arquivo “relatório final.pdf”") && docs.includes("Abriu a entrega de Equipe Azul"), "registro mostra quem abriu entregas e arquivos");
+  confere(/Chrome no Android/.test(docs), "registro mostra o aparelho");
+  await ana.p.goto(`${APP}/app/${SLUG}/registro?pessoa=${encodeURIComponent(PROF)}`);
+  const doProf = await ana.p.locator("main ol").innerText();
+  confere(doProf.includes(PROF) && !doProf.includes(ANA), "filtro por pessoa");
+  const planilha = await ana.p.request.get(`${APP}/app/${SLUG}/registro/planilha?ver=documentos`);
+  const csv = await planilha.text();
+  confere(planilha.status() === 200 && csv.includes('"Data e hora";"Pessoa"') && csv.includes("relatório final.pdf"), "registro baixa em planilha");
+  await largura(ana.p, "registro de atividades");
+  await ana.p.screenshot({ path: `${FOTOS}/20-registro.png`, fullPage: true });
+  confere((await prof.p.goto(`${APP}/app/${SLUG}/registro`)).status() === 404, "avaliador não abre o registro da empresa");
+  await prof.p.goto(`${APP}/conta`);
+  confere(await prof.p.getByText("Entrou com e-mail e senha").first().isVisible() || await prof.p.getByText("Ativou a verificação em duas etapas").first().isVisible(), "cada pessoa vê os próprios acessos em Minha conta");
 
   // 8) O dono bloqueia a escola; a Ana vê o aviso
   await dono.p.goto(`${APP}/admin`);

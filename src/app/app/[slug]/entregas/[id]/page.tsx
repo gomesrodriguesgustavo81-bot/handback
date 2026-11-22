@@ -6,6 +6,7 @@ import { Bloco, Dobra, IconeItem, PilulaAtraso, SeloConceito, type StatusItem } 
 import { Aviso } from "@/components/ui";
 import { AvisoGmail } from "@/components/aviso-gmail";
 import { meuGmail } from "@/lib/envio";
+import { registrarDocumento } from "@/lib/registro";
 import { gmailConfigurado } from "@/lib/gmail";
 import { contextoDaEmpresa } from "@/lib/empresa";
 import { criarClienteServidor } from "@/lib/supabase/server";
@@ -76,10 +77,7 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
   const entrega = data as Entrega | null;
   if (!entrega) notFound();
 
-  const caminhos = entrega.arquivos_entrega.map((a) => a.caminho);
-  const [assinados, { data: analiseBruta }, { data: daEtapa }, { data: doGrupo }, gmail, { data: destinos }] = await Promise.all([
-    // Links temporários (1 hora) para baixar os arquivos da área privada.
-    caminhos.length ? supabase.storage.from("entregas").createSignedUrls(caminhos, 3600).then((r) => r.data ?? []) : Promise.resolve([]),
+  const [{ data: analiseBruta }, { data: daEtapa }, { data: doGrupo }, gmail, { data: destinos }] = await Promise.all([
     supabase.from("analises").select("*").eq("entrega_id", entrega.id).maybeSingle(),
     // Outras equipes desta etapa (para as setas ‹ ›) e envios anteriores desta equipe.
     supabase
@@ -97,7 +95,6 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
     supabase.rpc("destinatarios_da_entrega", { p_entrega: entrega.id }).maybeSingle<{ para: string[]; copia: string[] }>(),
   ]);
   const a = analiseBruta as Analise | null;
-  const urlDe = new Map(assinados.map((s) => [s.path, s.signedUrl]));
 
   type DaEtapa = { id: string; grupo_id: string; enviada_em: string; status: string; atrasada: boolean; grupos: { nome: string } | null };
   const linhasEtapa = (daEtapa ?? []) as unknown as DaEtapa[];
@@ -121,6 +118,14 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
   const travada = a?.status === "analisando" && passouMaisDe(a.iniciada_em, 5);
   const temResultado = a && (a.status === "pronta" || a.status === "aprovada");
   const nome = entrega.grupos?.nome ?? v.grupo;
+  // Registro: quem abriu esta entrega (os documentos dela).
+  await registrarDocumento(
+    supabase,
+    empresa.id,
+    "abriu_entrega",
+    `Abriu a entrega de ${nome} · ${v.etapa} ${entrega.etapas?.numero ?? "?"}`,
+    entrega.id,
+  );
 
   // Situação de leitura de cada arquivo e link (o que a IA leu ou não conseguiu ler).
   const leitura = (alvo: string) => {
@@ -170,7 +175,7 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
           {entrega.arquivos_entrega.map((f) => (
             <LinhaArquivo
               key={f.id}
-              href={urlDe.get(f.caminho) ?? "#"}
+              href={`${base}/${entrega.id}/arquivo/${f.id}`}
               nome={f.nome}
               detalhe={tamanhoLegivel(f.tamanho)}
               leitura={leitura(f.nome)}

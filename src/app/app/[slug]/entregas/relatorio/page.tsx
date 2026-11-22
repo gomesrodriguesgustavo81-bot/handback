@@ -6,6 +6,7 @@ import { AcoesRelatorio } from "@/components/imprimir";
 import { Vazio } from "@/components/ui";
 import { contextoDaEmpresa } from "@/lib/empresa";
 import { criarClienteServidor } from "@/lib/supabase/server";
+import { registrarDocumento } from "@/lib/registro";
 import { dataHoraBR, hojeISO, dataBR } from "@/lib/textos";
 import { etapaDaVez, etapasDaEmpresa, situacaoDoPrazo } from "../dados";
 
@@ -75,6 +76,7 @@ export default async function RelatorioDaAula({ params, searchParams }: PageProp
   const contagem = ORDEM.map((c) => ({ c, n: linhas.filter((l) => l.conceito === c).length })).filter((x) => x.n);
   const recebidas = linhas.filter((l) => !["nao-entregou", "aguardando"].includes(l.situacao)).length;
   const titulo = `${v.etapa} ${etapa.numero} · ${etapa.titulo}`;
+  await registrarDocumento(supabase, empresa.id, "abriu_relatorio", `Abriu o relatório da aula: ${titulo}`, etapa.id);
 
   const texto = [
     `${empresa.nome} — ${titulo}`,
