@@ -29,4 +29,7 @@ for m in "$RAIZ"/supabase/migrations/*.sql; do
   echo "→ migração $(basename "$m")"
   "${PSQL[@]}" -f "$m"
 done
-"${PSQL[@]}" -f "$RAIZ/supabase/tests/fundacao_test.sql"
+for t in "$RAIZ"/supabase/tests/*_test.sql; do
+  echo "→ testes $(basename "$t")"
+  "${PSQL[@]}" -f "$t"
+done
