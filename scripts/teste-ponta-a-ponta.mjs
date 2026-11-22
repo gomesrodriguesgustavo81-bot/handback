@@ -511,6 +511,36 @@ try {
   await ana.p.reload();
   confere(await ana.p.getByRole("button", { name: "Tentar de novo" }).isVisible(), "dá para tentar de novo depois da falha");
 
+  // 7b) Recebimento pelo Resend (webhook assinado + busca do e-mail na API do Resend de mentira)
+  if (process.env.RESEND_WEBHOOK_SECRET) {
+    const { createHmac } = await import("node:crypto");
+    const idEmail = `em_${sufixo}`;
+    await fetch(`${process.env.RESEND_API_BASE}/__emails`, {
+      method: "POST",
+      body: JSON.stringify({
+        id: idEmail, from: "Pessoa Nova <nova@aluno.test>", to: [ENDERECO.replace("@caixa.handback.test", "@abc.resend.app")],
+        subject: "[ENTREGA] Encontro 2 - Equipe Roxa", text: "Segue o trabalho em anexo.",
+        headers: { "message-id": `<r-${sufixo}@aluno>` },
+        anexos: [{ filename: "trabalho-resend.pdf", content_type: "application/pdf", conteudo: "pdf de teste" }],
+      }),
+    });
+    const evento = JSON.stringify({ type: "email.received", created_at: new Date().toISOString(), data: { email_id: idEmail } });
+    const ts = String(Math.floor(Date.now() / 1000));
+    const chave = Buffer.from(process.env.RESEND_WEBHOOK_SECRET.replace(/^whsec_/, ""), "base64");
+    const assinatura = `v1,${createHmac("sha256", chave).update(`msg_${sufixo}.${ts}.${evento}`).digest("base64")}`;
+    const chamar = (sig) =>
+      fetch(`${APP}/api/emails/resend`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "svix-id": `msg_${sufixo}`, "svix-timestamp": ts, "svix-signature": sig },
+        body: evento,
+      });
+    confere((await chamar("v1,assinaturafalsa")).status === 401, "Resend: chamada sem a assinatura certa é recusada");
+    const r = await (await chamar(assinatura)).json();
+    confere(r.ok === true && r.status === "confirmar", `Resend: e-mail recebido vai para a caixa (${r.status ?? r.motivo})`);
+    await ana.p.goto(`${APP}/app/${SLUG}/entregas/caixa`);
+    confere(await ana.p.locator("li.rounded-2xl", { hasText: "nova@aluno.test" }).getByText("trabalho-resend.pdf").isVisible(), "Resend: anexo baixado e guardado");
+  }
+
   // 8) O dono bloqueia a escola; a Ana vê o aviso
   await dono.p.goto(`${APP}/admin`);
   const linha = dono.p.locator("li", { hasText: SLUG });
