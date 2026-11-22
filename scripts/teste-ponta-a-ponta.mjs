@@ -180,7 +180,7 @@ try {
     await ctx.close();
   }
   const dono = await entrar(navegador, DONO, "1-dono");
-  confere(await dono.p.getByText("Você ainda não faz parte de nenhuma empresa").isVisible(), "dono novo vê lista vazia");
+  confere(await dono.p.getByText("Você ainda não faz parte de nenhum espaço").isVisible(), "dono novo vê lista vazia");
   const r = await dono.p.goto(`${APP}/admin`);
   confere(r.status() === 404, "antes de virar dono, /admin não existe para ele");
 
@@ -278,7 +278,7 @@ try {
   await ana.p.getByRole("link", { name: "← Configurações" }).waitFor();
   confere(true, "páginas de configuração têm o caminho de volta");
   await menuConta(ana.p);
-  confere(!(await ana.p.getByRole("menuitem", { name: "Trocar de empresa" }).count()), "“Trocar de empresa” não aparece para quem tem uma empresa só");
+  confere(!(await ana.p.getByRole("menuitem", { name: /^Trocar de/ }).count()), "“Trocar de …” não aparece para quem tem um espaço só");
   await ana.p.screenshot({ path: `${FOTOS}/32-menu-conta.png` });
   await ana.p.getByRole("button", { name: "Fechar o menu" }).click();
   await largura(ana.p, "painel da empresa");
@@ -288,7 +288,7 @@ try {
   // 7) Um curioso não vê a escola nem pelo endereço direto
   await criarConta(CURIOSO);
   const curioso = await entrar(navegador, CURIOSO);
-  confere(await curioso.p.getByText("Você ainda não faz parte de nenhuma empresa").isVisible(), "curioso não vê empresas");
+  confere(await curioso.p.getByText("Você ainda não faz parte de nenhum espaço").isVisible(), "curioso não vê empresas");
   {
     // "Esqueci minha senha": link por e-mail → senha nova (senha fraca é recusada).
     const ESQUECIDO = `esquecido-${sufixo}@qualquer.test`;
@@ -416,10 +416,22 @@ try {
 
   // F6) Ana troca o vocabulário: Aula → Encontro
   await ana.p.goto(`${APP}/app/${SLUG}/ajustes`);
-  await ana.p.getByLabel("Etapa de entrega").fill("Encontro");
-  confere((await ana.p.getByLabel("Pessoa (dentro do grupo ou individual)").inputValue()) === "Estudante", "nome escolhido no primeiro acesso aparece em Ajustes");
-  await ana.p.getByRole("button", { name: "Salvar ajustes" }).click();
-  await ana.p.getByText("Ajustes salvos.").waitFor();
+  await ana.p.waitForURL(/\/configuracoes$/);
+  confere(true, "o antigo Ajustes abre as Configurações");
+  await ana.p.getByRole("link", { name: /Nomes usados aqui/ }).click();
+  await ana.p.getByRole("heading", { name: "Nomes usados aqui" }).waitFor();
+  confere((await ana.p.getByLabel("Cada pessoa").inputValue()) === "Estudante", "nome escolhido no primeiro acesso aparece em Nomes usados aqui");
+  await ana.p.getByLabel("Como você chama este espaço?").fill("Escola");
+  await ana.p.getByLabel("Como você chama este espaço?").press("Tab");
+  await ana.p.getByText("Salvo ✓").first().waitFor();
+  await ana.p.getByLabel("Cada etapa de entrega").fill("Encontro");
+  confere(await ana.p.getByRole("region", { name: "Prévia" }).getByText("Encontros").isVisible(), "prévia das abas muda enquanto digita");
+  await ana.p.getByLabel("Cada etapa de entrega").press("Tab");
+  await ana.p.waitForFunction(() => document.querySelectorAll(".salvo-pilula").length >= 1 && [...document.querySelectorAll(".salvo-pilula")].every((x) => x.textContent === "Salvo ✓"));
+  await ana.p.getByRole("navigation", { name: "Seções da empresa" }).getByRole("link", { name: "Encontros" }).waitFor();
+  confere(true, "nomes salvam sozinhos (sem botão) e as abas mudam");
+  await largura(ana.p, "nomes usados aqui");
+  await ana.p.screenshot({ path: `${FOTOS}/33-nomes.png`, fullPage: true });
   await ana.p.goto(`${APP}/app/${SLUG}`);
   confere(await ana.p.getByRole("link", { name: "Encontros" }).first().isVisible(), "aba passa a se chamar Encontros");
   confere((await ana.p.locator("option", { hasText: "Encontro 1 · Diagnóstico" }).count()) > 0, "painel usa a palavra nova");
@@ -479,7 +491,7 @@ try {
   }
 
   // E1) Ana vê o endereço de recebimento e o passo a passo do Gmail
-  await ana.p.goto(`${APP}/app/${SLUG}/ajustes`);
+  await ana.p.goto(`${APP}/app/${SLUG}/configuracoes/recebimento`);
   const ENDERECO = (await ana.p.locator("code", { hasText: "@caixa.handback.test" }).innerText()).trim();
   confere(/^entregas\+[a-z0-9]{12}@caixa\.handback\.test$/.test(ENDERECO), `endereço de recebimento da empresa (${ENDERECO})`);
   confere(await ana.p.getByRole("button", { name: "Copiar endereço" }).isVisible(), "botão para copiar o endereço da turma");
@@ -825,7 +837,7 @@ try {
   confere(await prof.p.getByText("Entrou com e-mail e senha").first().isVisible() || await prof.p.getByText("Ativou a verificação em duas etapas").first().isVisible(), "cada pessoa vê os próprios acessos em Minha conta");
 
   // 7d) Turmas dentro da conta + modo individual
-  await ana.p.goto(`${APP}/app/${SLUG}/ajustes`);
+  await ana.p.goto(`${APP}/app/${SLUG}/configuracoes/turmas`);
   await ana.p.locator("summary", { hasText: "+ Criar turma" }).click();
   const formTurma = ana.p.locator("details", { hasText: "+ Criar turma" });
   await formTurma.getByLabel("Nome").fill("Cálculo II");
@@ -834,6 +846,7 @@ try {
   await ana.p.getByText("“Cálculo II” criada").waitFor();
   confere(true, "administrador cria outra turma");
   await trocarTurma(ana.p, "Cálculo II");
+  await ana.p.goto(`${APP}/app/${SLUG}/configuracoes/recebimento`);
   const ENDERECO2 = (await ana.p.locator("code", { hasText: "@caixa.handback.test" }).innerText()).trim();
   confere(ENDERECO2 !== ENDERECO && /^entregas\+[a-z0-9]{12}@/.test(ENDERECO2), "cada turma tem o próprio endereço de e-mail");
   const abasT2 = await ana.p.getByRole("navigation", { name: "Seções da empresa" }).getByRole("link").allInnerTexts();
@@ -998,7 +1011,7 @@ try {
   await linha.getByRole("button", { name: "Bloquear" }).click();
   await linha.getByRole("button", { name: "Liberar" }).waitFor();
   await ana.p.goto(`${APP}/app/${SLUG}`);
-  confere(await ana.p.getByText("Esta empresa está bloqueada").isVisible(), "Ana vê que a empresa foi bloqueada");
+  confere(await ana.p.getByText(/está bloquead[ao]\. Fale com o suporte/).isVisible(), "Ana vê que a conta foi bloqueada");
   const bloqueada = await chegaEmail({ id: `<b-${sufixo}@aluno>`, assunto: "[ENTREGA] Encontro 2 - Equipe Azul" });
   confere(bloqueada.ok === false && bloqueada.motivo === "empresa bloqueada", "empresa bloqueada não recebe entregas");
 

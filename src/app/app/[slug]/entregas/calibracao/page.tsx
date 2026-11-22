@@ -180,7 +180,7 @@ export default async function Calibracao({ params }: PageProps<"/app/[slug]/entr
             {podeGerir ? (
               <>
                 Em{" "}
-                <Link href={`/app/${slug}/ajustes`} className="font-medium text-marca-forte underline">
+                <Link href={`/app/${slug}/configuracoes/avaliacao`} className="font-medium text-marca-forte underline">
                   Ajustes
                 </Link>
                 , revise a definição de cada conceito e a regra do checklist.

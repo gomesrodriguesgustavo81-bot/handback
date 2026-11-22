@@ -34,5 +34,8 @@ export type Vocabulario = {
   /** Quem está dentro de um grupo, ou quem entrega no modo individual (Aluno, Residente…). */
   pessoa?: string;
   pessoas?: string;
-  generos?: Partial<Record<"etapa" | "grupo" | "espaco" | "pessoa", "f" | "m">>;
+  /** Como o cliente chama o próprio espaço no Handback (Escola, Escritório, Time…). */
+  organizacao?: string;
+  organizacoes?: string;
+  generos?: Partial<Record<"etapa" | "grupo" | "espaco" | "pessoa" | "organizacao", "f" | "m">>;
 };

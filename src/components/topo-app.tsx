@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Marca } from "./marca";
 
-type Empresa = { slug: string; nome: string; papel: string };
+type Empresa = { slug: string; nome: string; papel: string; palavra: string };
 
 function iniciais(email: string) {
   const partes = email.split("@")[0].split(/[._-]+/).filter(Boolean);
@@ -48,14 +48,14 @@ export function TopoApp({ email, dono, empresas }: { email: string; dono: boolea
             aria-expanded={aberto}
             aria-haspopup="menu"
             onClick={() => setAberto((x) => !x)}
-            className="flex size-10 items-center justify-center rounded-full bg-[#e3edfb] text-sm font-bold text-[#1d4f91] dark:bg-[#1d3557] dark:text-[#cfe0fa]"
+            className="flex size-10 items-center justify-center rounded-full bg-acento text-sm font-bold text-sobre-acento transition-transform active:scale-95"
           >
             {iniciais(email)}
           </button>
           {aberto ? (
             <>
               <button type="button" aria-label="Fechar o menu" className="fixed inset-0 z-30 cursor-default" onClick={() => setAberto(false)} />
-              <div role="menu" aria-label="Sua conta" className="absolute right-0 z-40 mt-2 flex w-72 flex-col gap-0.5 rounded-2xl border border-borda bg-cartao p-2 shadow-lg">
+              <div role="menu" aria-label="Sua conta" className="entra absolute right-0 z-40 mt-2 flex w-72 flex-col gap-0.5 rounded-2xl border border-borda bg-cartao p-2 shadow-lg">
                 <div className="flex flex-col px-3 pt-1 pb-2">
                   <span className="truncate text-sm font-medium">{email}</span>
                   {empresa ? <span className="truncate text-xs text-suave">Seu papel: {empresa.papel} · {empresa.nome}</span> : null}
@@ -65,7 +65,7 @@ export function TopoApp({ email, dono, empresas }: { email: string; dono: boolea
                 </Link>
                 {empresas.length > 1 ? (
                   <Link role="menuitem" href="/app?todas=1" onClick={() => setAberto(false)} className={item}>
-                    Trocar de empresa
+                    Trocar de {(empresa?.palavra ?? "espaço").toLowerCase()}
                   </Link>
                 ) : null}
                 {dono ? (

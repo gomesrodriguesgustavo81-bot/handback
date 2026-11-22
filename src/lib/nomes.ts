@@ -9,11 +9,11 @@ export type Modo = "grupos" | "individual";
 
 const FEMININAS = new Set(
   [
-    "turma", "sala", "área", "area", "carteira", "equipe", "aula", "entrega", "etapa", "competência", "squad", "célula", "celula",
+    "turma", "sala", "área", "area", "escola", "empresa", "agência", "agencia", "faculdade", "universidade", "consultoria", "carteira", "equipe", "aula", "entrega", "etapa", "competência", "squad", "célula", "celula",
     "unidade", "classe", "trilha", "sprint", "pessoa", "empresa", "residência", "mentoria", "frente", "fase", "semana", "rodada",
   ].map((x) => x.toLowerCase()),
 );
-const MASCULINAS = new Set(["time", "grupo", "projeto", "programa", "ciclo", "encontro", "módulo", "modulo", "mês", "mes", "aluno", "cliente", "membro"]);
+const MASCULINAS = new Set(["espaço", "espaco", "escritório", "escritorio", "hub", "laboratório", "laboratorio", "time", "grupo", "projeto", "programa", "ciclo", "encontro", "módulo", "modulo", "mês", "mes", "aluno", "cliente", "membro"]);
 
 /** Plural em português para as palavras do dia a dia (regras simples, suficientes para nomes). */
 export function plural(palavra: string): string {
@@ -45,20 +45,25 @@ export function generoDe(palavra: string): Genero {
   return /a$|ção$|dade$|gem$/.test(base) ? "f" : "m";
 }
 
-export type Vocab = Required<Omit<Vocabulario, "generos" | "pessoa" | "pessoas" | "espaco" | "espacos">> & {
+export type Vocab = Required<Omit<Vocabulario, "generos" | "pessoa" | "pessoas" | "espaco" | "espacos" | "organizacao" | "organizacoes">> & {
+  organizacao: string;
+  organizacoes: string;
   espaco: string;
   espacos: string;
   pessoa: string;
   pessoas: string;
-  generos: Record<"etapa" | "grupo" | "espaco" | "pessoa", Genero>;
+  generos: Record<"etapa" | "grupo" | "espaco" | "pessoa" | "organizacao", Genero>;
 };
 
 /** Completa o vocabulário guardado com os campos novos (contas antigas não têm). */
 export function completarVocabulario(v: Vocabulario): Vocab {
   const espaco = v.espaco || "Turma";
   const pessoa = v.pessoa || "Pessoa";
+  const organizacao = v.organizacao || "Espaço";
   return {
     ...v,
+    organizacao,
+    organizacoes: v.organizacoes || plural(organizacao),
     espaco,
     espacos: v.espacos || plural(espaco),
     pessoa,
@@ -68,6 +73,7 @@ export function completarVocabulario(v: Vocabulario): Vocab {
       grupo: v.generos?.grupo ?? generoDe(v.grupo),
       espaco: v.generos?.espaco ?? generoDe(espaco),
       pessoa: v.generos?.pessoa ?? generoDe(pessoa),
+      organizacao: v.generos?.organizacao ?? generoDe(organizacao),
     },
   };
 }
@@ -141,14 +147,17 @@ export function lerListaDePessoas(texto: string): { nome: string; email: string;
 }
 
 /** Monta o vocabulário completo só a partir das palavras no singular. */
-export function montarVocabulario(s: { etapa: string; grupo: string; espaco: string; pessoa: string; avaliador: string }) {
+export function montarVocabulario(s: { etapa: string; grupo: string; espaco: string; pessoa: string; avaliador: string; organizacao?: string }) {
   const limpar = (x: string) => x.trim().replace(/\s+/g, " ").slice(0, 40);
   const etapa = limpar(s.etapa);
   const grupo = limpar(s.grupo);
   const espaco = limpar(s.espaco);
   const pessoa = limpar(s.pessoa);
   const avaliador = limpar(s.avaliador);
+  const organizacao = limpar(s.organizacao ?? "") || "Espaço";
   return {
+    organizacao,
+    organizacoes: plural(organizacao),
     etapa,
     etapas: plural(etapa),
     grupo,
@@ -159,6 +168,6 @@ export function montarVocabulario(s: { etapa: string; grupo: string; espaco: str
     pessoas: plural(pessoa),
     avaliador,
     avaliadores: plural(avaliador),
-    generos: { etapa: generoDe(etapa), grupo: generoDe(grupo), espaco: generoDe(espaco), pessoa: generoDe(pessoa) },
+    generos: { etapa: generoDe(etapa), grupo: generoDe(grupo), espaco: generoDe(espaco), pessoa: generoDe(pessoa), organizacao: generoDe(organizacao) },
   };
 }

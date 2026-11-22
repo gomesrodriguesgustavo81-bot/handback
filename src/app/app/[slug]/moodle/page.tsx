@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BotaoConfirmar, FormAcao } from "@/components/form-acao";
 import { Aviso, Campo, Cartao, LinkBotao } from "@/components/ui";
@@ -175,11 +174,6 @@ export default async function Moodle({ params, searchParams }: PageProps<"/app/[
         </FormAcao>
       </Cartao>
 
-      <p className="text-sm text-suave">
-        <Link href={`/app/${slug}/ajustes`} className="font-medium text-marca-forte underline">
-          ← Voltar aos ajustes
-        </Link>
-      </p>
     </div>
   );
 }

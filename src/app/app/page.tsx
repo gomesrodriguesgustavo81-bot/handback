@@ -6,7 +6,7 @@ import { FRENTES, PAPEIS } from "@/lib/frentes";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { eDonoDaPlataforma, minhasEmpresas, usuarioAtual } from "@/lib/sessao";
 
-export const metadata: Metadata = { title: "Minhas empresas" };
+export const metadata: Metadata = { title: "Seus espaços" };
 
 export default async function MinhasEmpresas({ searchParams }: PageProps<"/app">) {
   const { todas } = await searchParams;
@@ -24,17 +24,17 @@ export default async function MinhasEmpresas({ searchParams }: PageProps<"/app">
   return (
     <>
       <div>
-        <h1 className="text-2xl font-semibold">Minhas empresas</h1>
+        <h1 className="text-2xl font-bold">Seus espaços</h1>
         <p className="text-suave">Entrou como {eu.email}</p>
       </div>
 
       {minhas.length === 0 ? (
         <Cartao>
-          <p className="font-medium">Você ainda não faz parte de nenhuma empresa.</p>
+          <p className="font-medium">Você ainda não faz parte de nenhum espaço.</p>
           <p className="mt-1 text-suave">
             {dono
               ? "Crie a primeira conta de cliente em Administração do Handback (no menu do seu círculo, no topo)."
-              : "Peça ao administrador da sua empresa um convite para este e-mail."}
+              : "Peça a quem administra o seu espaço um convite para este e-mail."}
           </p>
         </Cartao>
       ) : (

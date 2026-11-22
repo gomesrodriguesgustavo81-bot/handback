@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { contextoDaEmpresa } from "@/lib/empresa";
-import { completarVocabulario } from "@/lib/nomes";
+import { completarVocabulario, o } from "@/lib/nomes";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { turmasDaEmpresa } from "@/lib/turma";
 
@@ -40,19 +40,19 @@ export default async function Configuracoes({ params }: PageProps<"/app/[slug]/c
     {
       titulo: `${vc.espacos} e entregas`,
       itens: [
-        { nome: vc.espacos, detalhe: `${ativas} ativa(s) · criar, renomear, arquivar`, href: `${base}/ajustes#turmas` },
-        { nome: "Receber por e-mail", detalhe: "Endereço de cada turma e a etiqueta do assunto", href: `${base}/ajustes#recebimento` },
+        { nome: vc.espacos, detalhe: `${ativas} ativa(s) · criar, renomear, arquivar`, href: `${base}/configuracoes/turmas` },
+        { nome: "Receber por e-mail", detalhe: "Endereço de cada turma e a etiqueta do assunto", href: `${base}/configuracoes/recebimento` },
         { nome: "Moodle", detalhe: comMoodle.length ? `Ligado: ${comMoodle.join(", ")}` : "Trazer alunos, tarefas e entregas do Moodle", href: `${base}/moodle` },
       ],
     },
     {
       titulo: "Avaliação",
       itens: [
-        { nome: "Conceitos e IA", detalhe: "O que vale cada conceito, regra do checklist, exemplos", href: `${base}/ajustes#avaliacao` },
+        { nome: "Conceitos e IA", detalhe: "O que vale cada conceito, regra do checklist, exemplos", href: `${base}/configuracoes/avaliacao` },
         {
           nome: "Nomes usados aqui",
-          detalhe: [vc.espaco, vc.etapa, vc.grupo, vc.pessoa, vc.avaliador].join(", "),
-          href: `${base}/ajustes#nomes`,
+          detalhe: [vc.organizacao, vc.espaco, vc.etapa, vc.grupo, vc.pessoa, vc.avaliador].join(", "),
+          href: `${base}/configuracoes/nomes`,
         },
       ],
     },
@@ -62,7 +62,7 @@ export default async function Configuracoes({ params }: PageProps<"/app/[slug]/c
         {
           nome: "Verificação em duas etapas",
           detalhe: config?.exigir_duas_etapas === false ? "Opcional (cada pessoa decide)" : "Obrigatória para todos",
-          href: `${base}/ajustes#seguranca`,
+          href: `${base}/configuracoes/seguranca`,
         },
         { nome: "Registro de atividades", detalhe: "Quem fez o quê e quando", href: `${base}/registro` },
       ],
@@ -72,8 +72,10 @@ export default async function Configuracoes({ params }: PageProps<"/app/[slug]/c
   return (
     <div className="flex max-w-2xl flex-col gap-5">
       <div>
-        <h1 className="text-xl font-semibold">Configurações</h1>
-        <p className="text-sm text-suave">Valem para {empresa.nome} inteira.</p>
+        <h1 className="text-2xl font-bold">Configurações</h1>
+        <p className="text-sm text-suave">
+          Valem para {o(vc, "organizacao")} {vc.organizacao.toLowerCase()} inteir{o(vc, "organizacao")}: {empresa.nome}.
+        </p>
       </div>
       {grupos.map((g) => (
         <section key={g.titulo} aria-label={g.titulo} className="flex flex-col gap-1.5">

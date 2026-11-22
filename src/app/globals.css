@@ -2,15 +2,18 @@
 
 /* Cores da marca Handback. Mude aqui para mudar no app inteiro. */
 :root {
-  --fundo: #f7f8f6;
+  /* Caminho B · Volta: verde-escuro com verde-limão vivo */
+  --fundo: #f4f7f5;
   --cartao: #ffffff;
-  --texto: #15201c;
-  --texto-suave: #5b6862;
-  --borda: #dfe4e1;
-  --marca: #0f7b6c;
-  --marca-forte: #0b5e53;
-  --marca-clara: #e3f3ef;
+  --texto: #0e2b28;
+  --texto-suave: #4b605d;
+  --borda: #d9e3e0;
+  --marca: #14574f;
+  --marca-forte: #0e3b37;
+  --marca-clara: #e3f1ec;
   --sobre-marca: #ffffff;
+  --acento: #c6f15a;
+  --sobre-acento: #0e3b37;
   --alerta: #8a5a00;
   --alerta-fundo: #fff4dc;
   --erro: #b42318;
@@ -34,15 +37,17 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --fundo: #0f1513;
-    --cartao: #17201d;
-    --texto: #e8eeeb;
-    --texto-suave: #9aa9a2;
-    --borda: #2a3632;
-    --marca: #3fbfa9;
-    --marca-forte: #6fd6c3;
-    --marca-clara: #173a33;
-    --sobre-marca: #08201b;
+    --fundo: #0b1715;
+    --cartao: #12221f;
+    --texto: #e6f2ee;
+    --texto-suave: #9fb4ae;
+    --borda: #23403b;
+    --marca: #c6f15a;
+    --marca-forte: #d9f88f;
+    --marca-clara: #1d3a2f;
+    --sobre-marca: #0e2b28;
+    --acento: #c6f15a;
+    --sobre-acento: #0e2b28;
     --alerta: #f3c56b;
     --alerta-fundo: #33280f;
     --erro: #f59a91;
@@ -74,6 +79,8 @@
   --color-marca-forte: var(--marca-forte);
   --color-marca-clara: var(--marca-clara);
   --color-sobre-marca: var(--sobre-marca);
+  --color-acento: var(--acento);
+  --color-sobre-acento: var(--sobre-acento);
   --color-alerta: var(--alerta);
   --color-alerta-fundo: var(--alerta-fundo);
   --color-erro: var(--erro);
@@ -92,7 +99,8 @@
   --color-info-fundo: var(--info-fundo);
   --color-ok: var(--ok);
   --color-ok-fundo: var(--ok-fundo);
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: var(--fonte-texto), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-titulo: var(--fonte-titulo), var(--fonte-texto), ui-sans-serif, system-ui, sans-serif;
 }
 
 html {
@@ -108,4 +116,41 @@ body {
 :focus-visible {
   outline: 2px solid var(--marca);
   outline-offset: 2px;
+}
+
+/* Títulos com a letra da marca */
+h1, h2, .titulo {
+  font-family: var(--font-titulo);
+  letter-spacing: -0.02em;
+}
+
+/* ---------- Movimento: as telas entram suaves, sem piscar ---------- */
+@keyframes entra {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes aparece {
+  0% { opacity: 0; transform: translateY(3px); }
+  12% { opacity: 1; transform: none; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.entra { animation: entra 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+/* "Salvo ✓" que aparece e some */
+.salvo-pilula {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--acento);
+  color: var(--sobre-acento);
+}
+.salvo-some { animation: aparece 2.4s ease both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .entra, .salvo-some { animation: none; }
+  * { transition-duration: 0.01ms !important; }
 }

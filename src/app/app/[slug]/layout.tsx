@@ -1,7 +1,7 @@
 import { Aviso } from "@/components/ui";
 import { contextoDaEmpresa } from "@/lib/empresa";
 import { AbasEmpresa } from "./abas";
-import { completarVocabulario, quemEntrega } from "@/lib/nomes";
+import { completarVocabulario, o, quemEntrega } from "@/lib/nomes";
 import { turmaAtual, turmasDaEmpresa } from "@/lib/turma";
 import { SeletorTurma } from "./seletor-turma";
 import { SoForaDaFolha } from "./so-fora-da-folha";
@@ -39,7 +39,7 @@ export default async function LayoutEmpresa({
     <div className="flex flex-col gap-4">
       {!empresa.ativa ? (
         <Aviso tipo="alerta">
-          Esta empresa está bloqueada. Fale com o suporte do Handback.
+          Est{o(v, "organizacao")} {v.organizacao.toLowerCase()} está bloquead{o(v, "organizacao")}. Fale com o suporte do Handback.
         </Aviso>
       ) : null}
       {ativas.length > 1 || podeGerir ? (
@@ -49,7 +49,7 @@ export default async function LayoutEmpresa({
             rotulo={v.espaco}
             turmas={ativas.map((t) => ({ id: t.id, nome: t.moodle_conta ? `${t.nome} (Moodle)` : t.nome }))}
             atual={atual?.id ?? null}
-            criarHref={podeGerir ? `/app/${slug}/ajustes#turmas` : null}
+            criarHref={podeGerir ? `/app/${slug}/configuracoes/turmas` : null}
           />
         </SoForaDaFolha>
       ) : null}

@@ -1,3 +1,4 @@
+import { completarVocabulario } from "@/lib/nomes";
 import { PAPEIS } from "@/lib/frentes";
 import type { Metadata } from "next";
 import { TopoApp } from "@/components/topo-app";
@@ -24,7 +25,7 @@ export default async function MinhaConta() {
     .limit(10);
   return (
     <>
-      <TopoApp email={eu.email} dono={dono} empresas={(await minhasEmpresas()).map((e) => ({ slug: e.slug, nome: e.nome, papel: e.papel ? PAPEIS[e.papel] : "Dono da plataforma" }))} />
+      <TopoApp email={eu.email} dono={dono} empresas={(await minhasEmpresas()).map((e) => ({ slug: e.slug, nome: e.nome, papel: e.papel ? PAPEIS[e.papel] : "Dono do Handback", palavra: completarVocabulario(e.vocabulario).organizacao }))} />
       <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 px-4 py-8 sm:px-6">
         <div>
           <h1 className="text-2xl font-semibold">Minha conta</h1>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SimboloHandback } from "./marca";
 import { contato } from "./rodape";
 import { IDIOMAS, TEXTOS, type Idioma } from "@/lib/vendas";
 
@@ -39,10 +40,8 @@ export function PaginaDeVendas({ idioma }: { idioma: Idioma }) {
       <header className="sticky top-0 z-20 border-b border-borda bg-fundo/90 backdrop-blur">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <Link href={info.caminho} className="inline-flex items-center gap-2 font-semibold tracking-tight text-texto" aria-label="Handback">
-            <span aria-hidden className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-marca text-sobre-marca">
-              <Check />
-            </span>
-            <span className="text-lg">handback</span>
+            <SimboloHandback tamanho={30} />
+            <span className="titulo text-[21px] font-extrabold tracking-[-0.04em]">handback</span>
           </Link>
           <nav aria-label="Menu" className="hidden items-center gap-5 text-sm font-medium text-suave md:flex">
             <a href="#como" className="hover:text-texto">

@@ -72,7 +72,7 @@ export default async function Entrar({ searchParams }: PageProps<"/entrar">) {
         <div className="flex flex-col gap-1 text-center text-sm text-suave">
           <p>Primeira vez? Use o link do e-mail de convite para criar sua senha.</p>
           <p>
-            Sem convite? Peça ao administrador da sua empresa. ·{" "}
+            Sem convite? Peça a quem administra o seu espaço. ·{" "}
             <Link href="/privacidade" className="hover:text-texto hover:underline">
               Privacidade
             </Link>

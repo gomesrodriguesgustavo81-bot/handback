@@ -1,5 +1,10 @@
 import type { Metadata, Viewport } from "next";
+import { Bricolage_Grotesque, Inter } from "next/font/google";
 import "./globals.css";
+
+// Letras da marca: Bricolage Grotesque nos títulos e na marca, Inter no texto.
+const titulo = Bricolage_Grotesque({ subsets: ["latin"], weight: ["600", "700", "800"], variable: "--fonte-titulo", display: "swap" });
+const texto = Inter({ subsets: ["latin"], variable: "--fonte-texto", display: "swap" });
 
 export const metadata: Metadata = {
   title: { default: "Handback", template: "%s · Handback" },
@@ -12,14 +17,14 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f7f8f6" },
-    { media: "(prefers-color-scheme: dark)", color: "#0f1513" },
+    { media: "(prefers-color-scheme: light)", color: "#f4f7f5" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b1715" },
   ],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="pt-BR" className="h-full antialiased">
+    <html lang="pt-BR" className={`h-full antialiased ${titulo.variable} ${texto.variable}`}>
       <body className="flex min-h-full flex-col">{children}</body>
     </html>
   );

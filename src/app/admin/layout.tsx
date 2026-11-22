@@ -1,3 +1,4 @@
+import { completarVocabulario } from "@/lib/nomes";
 import { PAPEIS } from "@/lib/frentes";
 import { notFound } from "next/navigation";
 import { TopoApp } from "@/components/topo-app";
@@ -17,7 +18,7 @@ export default async function LayoutAdmin({ children }: LayoutProps<"/admin">) {
   if (!dono) notFound();
   return (
     <>
-      <TopoApp email={eu.email} dono empresas={(await minhasEmpresas()).map((e) => ({ slug: e.slug, nome: e.nome, papel: e.papel ? PAPEIS[e.papel] : "Dono da plataforma" }))} />
+      <TopoApp email={eu.email} dono empresas={(await minhasEmpresas()).map((e) => ({ slug: e.slug, nome: e.nome, papel: e.papel ? PAPEIS[e.papel] : "Dono do Handback", palavra: completarVocabulario(e.vocabulario).organizacao }))} />
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">{children}</main>
     </>
   );
