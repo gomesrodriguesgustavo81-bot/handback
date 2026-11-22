@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import { turmaAtual } from "@/lib/turma";
+import { completarVocabulario, quemEntrega } from "@/lib/nomes";
+import { ColarLista } from "@/components/colar-lista";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FormAcao } from "@/components/form-acao";
@@ -6,7 +9,7 @@ import { Cartao, Selo, Vazio } from "@/components/ui";
 import { contextoDaEmpresa } from "@/lib/empresa";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { minusc } from "@/lib/textos";
-import { criarGrupo } from "./acoes";
+import { cadastrarEmLote, criarGrupo } from "./acoes";
 import { CamposGrupo } from "./campos";
 
 export async function generateMetadata({ params }: PageProps<"/app/[slug]/grupos">): Promise<Metadata> {
@@ -21,17 +24,23 @@ export default async function ListaGrupos({ params }: PageProps<"/app/[slug]/gru
   if (!podeAvaliar) notFound();
   const v = empresa.vocabulario;
   const supabase = await criarClienteServidor();
+  const turma = await turmaAtual(empresa.id);
   const { data: grupos } = await supabase
     .from("grupos")
     .select("id, nome, tema, ativo, integrantes(email)")
     .eq("org_id", empresa.id)
+    .eq("turma_id", turma?.id ?? "")
     .order("nome");
+
+  const vc = completarVocabulario(v);
+  const individual = turma?.modo === "individual";
+  const nomes = quemEntrega(vc, turma?.modo ?? "grupos");
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">
-          {v.grupos} ({grupos?.length ?? 0})
+          {nomes.varios} ({grupos?.length ?? 0})
         </h2>
         {!grupos?.length ? (
           <Vazio>Nada cadastrado ainda.{podeGerir ? " Use o formulário para adicionar." : ""}</Vazio>
@@ -60,7 +69,12 @@ export default async function ListaGrupos({ params }: PageProps<"/app/[slug]/gru
         )}
       </section>
 
-      {podeGerir ? (
+      {podeGerir && individual ? (
+        <Cartao className="flex flex-col gap-4 self-start">
+          <h2 className="font-semibold">Adicionar {nomes.varios.toLowerCase()} de uma vez</h2>
+          <ColarLista acao={cadastrarEmLote.bind(null, slug)} umNome={nomes.um} variosNome={nomes.varios} />
+        </Cartao>
+      ) : podeGerir ? (
         <Cartao className="flex flex-col gap-4 self-start">
           <h2 className="font-semibold">Adicionar {minusc(v.grupo)}</h2>
           <FormAcao acao={criarGrupo.bind(null, slug)} textoBotao="Adicionar" limparAoSalvar>

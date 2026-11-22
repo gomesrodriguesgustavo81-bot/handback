@@ -22,13 +22,16 @@ export async function receberEmail(admin: SupabaseClient, email: EmailRecebido):
   const codigos = codigosDaCaixa(email.destinatarios);
   if (!codigos.length) return { ok: false, motivo: "nenhuma caixa de entrada do Handback nos destinatários" };
 
-  const { data: org } = await admin
-    .from("organizacoes")
-    .select("id, ativa, vocabulario, etiqueta_assunto, modo_entrega, assuntos_ignorar")
+  // Cada turma tem o próprio endereço; a turma diz qual é a empresa.
+  const { data: turma } = await admin
+    .from("turmas")
+    .select("id, organizacoes(id, ativa, vocabulario, etiqueta_assunto, modo_entrega, assuntos_ignorar)")
     .in("caixa_token", codigos)
     .limit(1)
     .maybeSingle();
-  if (!org) return { ok: false, motivo: "caixa de entrada desconhecida" };
+  type Org = { id: string; ativa: boolean; vocabulario: unknown; etiqueta_assunto: string; modo_entrega: "confirmar" | "automatico"; assuntos_ignorar: string };
+  const org = (turma?.organizacoes ?? null) as unknown as Org | null;
+  if (!turma || !org) return { ok: false, motivo: "caixa de entrada desconhecida" };
   if (!org.ativa) return { ok: false, motivo: "empresa bloqueada" };
 
   const messageId = email.messageId || `<sem-id-${randomUUID()}@handback>`;
@@ -44,8 +47,8 @@ export async function receberEmail(admin: SupabaseClient, email: EmailRecebido):
   const anexos = email.anexos.filter((a) => !(a.embutido && a.conteudo.length < TAMANHO_MIN_IMAGEM_EMBUTIDA));
 
   const [etapas, grupos, equipe, comEntrega] = await Promise.all([
-    admin.from("etapas").select("id, numero, recebe_de, recebe_ate").eq("org_id", org.id),
-    admin.from("grupos").select("id, nome, integrantes(email)").eq("org_id", org.id).eq("ativo", true),
+    admin.from("etapas").select("id, numero, recebe_de, recebe_ate").eq("turma_id", turma.id),
+    admin.from("grupos").select("id, nome, integrantes(email)").eq("turma_id", turma.id).eq("ativo", true),
     admin.rpc("emails_da_equipe_interna", { org: org.id }),
     email.respondeA.length
       ? admin.from("emails_recebidos").select("message_id").eq("org_id", org.id).not("entrega_id", "is", null).in("message_id", email.respondeA)
@@ -103,6 +106,7 @@ export async function receberEmail(admin: SupabaseClient, email: EmailRecebido):
     p_email: {
       id: emailId,
       org_id: org.id,
+      turma_id: turma.id,
       message_id: messageId,
       responde_a: email.respondeA,
       de_email: email.deEmail,

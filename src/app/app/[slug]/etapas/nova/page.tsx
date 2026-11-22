@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { turmaAtual } from "@/lib/turma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { FormAcao } from "@/components/form-acao";
@@ -19,10 +20,12 @@ export default async function NovaEtapa({ params }: PageProps<"/app/[slug]/etapa
 
   // Sugere o próximo número.
   const supabase = await criarClienteServidor();
+  const turma = await turmaAtual(empresa.id);
   const { data: ultima } = await supabase
     .from("etapas")
     .select("numero")
     .eq("org_id", empresa.id)
+    .eq("turma_id", turma?.id ?? "")
     .order("numero", { ascending: false })
     .limit(1)
     .maybeSingle();

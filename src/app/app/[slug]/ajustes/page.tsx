@@ -6,7 +6,9 @@ import { contextoDaEmpresa } from "@/lib/empresa";
 import { EnderecoDaTurma } from "@/components/endereco-turma";
 import { enderecoDeRecebimento } from "@/lib/emails/endereco";
 import { criarClienteServidor } from "@/lib/supabase/server";
-import { salvarAjustes } from "./acoes";
+import { criarTurma, salvarAjustes, salvarTurma } from "./acoes";
+import { completarVocabulario, o } from "@/lib/nomes";
+import { turmaAtual, turmasDaEmpresa } from "@/lib/turma";
 import { ROTULO_REGRA, type RegraChecklist } from "@/lib/ia/regras";
 
 export const metadata: Metadata = { title: "Ajustes" };
@@ -16,13 +18,15 @@ export default async function Ajustes({ params }: PageProps<"/app/[slug]/ajustes
   const { empresa, podeGerir } = await contextoDaEmpresa(slug);
   if (!podeGerir) notFound();
   const v = empresa.vocabulario;
+  const vc = completarVocabulario(v);
   const supabase = await criarClienteServidor();
+  const [turmas, turma] = await Promise.all([turmasDaEmpresa(empresa.id), turmaAtual(empresa.id)]);
   const { data: config } = await supabase
     .from("organizacoes")
     .select("caixa_token, etiqueta_assunto, modo_entrega, assuntos_ignorar, conceitos, regra_checklist, exemplos_devolutiva, enviar_conceito, exigir_duas_etapas")
     .eq("id", empresa.id)
     .single();
-  const endereco = config ? enderecoDeRecebimento(config.caixa_token) : null;
+  const endereco = turma ? enderecoDeRecebimento(turma.caixa_token) : null;
   const etiqueta = `[${config?.etiqueta_assunto ?? "ENTREGA"}]`;
   const exemploAssunto = `${etiqueta} ${v.etapa} 1 - ${v.grupo} Azul`;
 
@@ -30,7 +34,7 @@ export default async function Ajustes({ params }: PageProps<"/app/[slug]/ajustes
     <div className="flex max-w-2xl flex-col gap-6">
     <Cartao className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <h2 className="text-lg font-semibold">Recebimento por e-mail</h2>
+        <h2 className="text-lg font-semibold">Recebimento por e-mail{turmas.length > 1 && turma ? ` · ${turma.nome}` : ""}</h2>
         <p className="text-sm text-suave">
           Quem entrega não usa o Handback: manda um e-mail para o endereço abaixo, com o assunto começando por{" "}
           <strong>{etiqueta}</strong>. O Handback separa por {v.etapa.toLowerCase()} e {v.grupo.toLowerCase()} sozinho.
@@ -72,6 +76,59 @@ export default async function Ajustes({ params }: PageProps<"/app/[slug]/ajustes
       ) : null}
     </Cartao>
 
+    <Cartao id="turmas" className="flex scroll-mt-6 flex-col gap-4">
+      <div>
+        <h2 className="text-lg font-semibold">{vc.espacos}</h2>
+        <p className="text-sm text-suave">
+          Cada {vc.espaco.toLowerCase()} tem {o(vc, "etapa", true)} {vc.etapas.toLowerCase()}, {vc.grupos.toLowerCase()} ou {vc.pessoas.toLowerCase()} e o
+          endereço de e-mail próprios. Os ajustes abaixo valem para todas.
+        </p>
+      </div>
+      <ul className="flex flex-col gap-3">
+        {turmas.map((t) => (
+          <li key={t.id} className="rounded-xl border border-borda p-3">
+            <FormAcao acao={salvarTurma.bind(null, slug, t.id)} textoBotao="Salvar">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Campo rotulo="Nome" name="nome" required defaultValue={t.nome} />
+                <Escolha
+                  rotulo="Quem entrega"
+                  name="modo"
+                  defaultValue={t.modo}
+                  opcoes={[
+                    { valor: "grupos", nome: `${vc.grupos} (com ${vc.pessoas.toLowerCase()} dentro)` },
+                    { valor: "individual", nome: `${vc.pessoas} individualmente` },
+                  ]}
+                />
+              </div>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" name="arquivada" defaultChecked={t.arquivada} className="size-5" />
+                Arquivada (some do topo, mas nada é apagado)
+              </label>
+            </FormAcao>
+          </li>
+        ))}
+      </ul>
+      <details className="text-sm">
+        <summary className="cursor-pointer font-medium text-marca-forte">+ Criar {vc.espaco.toLowerCase()}</summary>
+        <div className="mt-3">
+          <FormAcao acao={criarTurma.bind(null, slug)} textoBotao="Criar" limparAoSalvar>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Campo rotulo="Nome" name="nome" required placeholder="Ex.: Cálculo II — Manhã" />
+              <Escolha
+                rotulo="Quem entrega"
+                name="modo"
+                defaultValue={turma?.modo ?? "grupos"}
+                opcoes={[
+                  { valor: "grupos", nome: `${vc.grupos} (com ${vc.pessoas.toLowerCase()} dentro)` },
+                  { valor: "individual", nome: `${vc.pessoas} individualmente` },
+                ]}
+              />
+            </div>
+          </FormAcao>
+        </div>
+      </details>
+    </Cartao>
+
     <Cartao className="flex flex-col gap-4">
       <h2 className="text-lg font-semibold">Ajustes da empresa</h2>
       <FormAcao acao={salvarAjustes.bind(null, slug)} textoBotao="Salvar ajustes">
@@ -82,13 +139,13 @@ export default async function Ajustes({ params }: PageProps<"/app/[slug]/ajustes
             Troque pelas palavras que as pessoas daqui usam. Elas aparecem nos menus, nas telas e, depois, nos e-mails.
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Campo rotulo="Etapa (uma)" name="etapa" required defaultValue={v.etapa} dica="Ex.: Aula, Ciclo, Encontro" />
-            <Campo rotulo="Etapas (várias)" name="etapas" required defaultValue={v.etapas} />
-            <Campo rotulo="Quem avalia (um)" name="avaliador" required defaultValue={v.avaliador} dica="Ex.: Professor, Gestor" />
-            <Campo rotulo="Quem avalia (vários)" name="avaliadores" required defaultValue={v.avaliadores} />
-            <Campo rotulo="Quem entrega (um)" name="grupo" required defaultValue={v.grupo} dica="Ex.: Equipe, Time, Cliente" />
-            <Campo rotulo="Quem entrega (vários)" name="grupos" required defaultValue={v.grupos} />
+            <Campo rotulo="Turma, programa ou projeto" name="espaco" required defaultValue={vc.espaco} dica={`Plural: ${vc.espacos}. Ex.: Turma, Programa, Projeto`} />
+            <Campo rotulo="Etapa de entrega" name="etapa" required defaultValue={vc.etapa} dica={`Plural: ${vc.etapas}. Ex.: Aula, Ciclo, Sprint`} />
+            <Campo rotulo="Grupo que entrega" name="grupo" required defaultValue={vc.grupo} dica={`Plural: ${vc.grupos}. Ex.: Equipe, Time, Grupo`} />
+            <Campo rotulo="Pessoa (dentro do grupo ou individual)" name="pessoa" required defaultValue={vc.pessoa} dica={`Plural: ${vc.pessoas}. Ex.: Aluno, Residente`} />
+            <Campo rotulo="Quem avalia" name="avaliador" required defaultValue={vc.avaliador} dica={`Plural: ${vc.avaliadores}. Ex.: Professor, Gestor`} />
           </div>
+          <p className="text-xs text-suave">Escreva só no singular: o plural é feito sozinho.</p>
         </fieldset>
         <fieldset className="flex flex-col gap-3">
           <legend className="mb-1 font-medium">Segurança</legend>

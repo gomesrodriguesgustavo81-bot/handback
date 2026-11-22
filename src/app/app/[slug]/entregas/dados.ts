@@ -13,13 +13,11 @@ export type EtapaResumo = {
 };
 
 /** Todas as etapas da empresa, em ordem. */
-export async function etapasDaEmpresa(orgId: string): Promise<EtapaResumo[]> {
+export async function etapasDaEmpresa(orgId: string, turmaId?: string): Promise<EtapaResumo[]> {
   const supabase = await criarClienteServidor();
-  const { data } = await supabase
-    .from("etapas")
-    .select("id, numero, titulo, recebe_de, recebe_ate")
-    .eq("org_id", orgId)
-    .order("numero");
+  let consulta = supabase.from("etapas").select("id, numero, titulo, recebe_de, recebe_ate").eq("org_id", orgId);
+  if (turmaId) consulta = consulta.eq("turma_id", turmaId);
+  const { data } = await consulta.order("numero");
   return data ?? [];
 }
 

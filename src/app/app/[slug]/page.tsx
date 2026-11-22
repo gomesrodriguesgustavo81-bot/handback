@@ -1,4 +1,6 @@
+import { redirect } from "next/navigation";
 import type { Metadata } from "next";
+import { turmaAtual } from "@/lib/turma";
 import Link from "next/link";
 import { Cartao } from "@/components/ui";
 import { contextoDaEmpresa } from "@/lib/empresa";
@@ -13,20 +15,25 @@ export async function generateMetadata({ params }: PageProps<"/app/[slug]">): Pr
 
 export default async function VisaoGeral({ params }: PageProps<"/app/[slug]">) {
   const { slug } = await params;
-  const { empresa, podeAvaliar } = await contextoDaEmpresa(slug);
+  const { empresa, podeAvaliar, podeGerir } = await contextoDaEmpresa(slug);
+  // Conta nova: o administrador passa pelo primeiro acesso guiado.
+  if (!empresa.configurada && podeGerir) redirect(`/app/${slug}/comecar`);
   const v = empresa.vocabulario;
   const supabase = await criarClienteServidor();
 
   const hoje = hojeISO();
+  const turma = await turmaAtual(empresa.id);
+  const tId = turma?.id ?? "";
   const [etapas, grupos, proxima] = await Promise.all([
-    supabase.from("etapas").select("id", { count: "exact", head: true }).eq("org_id", empresa.id),
+    supabase.from("etapas").select("id", { count: "exact", head: true }).eq("org_id", empresa.id).eq("turma_id", tId),
     podeAvaliar
-      ? supabase.from("grupos").select("id", { count: "exact", head: true }).eq("org_id", empresa.id).eq("ativo", true)
+      ? supabase.from("grupos").select("id", { count: "exact", head: true }).eq("org_id", empresa.id).eq("turma_id", tId).eq("ativo", true)
       : Promise.resolve({ count: null }),
     supabase
       .from("etapas")
       .select("id, numero, titulo, recebe_ate")
       .eq("org_id", empresa.id)
+      .eq("turma_id", tId)
       .gte("recebe_ate", hoje)
       .order("recebe_ate")
       .limit(1)

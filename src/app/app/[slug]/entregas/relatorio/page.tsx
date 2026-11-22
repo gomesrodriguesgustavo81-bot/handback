@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { turmaAtual } from "@/lib/turma";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PilulaSituacao, SeloConceito, type Situacao } from "@/components/conceito";
@@ -28,12 +29,13 @@ export default async function RelatorioDaAula({ params, searchParams }: PageProp
   const { empresa, podeAvaliar } = await contextoDaEmpresa(slug);
   if (!podeAvaliar) notFound();
   const v = empresa.vocabulario;
-  const etapas = await etapasDaEmpresa(empresa.id);
+  const turma = await turmaAtual(empresa.id);
+  const etapas = await etapasDaEmpresa(empresa.id, turma?.id ?? "");
   const etapa = etapas.find((e) => e.id === escolhida) ?? etapaDaVez(etapas);
   if (!etapa) return <Vazio>Nada cadastrado em {v.etapas} ainda.</Vazio>;
   const supabase = await criarClienteServidor();
   const [{ data: grupos }, { data }] = await Promise.all([
-    supabase.from("grupos").select("id, nome, tema").eq("org_id", empresa.id).eq("ativo", true).order("nome"),
+    supabase.from("grupos").select("id, nome, tema").eq("org_id", empresa.id).eq("turma_id", turma?.id ?? "").eq("ativo", true).order("nome"),
     supabase
       .from("entregas")
       .select("grupo_id, enviada_em, atrasada, analises(status, conceito, checklist, devolutiva, enviada_em)")

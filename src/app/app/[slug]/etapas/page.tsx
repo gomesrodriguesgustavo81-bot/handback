@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { turmaAtual } from "@/lib/turma";
 import Link from "next/link";
 import { LinkBotao, Vazio } from "@/components/ui";
 import { contextoDaEmpresa } from "@/lib/empresa";
@@ -16,10 +17,12 @@ export default async function ListaEtapas({ params }: PageProps<"/app/[slug]/eta
   const { empresa, podeGerir } = await contextoDaEmpresa(slug);
   const v = empresa.vocabulario;
   const supabase = await criarClienteServidor();
+  const turma = await turmaAtual(empresa.id);
   const { data: etapas } = await supabase
     .from("etapas")
     .select("id, numero, titulo, data, recebe_de, recebe_ate, entregaveis")
     .eq("org_id", empresa.id)
+    .eq("turma_id", turma?.id ?? "")
     .order("numero");
 
   return (

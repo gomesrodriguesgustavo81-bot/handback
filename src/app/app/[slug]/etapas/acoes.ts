@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { turmaAtual } from "@/lib/turma";
 import { redirect } from "next/navigation";
 import type { Resultado } from "@/components/form-acao";
 import { contextoDaEmpresa, mensagemDeErro } from "@/lib/empresa";
@@ -43,7 +44,7 @@ export async function criarEtapa(slug: string, _a: Resultado, dados: FormData): 
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase
     .from("etapas")
-    .insert({ ...etapa, org_id: empresa.id })
+    .insert({ ...etapa, org_id: empresa.id, turma_id: (await turmaAtual(empresa.id))?.id })
     .select("id")
     .single();
   if (error) return { ok: false, mensagem: erroDoBanco(error, etapa.numero, empresa.vocabulario.etapa) };

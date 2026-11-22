@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { turmaAtual } from "@/lib/turma";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ESTILO_CONCEITO, Pilula } from "@/components/conceito";
@@ -31,9 +32,11 @@ export default async function Evolucao({ params, searchParams }: PageProps<"/app
   if (!podeAvaliar) notFound();
   const v = empresa.vocabulario;
   const supabase = await criarClienteServidor();
+  const turma = await turmaAtual(empresa.id);
+  const tId = turma?.id ?? "";
   const [etapas, { data: grupos }, { data }] = await Promise.all([
-    etapasDaEmpresa(empresa.id),
-    supabase.from("grupos").select("id, nome, tema").eq("org_id", empresa.id).eq("ativo", true).order("nome"),
+    etapasDaEmpresa(empresa.id, tId),
+    supabase.from("grupos").select("id, nome, tema").eq("org_id", empresa.id).eq("turma_id", tId).eq("ativo", true).order("nome"),
     supabase.from("entregas").select("id, grupo_id, etapa_id, analises(status, conceito)").eq("org_id", empresa.id).eq("status", "recebida"),
   ]);
   const base = `/app/${slug}/entregas`;

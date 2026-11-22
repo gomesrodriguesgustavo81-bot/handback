@@ -28,4 +28,11 @@ export type Vocabulario = {
   avaliadores: string;
   grupo: string;
   grupos: string;
+  /** Turma, programa, projeto… (contas antigas não têm: veja completarVocabulario). */
+  espaco?: string;
+  espacos?: string;
+  /** Quem está dentro de um grupo, ou quem entrega no modo individual (Aluno, Residente…). */
+  pessoa?: string;
+  pessoas?: string;
+  generos?: Partial<Record<"etapa" | "grupo" | "espaco" | "pessoa", "f" | "m">>;
 };

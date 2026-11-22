@@ -1,11 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { turmaAtual } from "@/lib/turma";
 import { redirect } from "next/navigation";
 import type { Resultado } from "@/components/form-acao";
 import { contextoDaEmpresa, mensagemDeErro } from "@/lib/empresa";
 import { criarClienteServidor } from "@/lib/supabase/server";
-import { lerEmails } from "@/lib/textos";
+import { emailValido, lerEmails } from "@/lib/textos";
+import { lerListaDePessoas } from "@/lib/nomes";
 
 type Supabase = Awaited<ReturnType<typeof criarClienteServidor>>;
 
@@ -25,10 +27,10 @@ function validar(g: ReturnType<typeof lerGrupo>): string | null {
   return null;
 }
 
-/** Confere se algum e-mail já entrega por outro grupo da empresa. */
-async function emailsEmOutroGrupo(supabase: Supabase, orgId: string, emails: string[], grupoId?: string) {
+/** Confere se algum e-mail já entrega por outro grupo da mesma turma. */
+async function emailsEmOutroGrupo(supabase: Supabase, turmaId: string, emails: string[], grupoId?: string) {
   if (!emails.length) return null;
-  let consulta = supabase.from("integrantes").select("email, grupos(nome)").eq("org_id", orgId).in("email", emails);
+  let consulta = supabase.from("integrantes").select("email, grupos(nome)").eq("turma_id", turmaId).in("email", emails);
   if (grupoId) consulta = consulta.neq("grupo_id", grupoId);
   const { data } = await consulta;
   if (!data?.length) return null;
@@ -71,12 +73,14 @@ export async function criarGrupo(slug: string, _a: Resultado, dados: FormData): 
   if (invalido) return { ok: false, mensagem: invalido };
 
   const supabase = await criarClienteServidor();
-  const repetidos = await emailsEmOutroGrupo(supabase, empresa.id, g.emails.validos);
+  const turma = await turmaAtual(empresa.id);
+  if (!turma) return { ok: false, mensagem: "Crie uma turma antes." };
+  const repetidos = await emailsEmOutroGrupo(supabase, turma.id, g.emails.validos);
   if (repetidos) return { ok: false, mensagem: `Cada e-mail só pode estar em um cadastro: ${repetidos}.` };
 
   const { data, error } = await supabase
     .from("grupos")
-    .insert({ org_id: empresa.id, nome: g.nome, tema: g.tema, observacoes: g.observacoes })
+    .insert({ org_id: empresa.id, turma_id: turma.id, nome: g.nome, tema: g.tema, observacoes: g.observacoes })
     .select("id")
     .single();
   if (error) return { ok: false, mensagem: erroDoBanco(error, g.nome) };
@@ -103,7 +107,9 @@ export async function salvarGrupo(slug: string, id: string, _a: Resultado, dados
   if (invalido) return { ok: false, mensagem: invalido };
 
   const supabase = await criarClienteServidor();
-  const repetidos = await emailsEmOutroGrupo(supabase, empresa.id, g.emails.validos, id);
+  const { data: atual } = await supabase.from("grupos").select("turma_id").eq("id", id).eq("org_id", empresa.id).maybeSingle();
+  if (!atual) return { ok: false, mensagem: "Não foi possível salvar (sem permissão ou item apagado)." };
+  const repetidos = await emailsEmOutroGrupo(supabase, atual.turma_id, g.emails.validos, id);
   if (repetidos) return { ok: false, mensagem: `Cada e-mail só pode estar em um cadastro: ${repetidos}.` };
 
   const { data, error } = await supabase
@@ -129,4 +135,53 @@ export async function apagarGrupo(slug: string, id: string): Promise<void> {
   await supabase.from("grupos").delete().eq("id", id).eq("org_id", empresa.id);
   revalidatePath(`/app/${slug}`, "layout");
   redirect(`/app/${slug}/grupos`);
+}
+
+/**
+ * Modo individual: cadastra várias pessoas de uma vez (cada uma vira o próprio
+ * “grupo de uma pessoa”). Devolve na 2ª linha da mensagem as linhas que não entraram.
+ */
+export async function cadastrarEmLote(slug: string, _a: Resultado, dados: FormData): Promise<Resultado> {
+  const { empresa, podeGerir } = await contextoDaEmpresa(slug);
+  if (!podeGerir) return { ok: false, mensagem: "Você não tem permissão para fazer isso." };
+  const turma = await turmaAtual(empresa.id);
+  if (!turma) return { ok: false, mensagem: "Crie uma turma antes." };
+  const lidos = lerListaDePessoas(String(dados.get("lista") ?? ""));
+  if (!lidos.some((l) => !l.erro)) return { ok: false, mensagem: "Nenhuma linha com e-mail válido." };
+
+  const supabase = await criarClienteServidor();
+  const { data: ja } = await supabase.from("integrantes").select("email").eq("turma_id", turma.id).in("email", lidos.map((l) => l.email).filter(Boolean));
+  const existentes = new Set((ja ?? []).map((x) => x.email));
+  const sobra: string[] = [];
+  let feitos = 0;
+  for (const l of lidos) {
+    const linha = l.email ? `${l.nome}; ${l.email}` : l.nome;
+    if (l.erro || !emailValido(l.email)) {
+      sobra.push(linha);
+      continue;
+    }
+    if (existentes.has(l.email)) {
+      sobra.push(`${linha} (já está cadastrado)`);
+      continue;
+    }
+    const { data: g, error } = await supabase.from("grupos").insert({ org_id: empresa.id, turma_id: turma.id, nome: l.nome }).select("id").single();
+    if (error || !g) {
+      sobra.push(`${linha} (${error?.code === "23505" ? "nome repetido" : "não foi possível"})`);
+      continue;
+    }
+    const { error: e2 } = await supabase.from("integrantes").insert({ org_id: empresa.id, grupo_id: g.id, email: l.email });
+    if (e2) {
+      await supabase.from("grupos").delete().eq("id", g.id);
+      sobra.push(`${linha} (não foi possível)`);
+      continue;
+    }
+    existentes.add(l.email);
+    feitos++;
+  }
+  revalidatePath(`/app/${slug}`, "layout");
+  return {
+    ok: feitos > 0,
+    mensagem: `${feitos} cadastrado(s).${sobra.length ? " As linhas que não entraram ficaram na caixa." : ""}\n${sobra.join("\n")}`,
+    vez: Date.now(),
+  };
 }

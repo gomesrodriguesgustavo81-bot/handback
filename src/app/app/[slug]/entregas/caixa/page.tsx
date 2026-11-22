@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { turmaAtual } from "@/lib/turma";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DecisaoEmail } from "@/components/decisao-email";
@@ -47,23 +48,26 @@ export default async function CaixaDeEmails({ params, searchParams }: PageProps<
   const v = empresa.vocabulario;
   const supabase = await criarClienteServidor();
 
+  const turma = await turmaAtual(empresa.id);
+  const tId = turma?.id ?? "";
   const contar = (status: string) =>
-    supabase.from("emails_recebidos").select("id", { count: "exact", head: true }).eq("org_id", empresa.id).eq("status", status);
+    supabase.from("emails_recebidos").select("id", { count: "exact", head: true }).eq("org_id", empresa.id).eq("turma_id", tId).eq("status", status);
   const [etapas, { data: grupos }, { data }, { count: nConfirmar }, { count: nIgnorados }, { data: caixa }] = await Promise.all([
-    etapasDaEmpresa(empresa.id),
-    supabase.from("grupos").select("id, nome").eq("org_id", empresa.id).eq("ativo", true).order("nome"),
+    etapasDaEmpresa(empresa.id, tId),
+    supabase.from("grupos").select("id, nome").eq("org_id", empresa.id).eq("turma_id", tId).eq("ativo", true).order("nome"),
     supabase
       .from("emails_recebidos")
       .select("id, enviado_em, de_email, de_nome, assunto, texto, links, anexos, status, motivo, avisos, etapa_sugerida, grupo_sugerido")
       .eq("org_id", empresa.id)
+      .eq("turma_id", tId)
       .eq("status", STATUS_DA_ABA[aba])
       .order("recebido_em", { ascending: false })
       .limit(100),
     contar("confirmar"),
     contar("ignorado"),
-    supabase.from("organizacoes").select("caixa_token, etiqueta_assunto").eq("id", empresa.id).maybeSingle(),
+    supabase.from("organizacoes").select("etiqueta_assunto").eq("id", empresa.id).maybeSingle(),
   ]);
-  const endereco = caixa?.caixa_token ? enderecoDeRecebimento(caixa.caixa_token) : null;
+  const endereco = turma ? enderecoDeRecebimento(turma.caixa_token) : null;
   const etiqueta = `[${caixa?.etiqueta_assunto ?? "ENTREGA"}]`;
   const emails = (data ?? []) as Email[];
   const contagem: Record<Aba, number> = { confirmar: nConfirmar ?? 0, ignorados: nIgnorados ?? 0 };

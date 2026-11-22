@@ -226,9 +226,31 @@ try {
   await largura(ana.p, "minhas empresas");
   await ana.p.screenshot({ path: `${FOTOS}/4-minhas-empresas.png`, fullPage: true });
   await ana.p.getByText("Escola Alfa").click();
+  // Primeiro acesso guiado (conta nova)
+  await ana.p.waitForURL(new RegExp(`/app/${SLUG}/comecar$`));
+  confere(true, "administrador de conta nova cai no primeiro acesso guiado");
+  await ana.p.getByRole("radio", { name: /Escola ou curso/ }).click();
+  await largura(ana.p, "primeiro acesso");
+  await ana.p.screenshot({ path: `${FOTOS}/4b-primeiro-acesso.png`, fullPage: true });
+  await ana.p.getByRole("button", { name: "Continuar" }).click();
+  await ana.p.getByRole("radio", { name: /Grupos, com pessoas dentro/ }).click();
+  await ana.p.getByRole("button", { name: "Continuar" }).click();
+  await ana.p.getByRole("group", { name: "Os grupos que entregam" }).getByRole("button", { name: "Equipe", exact: true }).click();
+  await ana.p.getByRole("group", { name: "As pessoas dentro de cada grupo" }).getByRole("button", { name: "Outro…" }).click();
+  await ana.p.getByLabel("As pessoas dentro de cada grupo: outro nome").fill("Estudante");
+  confere(await ana.p.getByText("Turma 2026 › Aula 2 › Equipe Azul (5 estudantes)").isVisible(), "prévia com o plural automático do nome digitado");
+  await ana.p.screenshot({ path: `${FOTOS}/4c-nomes.png`, fullPage: true });
+  await ana.p.getByRole("button", { name: "Continuar" }).click();
+  await ana.p.getByRole("heading", { name: "Crie sua primeira turma" }).waitFor();
+  confere(true, "artigo certo (feminino) para Turma");
+  await ana.p.getByLabel("Nome").fill("Turma A");
+  await ana.p.getByRole("button", { name: "Concluir" }).click();
+  await ana.p.getByText("Tudo pronto!").waitFor();
+  confere(await ana.p.getByRole("link", { name: /Cadastrar equipes/ }).isVisible(), "próximos passos com os nomes escolhidos");
+  await ana.p.goto(`${APP}/app/${SLUG}`);
   await ana.p.waitForURL(new RegExp(`/app/${SLUG}$`));
   const abasAna = await ana.p.getByRole("navigation", { name: "Seções da empresa" }).getByRole("link").allInnerTexts();
-  confere(abasAna.join("|") === "Visão geral|Entregas|Aulas|Equipes|Pessoas|Ajustes|Registro", `vocabulário de escola nas abas (${abasAna.join(", ")})`);
+  confere(abasAna.join("|") === "Visão geral|Entregas|Aulas|Equipes|Usuários|Ajustes|Registro", `vocabulário de escola nas abas (${abasAna.join(", ")})`);
   await largura(ana.p, "painel da empresa");
   await ana.p.screenshot({ path: `${FOTOS}/5-painel-da-empresa.png`, fullPage: true });
   confere((await ana.p.goto(`${APP}/admin`)).status() === 404, "Ana não abre o Painel do dono");
@@ -363,8 +385,8 @@ try {
 
   // F6) Ana troca o vocabulário: Aula → Encontro
   await ana.p.goto(`${APP}/app/${SLUG}/ajustes`);
-  await ana.p.getByLabel("Etapa (uma)").fill("Encontro");
-  await ana.p.getByLabel("Etapas (várias)").fill("Encontros");
+  await ana.p.getByLabel("Etapa de entrega").fill("Encontro");
+  confere((await ana.p.getByLabel("Pessoa (dentro do grupo ou individual)").inputValue()) === "Estudante", "nome escolhido no primeiro acesso aparece em Ajustes");
   await ana.p.getByRole("button", { name: "Salvar ajustes" }).click();
   await ana.p.getByText("Ajustes salvos.").waitFor();
   await ana.p.goto(`${APP}/app/${SLUG}`);
@@ -768,6 +790,50 @@ try {
   confere((await prof.p.goto(`${APP}/app/${SLUG}/registro`)).status() === 404, "avaliador não abre o registro da empresa");
   await prof.p.goto(`${APP}/conta`);
   confere(await prof.p.getByText("Entrou com e-mail e senha").first().isVisible() || await prof.p.getByText("Ativou a verificação em duas etapas").first().isVisible(), "cada pessoa vê os próprios acessos em Minha conta");
+
+  // 7d) Turmas dentro da conta + modo individual
+  await ana.p.goto(`${APP}/app/${SLUG}/ajustes`);
+  await ana.p.getByText("+ Criar turma").click();
+  const formTurma = ana.p.locator("details", { hasText: "+ Criar turma" });
+  await formTurma.getByLabel("Nome").fill("Cálculo II");
+  await formTurma.getByLabel("Quem entrega").selectOption("individual");
+  await formTurma.getByRole("button", { name: "Criar" }).click();
+  await ana.p.getByText("“Cálculo II” criada").waitFor();
+  confere(true, "administrador cria outra turma");
+  await ana.p.getByRole("navigation", { name: "Turma" }).getByRole("button", { name: "Cálculo II" }).click();
+  await ana.p.getByRole("navigation", { name: "Turma" }).getByRole("button", { name: "Cálculo II" }).and(ana.p.locator("[aria-current]")).waitFor();
+  const ENDERECO2 = (await ana.p.locator("code", { hasText: "@caixa.handback.test" }).innerText()).trim();
+  confere(ENDERECO2 !== ENDERECO && /^entregas\+[a-z0-9]{12}@/.test(ENDERECO2), "cada turma tem o próprio endereço de e-mail");
+  const abasT2 = await ana.p.getByRole("navigation", { name: "Seções da empresa" }).getByRole("link").allInnerTexts();
+  confere(abasT2.includes("Estudantes"), `na turma individual a aba vira o nome das pessoas (${abasT2.join(", ")})`);
+  await ana.p.goto(`${APP}/app/${SLUG}/grupos`);
+  confere(await ana.p.getByText("Nada cadastrado ainda").isVisible(), "turma nova começa vazia (as equipes da outra turma não aparecem)");
+  await ana.p.getByLabel("Lista de estudantes").fill("Bia Souza; a1@aluno.test\nCarlos Lima <carlos@aluno.test>\nSem Email");
+  await ana.p.getByText("2 pronto(s) para cadastrar · 1 com problema").waitFor();
+  await ana.p.screenshot({ path: `${FOTOS}/23-colar-lista.png`, fullPage: true });
+  await ana.p.getByRole("button", { name: "Cadastrar 2 estudantes" }).click();
+  await ana.p.getByText("2 cadastrado(s).").waitFor();
+  confere((await ana.p.getByLabel("Lista de estudantes").inputValue()) === "Sem Email", "linha com problema fica na caixa para corrigir");
+  confere(await ana.p.getByText("Carlos Lima").isVisible(), "estudantes cadastrados em lote (o mesmo e-mail pode estar em outra turma)");
+  await largura(ana.p, "cadastrar em lote");
+  await ana.p.goto(`${APP}/app/${SLUG}/etapas/nova`);
+  confere((await ana.p.getByLabel("Nº").inputValue()) === "1", "numeração das etapas é por turma");
+  await ana.p.getByLabel("Título").fill("Derivadas");
+  await ana.p.getByLabel("Recebe entregas de").fill("2099-12-01");
+  await ana.p.getByLabel("Recebe entregas até").fill("2099-12-07");
+  await ana.p.getByLabel("O que deve ser entregue (checklist)").fill("Lista de exercícios");
+  await ana.p.getByRole("button", { name: "Salvar" }).click();
+  await ana.p.getByText("Cadastro salvo.").waitFor();
+  const naTurma2 = await chegaEmail({ id: `<t2-${sufixo}@aluno>`, assunto: "[ENTREGA] Encontro 1", de: "a1@aluno.test" }, { para: ENDERECO2 });
+  confere(naTurma2.ok === true && naTurma2.status === "entrega", `e-mail no endereço da turma 2 vira entrega da Bia nessa turma (${naTurma2.status ?? naTurma2.motivo})`);
+  await ana.p.goto(`${APP}/app/${SLUG}/entregas?busca=bia`);
+  const listaInd = ana.p.getByRole("list", { name: "Estudantes" });
+  confere(await listaInd.getByText("Bia Souza").isVisible() && !(await listaInd.getByText("Carlos Lima").count()), "painel individual em lista compacta, com busca pelo nome");
+  await largura(ana.p, "painel individual");
+  await ana.p.screenshot({ path: `${FOTOS}/24-painel-individual.png`, fullPage: true });
+  await ana.p.getByRole("navigation", { name: "Turma" }).getByRole("button", { name: "Turma A" }).click();
+  await ana.p.getByRole("navigation", { name: "Turma" }).getByRole("button", { name: "Turma A" }).and(ana.p.locator("[aria-current]")).waitFor();
+  confere(await ana.p.getByRole("link", { name: /Equipe Azul/ }).first().isVisible(), "voltando para a Turma A, as equipes dela voltam");
 
   // 8) O dono bloqueia a escola; a Ana vê o aviso
   await dono.p.goto(`${APP}/admin`);

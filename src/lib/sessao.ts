@@ -64,6 +64,8 @@ export type MinhaEmpresa = {
   ativa: boolean;
   papel: Papel | null;
   vocabulario: Vocabulario;
+  /** Já passou pelo primeiro acesso guiado. */
+  configurada: boolean;
 };
 
 type LinhaEmpresa = Omit<MinhaEmpresa, "papel"> & { membros: { papel: Papel; user_id: string }[] };
@@ -74,7 +76,7 @@ export const minhasEmpresas = cache(async (): Promise<MinhaEmpresa[]> => {
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase
     .from("organizacoes")
-    .select("id, nome, slug, frente, ativa, vocabulario, membros(papel, user_id)")
+    .select("id, nome, slug, frente, ativa, vocabulario, configurada, membros(papel, user_id)")
     .order("nome");
   if (error) throw new Error("Não foi possível carregar as empresas.");
   return (data as LinhaEmpresa[]).map(({ membros, ...org }) => ({
