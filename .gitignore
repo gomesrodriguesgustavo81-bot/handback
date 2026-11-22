@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# fotos geradas pelo teste de ponta a ponta
+/fotos-teste/
