@@ -407,6 +407,7 @@ try {
   await ana.p.getByText("Encontro 1 · Diagnóstico").click();
   await ana.p.waitForURL(/\/etapas\/[0-9a-f-]{36}$/);
   await ana.p.getByRole("button", { name: "Apagar encontro" }).click();
+  await ana.p.getByRole("button", { name: "Sim, confirmar" }).click();
   await ana.p.waitForURL(new RegExp(`/app/${SLUG}/etapas$`));
   confere(await ana.p.getByText("Nada cadastrado ainda.", { exact: false }).isVisible(), "encontro apagado");
 
@@ -678,6 +679,7 @@ try {
   // Desconectar o Gmail
   await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
   await ana.p.getByRole("button", { name: "Desconectar" }).click();
+  await ana.p.getByRole("button", { name: "Sim, confirmar" }).click();
   await ana.p.getByRole("link", { name: "Conectar meu Gmail" }).waitFor();
   confere(true, "Gmail desconectado; painel volta a oferecer a conexão");
 

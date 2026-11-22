@@ -46,7 +46,7 @@ export async function entrarComGoogle(dados: FormData): Promise<void> {
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
-    options: { redirectTo: `${await origemDoSite()}/auth/confirmar?voltar=${encodeURIComponent(voltar)}` },
+    options: { redirectTo: `${await origemDoSite()}/auth/confirmar?origem=google&voltar=${encodeURIComponent(voltar)}` },
   });
   if (error || !data.url) redirect("/entrar?erro=google");
   redirect(data.url);

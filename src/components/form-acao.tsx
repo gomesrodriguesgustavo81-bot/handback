@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useActionState, type ReactNode } from "react";
+import { startTransition, useActionState, useState, useTransition, type ReactNode } from "react";
 import { Aviso, Botao } from "./ui";
 
 export type Resultado = { ok: boolean; mensagem: string; vez?: number } | null;
@@ -53,7 +53,11 @@ export function FormAcao({
   );
 }
 
-/** Botão que pede confirmação antes de enviar (para apagar, remover…). */
+/**
+ * Botão que pede confirmação antes de enviar (para apagar, remover,
+ * desligar…). A pergunta aparece na própria tela, com "Sim" e "Não": a
+ * caixinha do navegador (window.confirm) não aparece em alguns aplicativos.
+ */
 export function BotaoConfirmar({
   acao,
   pergunta,
@@ -63,19 +67,43 @@ export function BotaoConfirmar({
   pergunta: string;
   children: ReactNode;
 }) {
-  return (
-    <form
-      action={acao}
-      onSubmit={(e) => {
-        if (!window.confirm(pergunta)) e.preventDefault();
-      }}
-    >
+  const [perguntando, setPerguntando] = useState(false);
+  const [pendente, iniciar] = useTransition();
+  if (!perguntando) {
+    return (
       <button
-        type="submit"
+        type="button"
+        onClick={() => setPerguntando(true)}
         className="inline-flex min-h-11 items-center rounded-xl border border-erro/40 px-3 text-sm text-erro hover:bg-erro-fundo"
       >
         {children}
       </button>
-    </form>
+    );
+  }
+  return (
+    <div role="alertdialog" aria-label={pergunta} className="flex w-full flex-col gap-2 rounded-xl border border-erro/40 bg-erro-fundo p-3 text-sm sm:max-w-md">
+      <p className="text-texto">{pergunta}</p>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={pendente}
+          onClick={() => iniciar(async () => {
+            await acao();
+            setPerguntando(false);
+          })}
+          className="inline-flex min-h-11 items-center rounded-xl bg-erro px-3 font-medium text-white disabled:opacity-60"
+        >
+          {pendente ? "Um momento…" : "Sim, confirmar"}
+        </button>
+        <button
+          type="button"
+          disabled={pendente}
+          onClick={() => setPerguntando(false)}
+          className="inline-flex min-h-11 items-center rounded-xl border border-borda bg-cartao px-3 font-medium text-texto"
+        >
+          Não
+        </button>
+      </div>
+    </div>
   );
 }

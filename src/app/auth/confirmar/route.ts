@@ -39,6 +39,19 @@ export async function GET(request: NextRequest) {
   }
 
   await supabase.rpc("aceitar_convites");
+
+  // Entrar com Google é só para quem já foi convidado: sem nenhuma empresa, o login é desfeito.
+  if (url.searchParams.get("origem") === "google") {
+    const [{ count }, { data: dono }] = await Promise.all([
+      supabase.from("membros").select("org_id", { count: "exact", head: true }),
+      supabase.rpc("e_admin_plataforma"),
+    ]);
+    if (!count && dono !== true) {
+      await supabase.auth.signOut();
+      return NextResponse.redirect(urlDoSite(request, "/entrar?erro=google"));
+    }
+  }
+
   await registrarAcesso(supabase, "entrou_link");
   return NextResponse.redirect(urlDoSite(request, voltar));
 }
