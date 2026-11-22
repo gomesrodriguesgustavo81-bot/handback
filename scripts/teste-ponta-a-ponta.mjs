@@ -261,6 +261,26 @@ try {
     confere(true, "esqueci minha senha: cria senha nova pelo link do e-mail");
     await ctx.close();
   }
+  {
+    // Convite no formato PADRÃO do Supabase (sem os modelos do Handback): a sessão vem depois do "#".
+    const NOVO = `padrao-${sufixo}@qualquer.test`;
+    const r = await fetch(`${SUPABASE}/auth/v1/admin/generate_link`, {
+      method: "POST",
+      headers: { apikey: SEGREDO_SB, authorization: `Bearer ${SEGREDO_SB}`, "content-type": "application/json" },
+      body: JSON.stringify({ type: "invite", email: NOVO, redirect_to: `${APP}/auth/confirmar?voltar=/app` }),
+    });
+    const j = await r.json();
+    const link = j.action_link ?? j.properties?.action_link;
+    const ctx = await navegador.newContext({ ...devices["Pixel 7"] });
+    const p = await ctx.newPage();
+    await p.goto(link);
+    await p.waitForURL(/\/definir-senha/);
+    confere(!p.url().includes("access_token"), "link padrão do Supabase leva a criar a senha (sem deixar o acesso na barra de endereço)");
+    await p.goto(`${APP}/auth/continuar?voltar=/app#error=access_denied&error_code=otp_expired`);
+    await p.getByText("O link expirou ou já foi usado").waitFor();
+    confere(true, "link padrão vencido mostra mensagem clara");
+    await ctx.close();
+  }
   confere((await curioso.p.goto(`${APP}/app/${SLUG}`)).status() === 404, "curioso não abre a escola pelo endereço");
 
   // ===================== FASE 1: cadastros =====================

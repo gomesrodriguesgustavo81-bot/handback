@@ -17,6 +17,14 @@ export async function GET(request: NextRequest) {
   const supabase = await criarClienteServidor();
   let ok = false;
 
+  // Link no formato padrão do Supabase (sem os modelos do Handback): a sessão
+  // vem depois do "#", que só o navegador enxerga. A tela /auth/continuar lê.
+  if (!code && !tokenHash) {
+    const destino = urlDoSite(request, "/auth/continuar");
+    destino.searchParams.set("voltar", voltar);
+    return NextResponse.redirect(destino);
+  }
+
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     ok = !error;
