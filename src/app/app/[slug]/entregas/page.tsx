@@ -2,20 +2,42 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FormEntrega } from "@/components/form-entrega";
-import { AnalisarVarias } from "@/components/analise";
-import { Aviso, Cartao, Selo, Vazio } from "@/components/ui";
+import { AnalisarVarias, AprovarProntas } from "@/components/analise";
+import { Dobra, Pilula, PilulaSituacao, SeloConceito, type Situacao } from "@/components/conceito";
+import { EscolhaEtapa } from "@/components/escolha-etapa";
+import { Vazio } from "@/components/ui";
 import { contextoDaEmpresa } from "@/lib/empresa";
 import { lerConfigSupabase } from "@/lib/supabase/config";
 import { criarClienteServidor } from "@/lib/supabase/server";
-import { dataHoraBR, minusc } from "@/lib/textos";
+import { dataHoraBR, hojeISO, minusc, passouMaisDe } from "@/lib/textos";
 import { etapaDaVez, etapasDaEmpresa, opcoesDeEtapa, situacaoDoPrazo } from "./dados";
+import { NavEntregas } from "./navegacao";
 
 export const metadata: Metadata = { title: "Entregas" };
 export const maxDuration = 300;
 
-export default async function QuadroEntregas({ params, searchParams }: PageProps<"/app/[slug]/entregas">) {
+const FILTROS = {
+  todas: "Todas",
+  revisar: "Para revisar",
+  aprovadas: "Aprovadas",
+  sem: "Sem entrega",
+} as const;
+type Filtro = keyof typeof FILTROS;
+
+type EntregaLinha = {
+  id: string;
+  grupo_id: string;
+  enviada_em: string;
+  atrasada: boolean;
+  status: "recebida" | "substituida";
+  origem: "email" | "manual";
+  analises: { status: string; conceito: string | null; checklist: { status: string }[]; iniciada_em: string } | null;
+};
+
+export default async function PainelDaAula({ params, searchParams }: PageProps<"/app/[slug]/entregas">) {
   const { slug } = await params;
-  const { etapa: etapaEscolhida } = await searchParams;
+  const { etapa: etapaEscolhida, filtro: filtroPedido } = await searchParams;
+  const filtro: Filtro = typeof filtroPedido === "string" && filtroPedido in FILTROS ? (filtroPedido as Filtro) : "todas";
   const { empresa, podeAvaliar } = await contextoDaEmpresa(slug);
   const config = lerConfigSupabase();
   if (!podeAvaliar || !config) notFound();
@@ -26,20 +48,12 @@ export default async function QuadroEntregas({ params, searchParams }: PageProps
     etapasDaEmpresa(empresa.id),
     supabase.from("emails_recebidos").select("id", { count: "exact", head: true }).eq("org_id", empresa.id).eq("status", "confirmar"),
   ]);
-
-  const avisoCaixa = paraConfirmar ? (
-    <Aviso tipo="alerta">
-      <Link href={`/app/${slug}/entregas/caixa`} className="font-medium underline">
-        {paraConfirmar} e-mail(s) para confirmar
-      </Link>{" "}
-      — chegaram fora do padrão e precisam da sua decisão.
-    </Aviso>
-  ) : null;
+  const nav = <NavEntregas slug={slug} atual="painel" paraConfirmar={paraConfirmar ?? 0} />;
 
   if (!etapas.length) {
     return (
       <div className="flex flex-col gap-4">
-        {avisoCaixa}
+        {nav}
         <Vazio>
           Primeiro cadastre {minusc(v.etapas)} em{" "}
           <Link href={`/app/${slug}/etapas`} className="text-marca-forte underline">
@@ -51,139 +65,175 @@ export default async function QuadroEntregas({ params, searchParams }: PageProps
     );
   }
   const etapa = etapas.find((e) => e.id === etapaEscolhida) ?? etapaDaVez(etapas)!;
+  const prazoPassou = Boolean(etapa.recebe_ate && hojeISO() > etapa.recebe_ate);
 
-  const [{ data: grupos }, { data: entregas }] = await Promise.all([
-    supabase.from("grupos").select("id, nome").eq("org_id", empresa.id).eq("ativo", true).order("nome"),
+  const [{ data: grupos }, { data }] = await Promise.all([
+    supabase.from("grupos").select("id, nome, tema").eq("org_id", empresa.id).eq("ativo", true).order("nome"),
     supabase
       .from("entregas")
-      .select("id, grupo_id, enviada_em, atrasada, status, origem, remetente, arquivos_entrega(id), links, analises(status, conceito)")
+      .select("id, grupo_id, enviada_em, atrasada, status, origem, analises(status, conceito, checklist, iniciada_em)")
       .eq("etapa_id", etapa.id)
-      .order("enviada_em", { ascending: false }),
+      .eq("status", "recebida"),
   ]);
-  const valendo = new Map((entregas ?? []).filter((e) => e.status === "recebida").map((e) => [e.grupo_id, e]));
-  const reenvios = new Map<string, number>();
-  for (const e of entregas ?? []) if (e.status === "substituida") reenvios.set(e.grupo_id, (reenvios.get(e.grupo_id) ?? 0) + 1);
-  const total = grupos?.length ?? 0;
-  const entregues = (grupos ?? []).filter((g) => valendo.has(g.id)).length;
-  const analiseDe = (e: { analises: unknown }) =>
-    (Array.isArray(e.analises) ? e.analises[0] : e.analises) as { status: string; conceito: string | null } | null | undefined;
-  const semAnalise = (grupos ?? [])
-    .map((g) => ({ g, e: valendo.get(g.id) }))
-    .filter((x) => x.e && (!analiseDe(x.e) || analiseDe(x.e)!.status === "erro"))
-    .map((x) => ({ id: x.e!.id, nome: x.g.nome }));
-  const aprovadas = (grupos ?? []).filter((g) => {
+  const valendo = new Map(((data ?? []) as unknown as EntregaLinha[]).map((e) => [e.grupo_id, e]));
+
+  const situacaoDe = (e: EntregaLinha | undefined): Situacao => {
+    if (!e) return prazoPassou ? "nao-entregou" : "aguardando";
+    const a = e.analises;
+    if (!a) return "sem-analise";
+    if (a.status === "aprovada") return "aprovada";
+    if (a.status === "pronta") return "revisar";
+    if (a.status === "analisando") return passouMaisDe(a.iniciada_em, 5) ? "falhou" : "analisando";
+    return "falhou";
+  };
+  const equipes = (grupos ?? []).map((g) => {
     const e = valendo.get(g.id);
-    return e && analiseDe(e)?.status === "aprovada";
-  }).length;
+    const situacao = situacaoDe(e);
+    const lista = e?.analises?.checklist ?? [];
+    const feitos = lista.filter((c) => c.status === "ENTREGUE").length;
+    const temAnalise = ["aprovada", "revisar"].includes(situacao);
+    return { g, e, situacao, feitos, total: lista.length, conceito: temAnalise ? e?.analises?.conceito : null };
+  });
+
+  const total = equipes.length;
+  const recebidas = equipes.filter((x) => x.e).length;
+  const paraRevisar = equipes.filter((x) => x.situacao === "revisar").length;
+  const aprovadas = equipes.filter((x) => x.situacao === "aprovada").length;
+  const semAnalise = equipes
+    .filter((x) => x.e && (x.situacao === "sem-analise" || x.situacao === "falhou"))
+    .map((x) => ({ id: x.e!.id, nome: x.g.nome }));
+
+  const visiveis = equipes.filter((x) =>
+    filtro === "revisar" ? x.situacao === "revisar" : filtro === "aprovadas" ? x.situacao === "aprovada" : filtro === "sem" ? !x.e : true,
+  );
+  const contagem: Record<Filtro, number> = { todas: total, revisar: paraRevisar, aprovadas, sem: total - recebidas };
+  const base = `/app/${slug}/entregas`;
 
   return (
-    <div className="flex flex-col gap-6">
-      {avisoCaixa}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <nav aria-label={`Escolher ${minusc(v.etapa)}`} className="-mx-4 min-w-0 flex-1 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-          <ul className="flex min-w-max gap-2">
-            {etapas.map((e) => (
-              <li key={e.id}>
-                <Link
-                  href={`/app/${slug}/entregas?etapa=${e.id}`}
-                  aria-current={e.id === etapa.id ? "true" : undefined}
-                  className={`inline-flex min-h-11 items-center rounded-full border px-4 text-sm ${
-                    e.id === etapa.id ? "border-marca bg-marca-clara font-medium text-marca-forte" : "border-borda bg-cartao"
-                  }`}
-                >
-                  {v.etapa} {e.numero}
-                </Link>
+    <div className="flex flex-col gap-4">
+      {nav}
+
+      <EscolhaEtapa
+        rotulo={v.etapa}
+        atual={etapa.id}
+        base={base}
+        opcoes={etapas.map((e) => ({ id: e.id, nome: `${v.etapa} ${e.numero} · ${e.titulo}` }))}
+        detalhe={`${situacaoDoPrazo(etapa)[0].toUpperCase()}${situacaoDoPrazo(etapa).slice(1)} · recebe por e-mail`}
+      />
+
+      <dl className="grid grid-cols-4 gap-2 sm:max-w-2xl">
+        <Numero rotulo="Recebidas" valor={`${recebidas}/${total}`} classe="border-borda bg-cartao" />
+        <Numero rotulo="Para revisar" valor={String(paraRevisar)} classe="border-alerta/25 bg-alerta-fundo text-alerta" />
+        <Numero rotulo="Aprovadas" valor={String(aprovadas)} classe="border-marca/25 bg-marca-clara text-marca-forte" />
+        <Numero rotulo="Enviadas" valor="0" classe="border-borda bg-cartao" />
+      </dl>
+
+      {semAnalise.length || paraRevisar ? (
+        <div className="grid gap-2 sm:max-w-2xl sm:grid-cols-2">
+          <AnalisarVarias slug={slug} entregas={semAnalise} rotulo={`Analisar com IA as ${semAnalise.length} sem análise`} />
+          <AprovarProntas slug={slug} etapaId={etapa.id} quantas={paraRevisar} />
+        </div>
+      ) : null}
+
+      <nav aria-label="Filtrar equipes" className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+        <ul className="flex min-w-max gap-1.5">
+          {(Object.keys(FILTROS) as Filtro[]).map((f) => (
+            <li key={f}>
+              <Link
+                href={`${base}?etapa=${etapa.id}${f === "todas" ? "" : `&filtro=${f}`}`}
+                aria-current={f === filtro ? "true" : undefined}
+                className={`inline-flex min-h-9 items-center rounded-full border px-3 text-[13px] font-semibold ${
+                  f === filtro ? "border-texto bg-texto text-fundo" : "border-borda bg-cartao text-suave hover:text-texto"
+                }`}
+              >
+                {FILTROS[f]} ({contagem[f]})
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      {!total ? (
+        <Vazio>
+          Cadastre {minusc(v.grupos)} em{" "}
+          <Link href={`/app/${slug}/grupos`} className="text-marca-forte underline">
+            {v.grupos}
+          </Link>{" "}
+          para acompanhar as entregas.
+        </Vazio>
+      ) : !visiveis.length ? (
+        <Vazio>Nenhuma equipe neste filtro.</Vazio>
+      ) : (
+        <ul className="grid gap-2.5 md:grid-cols-2">
+          {visiveis.map(({ g, e, situacao, feitos, total: itens, conceito }) => {
+            const pct = itens ? Math.round((feitos / itens) * 100) : 0;
+            const corpo = (
+              <>
+                <span className="flex items-start justify-between gap-3">
+                  <span className="flex min-w-0 flex-col gap-0.5">
+                    <span className="break-words text-base font-semibold">{g.nome}</span>
+                    {g.tema ? <span className="break-words text-[13px] text-suave">{g.tema}</span> : null}
+                  </span>
+                  <SeloConceito conceito={conceito} grande />
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-neutro-fundo">
+                    <span
+                      className={`block h-full rounded-full ${pct >= 80 ? "bg-marca" : pct >= 50 ? "bg-reg" : "bg-ruim"}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </span>
+                  <span className="whitespace-nowrap text-xs text-suave">{conceito ? `${feitos}/${itens} itens entregues` : "— itens"}</span>
+                </span>
+                <span className="flex flex-wrap items-center gap-1.5">
+                  <PilulaSituacao situacao={situacao} />
+                  {e?.atrasada ? <Pilula className="bg-ruim-fundo text-ruim">Atrasada</Pilula> : null}
+                  {e?.origem === "manual" ? <Pilula className="bg-neutro-fundo text-neutro">Registrada à mão</Pilula> : null}
+                  {e ? <span className="ml-auto text-xs text-suave">{dataHoraBR(e.enviada_em).slice(0, 5)}</span> : null}
+                </span>
+              </>
+            );
+            return (
+              <li key={g.id}>
+                {e ? (
+                  <Link
+                    href={`${base}/${e.id}`}
+                    className="flex h-full flex-col gap-2.5 rounded-2xl border border-borda bg-cartao p-4 transition-colors hover:border-marca"
+                  >
+                    {corpo}
+                  </Link>
+                ) : (
+                  <div className="flex h-full flex-col gap-2.5 rounded-2xl border border-dashed border-borda p-4">{corpo}</div>
+                )}
               </li>
-            ))}
-          </ul>
-        </nav>
-        <Link href={`/app/${slug}/entregas/caixa`} className="text-sm font-medium text-marca-forte hover:underline">
-          Caixa de e-mails →
-        </Link>
-      </div>
+            );
+          })}
+        </ul>
+      )}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
-        <section className="flex flex-col gap-3">
-          <div>
-            <h2 className="text-lg font-semibold">
-              {v.etapa} {etapa.numero} · {etapa.titulo}
-            </h2>
-            <p className="text-sm text-suave">
-              {entregues} de {total} entregaram · {aprovadas} devolutiva(s) aprovada(s) · {situacaoDoPrazo(etapa)}
-            </p>
-          </div>
-          <AnalisarVarias slug={slug} entregas={semAnalise} rotulo={`Analisar com IA as ${semAnalise.length} entrega(s) sem análise`} />
-          {!total ? (
-            <Vazio>
-              Cadastre {minusc(v.grupos)} em{" "}
-              <Link href={`/app/${slug}/grupos`} className="text-marca-forte underline">
-                {v.grupos}
-              </Link>{" "}
-              para acompanhar as entregas.
-            </Vazio>
-          ) : (
-            <ul className="flex flex-col gap-2">
-              {(grupos ?? []).map((g) => {
-                const e = valendo.get(g.id);
-                const n = reenvios.get(g.id) ?? 0;
-                return (
-                  <li key={g.id}>
-                    {e ? (
-                      <Link
-                        href={`/app/${slug}/entregas/${e.id}`}
-                        className="flex flex-col gap-1 rounded-2xl border border-borda bg-cartao p-4 hover:border-marca"
-                      >
-                        <span className="flex flex-wrap items-center gap-2 font-semibold">
-                          <span aria-hidden className="text-marca">✓</span> {g.nome}
-                          {e.atrasada ? <Selo>Com atraso</Selo> : null}
-                          {e.origem === "manual" ? <Selo>Registrada à mão</Selo> : null}
-                          {analiseDe(e)?.status === "aprovada" ? (
-                            <Selo>Aprovada · {analiseDe(e)?.conceito}</Selo>
-                          ) : analiseDe(e)?.status === "pronta" ? (
-                            <Selo>Para revisar · {analiseDe(e)?.conceito}</Selo>
-                          ) : analiseDe(e)?.status === "analisando" ? (
-                            <Selo>Analisando…</Selo>
-                          ) : null}
-                        </span>
-                        <span className="break-words text-sm text-suave">
-                          {dataHoraBR(e.enviada_em)}
-                          {e.origem === "email" && e.remetente ? ` · ${e.remetente}` : ""} · {e.arquivos_entrega.length} arquivo(s) ·{" "}
-                          {e.links.length} link(s)
-                          {n ? ` · reenviada ${n}x` : ""}
-                        </span>
-                      </Link>
-                    ) : (
-                      <div className="flex flex-col gap-1 rounded-2xl border border-dashed border-borda p-4">
-                        <span className="font-semibold">{g.nome}</span>
-                        <span className="text-sm text-suave">Pendente</span>
-                      </div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
+      {total ? (
+        <Dobra titulo="Registrar entrega à mão" extra="em mãos, WhatsApp…">
+          <FormEntrega
+            slug={slug}
+            orgId={empresa.id}
+            supabaseConfig={config}
+            etapas={opcoesDeEtapa(etapas, v)}
+            grupos={grupos ?? []}
+            etapaInicial={etapa.id}
+            nomeEtapa={v.etapa}
+            nomeGrupo={v.grupo}
+          />
+        </Dobra>
+      ) : null}
+    </div>
+  );
+}
 
-        {total ? (
-          <Cartao className="flex flex-col gap-4 self-start">
-            <div>
-              <h2 className="font-semibold">Registrar entrega à mão</h2>
-              <p className="text-sm text-suave">Para quando a entrega chegou por outro meio (em mãos, WhatsApp…).</p>
-            </div>
-            <FormEntrega
-              slug={slug}
-              orgId={empresa.id}
-              supabaseConfig={config}
-              etapas={opcoesDeEtapa(etapas, v)}
-              grupos={grupos ?? []}
-              etapaInicial={etapa.id}
-              nomeEtapa={v.etapa}
-              nomeGrupo={v.grupo}
-            />
-          </Cartao>
-        ) : null}
-      </div>
+function Numero({ rotulo, valor, classe }: { rotulo: string; valor: string; classe: string }) {
+  return (
+    <div className={`flex flex-col-reverse gap-0.5 rounded-xl border px-2 py-2.5 sm:px-3 ${classe}`}>
+      <dt className="text-[11px] leading-tight opacity-90 sm:text-xs">{rotulo}</dt>
+      <dd className="text-xl font-bold">{valor}</dd>
     </div>
   );
 }

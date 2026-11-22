@@ -1,33 +1,26 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { BotaoConfirmar, FormAcao } from "@/components/form-acao";
-import { Selo, Vazio } from "@/components/ui";
+import { DecisaoEmail } from "@/components/decisao-email";
+import { Vazio } from "@/components/ui";
 import { contextoDaEmpresa } from "@/lib/empresa";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { dataHoraBR, tamanhoLegivel } from "@/lib/textos";
-import { ignorarEmail, importarEmail } from "../acoes";
 import { etapasDaEmpresa } from "../dados";
+import { NavEntregas } from "../navegacao";
 
 export const metadata: Metadata = { title: "Caixa de e-mails" };
 
-const FILTROS = {
-  confirmar: { nome: "Para confirmar", status: ["confirmar"] },
-  ignorados: { nome: "Ignorados", status: ["ignorado"] },
-  todos: { nome: "Todos", status: ["entrega", "confirmar", "ignorado", "importado"] },
-} as const;
-type Filtro = keyof typeof FILTROS;
-
-const ROTULO_STATUS: Record<string, string> = {
-  entrega: "Virou entrega",
-  importado: "Confirmado como entrega",
+const ABAS = {
   confirmar: "Para confirmar",
-  ignorado: "Ignorado",
-};
+  ignorados: "Ignorados",
+} as const;
+type Aba = keyof typeof ABAS;
+const STATUS_DA_ABA: Record<Aba, string> = { confirmar: "confirmar", ignorados: "ignorado" };
+const GMAIL = "forwarding-noreply@google.com";
 
 type Email = {
   id: string;
-  recebido_em: string;
   enviado_em: string;
   de_email: string;
   de_nome: string;
@@ -40,167 +33,137 @@ type Email = {
   avisos: string[];
   etapa_sugerida: string | null;
   grupo_sugerido: string | null;
-  entrega_id: string | null;
 };
 
 export default async function CaixaDeEmails({ params, searchParams }: PageProps<"/app/[slug]/entregas/caixa">) {
   const { slug } = await params;
   const { ver } = await searchParams;
-  const filtro: Filtro = typeof ver === "string" && ver in FILTROS ? (ver as Filtro) : "confirmar";
+  const aba: Aba = typeof ver === "string" && ver in ABAS ? (ver as Aba) : "confirmar";
   const { empresa, podeAvaliar } = await contextoDaEmpresa(slug);
   if (!podeAvaliar) notFound();
   const v = empresa.vocabulario;
   const supabase = await criarClienteServidor();
 
-  const [etapas, { data: grupos }, { data }] = await Promise.all([
+  const contar = (status: string) =>
+    supabase.from("emails_recebidos").select("id", { count: "exact", head: true }).eq("org_id", empresa.id).eq("status", status);
+  const [etapas, { data: grupos }, { data }, { count: nConfirmar }, { count: nIgnorados }] = await Promise.all([
     etapasDaEmpresa(empresa.id),
     supabase.from("grupos").select("id, nome").eq("org_id", empresa.id).eq("ativo", true).order("nome"),
     supabase
       .from("emails_recebidos")
-      .select("id, recebido_em, enviado_em, de_email, de_nome, assunto, texto, links, anexos, status, motivo, avisos, etapa_sugerida, grupo_sugerido, entrega_id")
+      .select("id, enviado_em, de_email, de_nome, assunto, texto, links, anexos, status, motivo, avisos, etapa_sugerida, grupo_sugerido")
       .eq("org_id", empresa.id)
-      .in("status", [...FILTROS[filtro].status])
+      .eq("status", STATUS_DA_ABA[aba])
       .order("recebido_em", { ascending: false })
       .limit(100),
+    contar("confirmar"),
+    contar("ignorado"),
   ]);
   const emails = (data ?? []) as Email[];
+  const contagem: Record<Aba, number> = { confirmar: nConfirmar ?? 0, ignorados: nIgnorados ?? 0 };
+  const opcoesEtapa = etapas.map((e) => ({ id: e.id, nome: `${v.etapa} ${e.numero}` }));
 
   return (
     <section className="flex flex-col gap-4">
-      <Link href={`/app/${slug}/entregas`} className="text-sm text-suave hover:text-texto">
-        ← Entregas
-      </Link>
-      <div>
-        <h2 className="text-lg font-semibold">Caixa de e-mails</h2>
-        <p className="text-sm text-suave">Tudo o que chegou pelo encaminhamento e o que o Handback decidiu.</p>
-      </div>
+      <NavEntregas slug={slug} atual="caixa" paraConfirmar={nConfirmar ?? 0} />
+      <p className="text-sm text-suave">E-mails que o Handback não conseguiu ligar sozinho a {v.grupos.toLowerCase()}. Confirme ou ignore.</p>
 
-      <nav aria-label="Filtrar e-mails" className="flex flex-wrap gap-2">
-        {(Object.keys(FILTROS) as Filtro[]).map((f) => (
+      <nav aria-label="Filtrar e-mails" className="flex gap-1.5">
+        {(Object.keys(ABAS) as Aba[]).map((a) => (
           <Link
-            key={f}
-            href={`/app/${slug}/entregas/caixa?ver=${f}`}
-            aria-current={f === filtro ? "true" : undefined}
-            className={`inline-flex min-h-11 items-center rounded-full border px-4 text-sm ${
-              f === filtro ? "border-marca bg-marca-clara font-medium text-marca-forte" : "border-borda bg-cartao"
+            key={a}
+            href={`/app/${slug}/entregas/caixa${a === "confirmar" ? "" : `?ver=${a}`}`}
+            aria-current={a === aba ? "true" : undefined}
+            className={`inline-flex min-h-9 items-center rounded-full border px-3 text-[13px] font-semibold ${
+              a === aba ? "border-texto bg-texto text-fundo" : "border-borda bg-cartao text-suave hover:text-texto"
             }`}
           >
-            {FILTROS[f].nome}
+            {ABAS[a]} ({contagem[a]})
           </Link>
         ))}
       </nav>
 
       {!emails.length ? (
-        <Vazio>{filtro === "confirmar" ? "Nada para confirmar. 🎉" : "Nenhum e-mail aqui."}</Vazio>
+        <Vazio>{aba === "confirmar" ? "Tudo em dia. Nada para confirmar." : "Nenhum e-mail ignorado."}</Vazio>
       ) : (
-        <ul className="flex flex-col gap-3">
-          {emails.map((m) => (
-            <li key={m.id} className="flex flex-col gap-3 rounded-2xl border border-borda bg-cartao p-4">
-              <div className="flex flex-col gap-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="break-words font-semibold">{m.assunto || "(sem assunto)"}</span>
-                  <Selo>{ROTULO_STATUS[m.status] ?? m.status}</Selo>
+        <ul className="grid gap-3 md:grid-cols-2">
+          {emails.map((m) => {
+            const gmail = m.de_email === GMAIL;
+            const sugeriu = Boolean(m.grupo_sugerido);
+            return (
+              <li key={m.id} className="flex flex-col gap-2.5 rounded-2xl border border-borda bg-cartao p-4">
+                <div className="flex flex-col gap-0.5">
+                  <span className="break-words font-semibold">{gmail ? "Confirmação de encaminhamento do Gmail" : m.assunto || "(sem assunto)"}</span>
+                  <span className="break-all text-xs text-suave">
+                    {m.de_nome ? `${m.de_nome} · ` : ""}
+                    {m.de_email} · {dataHoraBR(m.enviado_em)}
+                  </span>
                 </div>
-                <p className="break-all text-sm text-suave">
-                  {m.de_nome ? `${m.de_nome} · ` : ""}
-                  {m.de_email} · {dataHoraBR(m.enviado_em)}
-                </p>
-                <p className="text-sm">
-                  <span className="text-suave">Motivo:</span> {m.motivo}
-                </p>
-                {m.avisos.length ? (
-                  <ul className="list-disc pl-5 text-sm text-alerta">
+
+                {m.anexos.length || m.links.length ? (
+                  <ul className="flex flex-wrap gap-1.5" aria-label="Anexos e links">
+                    {m.anexos.map((x, i) => (
+                      <li key={i} className="inline-flex max-w-full items-center gap-1 rounded-lg bg-neutro-fundo px-2 py-1 text-xs text-neutro">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0">
+                          <path d="M21 11l-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 7" />
+                        </svg>
+                        <span className="truncate">{x.nome}</span>
+                        <span className="shrink-0 opacity-75">{tamanhoLegivel(x.tamanho)}</span>
+                      </li>
+                    ))}
+                    {!gmail && m.links.length ? (
+                      <li className="rounded-lg bg-neutro-fundo px-2 py-1 text-xs text-neutro">{m.links.length} link(s)</li>
+                    ) : null}
+                  </ul>
+                ) : null}
+
+                {gmail ? (
+                  <p className="rounded-[10px] bg-neutro-fundo px-2.5 py-2 text-[13px] leading-snug text-neutro">
+                    O Gmail pede para confirmar o encaminhamento. Abra o link (ou copie o código abaixo no Gmail) uma vez para liberar.
+                  </p>
+                ) : (
+                  <p
+                    className={`rounded-[10px] px-2.5 py-2 text-[13px] leading-snug ${
+                      sugeriu ? "bg-marca-clara text-marca-forte" : "bg-neutro-fundo text-neutro"
+                    }`}
+                  >
+                    {sugeriu
+                      ? `Parece de ${(grupos ?? []).find((g) => g.id === m.grupo_sugerido)?.nome ?? "uma equipe"} (${m.motivo}). Confira e confirme.`
+                      : `Motivo: ${m.motivo}.`}
+                  </p>
+                )}
+                {!gmail && m.avisos.length ? (
+                  <ul className="list-disc pl-5 text-[13px] text-alerta">
                     {m.avisos.map((a, i) => (
                       <li key={i}>{a}</li>
                     ))}
                   </ul>
                 ) : null}
-                <p className="text-sm text-suave">
-                  {m.anexos.length
-                    ? m.anexos.map((a) => `${a.nome} (${tamanhoLegivel(a.tamanho)})`).join(", ")
-                    : "Sem anexos guardados"}
-                  {m.links.length ? ` · ${m.links.length} link(s)` : ""}
-                </p>
-                <details className="text-sm" open={m.de_email === "forwarding-noreply@google.com" && m.status === "confirmar"}>
-                  <summary className="cursor-pointer text-marca-forte">Ver o texto do e-mail</summary>
+
+                <details className="text-sm" open={gmail}>
+                  <summary className="cursor-pointer text-[13px] font-medium text-marca-forte">Ver o texto do e-mail</summary>
                   <div className="mt-2 max-h-64 overflow-auto whitespace-pre-line break-words rounded-lg bg-fundo p-3">
                     {m.texto || "(vazio)"}
                     {m.links.length ? "\n\nLinks:\n" + m.links.join("\n") : ""}
                   </div>
                 </details>
-              </div>
 
-              {m.de_email === "forwarding-noreply@google.com" && m.status !== "ignorado" ? (
-                <div className="flex flex-col gap-2 border-t border-borda pt-3">
-                  <p className="text-sm">
-                    Abra “Ver o texto do e-mail”, copie o <strong>código de confirmação</strong> e cole no Gmail (ou abra o link).
-                    Depois, toque abaixo para tirar este aviso da lista.
-                  </p>
-                  <div className="flex justify-end">
-                    <BotaoConfirmar acao={ignorarEmail.bind(null, slug, m.id)} pergunta="Já confirmou o encaminhamento no Gmail?">
-                      Já confirmei no Gmail
-                    </BotaoConfirmar>
-                  </div>
-                </div>
-              ) : m.entrega_id ? (
-                <Link href={`/app/${slug}/entregas/${m.entrega_id}`} className="text-sm font-medium text-marca-forte hover:underline">
-                  Abrir a entrega →
-                </Link>
-              ) : (
-                <div className="flex flex-col gap-3 border-t border-borda pt-3">
-                  <FormAcao acao={importarEmail.bind(null, slug, m.id)} textoBotao="Confirmar como entrega" textoEnviando="Confirmando…">
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <label className="flex flex-col gap-1.5">
-                        <span className="text-sm font-medium">{v.etapa}</span>
-                        <select
-                          name="etapa"
-                          aria-label={v.etapa}
-                          required
-                          defaultValue={m.etapa_sugerida ?? ""}
-                          className="min-h-11 w-full rounded-xl border border-borda bg-cartao px-3 text-base text-texto"
-                        >
-                          <option value="" disabled>
-                            Escolha…
-                          </option>
-                          {etapas.map((e) => (
-                            <option key={e.id} value={e.id}>
-                              {v.etapa} {e.numero} · {e.titulo}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className="flex flex-col gap-1.5">
-                        <span className="text-sm font-medium">{v.grupo}</span>
-                        <select
-                          name="grupo"
-                          aria-label={v.grupo}
-                          required
-                          defaultValue={m.grupo_sugerido ?? ""}
-                          className="min-h-11 w-full rounded-xl border border-borda bg-cartao px-3 text-base text-texto"
-                        >
-                          <option value="" disabled>
-                            Escolha…
-                          </option>
-                          {(grupos ?? []).map((g) => (
-                            <option key={g.id} value={g.id}>
-                              {g.nome}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    </div>
-                  </FormAcao>
-                  {m.status !== "ignorado" ? (
-                    <div className="flex justify-end">
-                      <BotaoConfirmar acao={ignorarEmail.bind(null, slug, m.id)} pergunta="Marcar este e-mail como “não é entrega”?">
-                        Não é entrega
-                      </BotaoConfirmar>
-                    </div>
-                  ) : null}
-                </div>
-              )}
-            </li>
-          ))}
+                <DecisaoEmail
+                  slug={slug}
+                  emailId={m.id}
+                  etapas={opcoesEtapa}
+                  grupos={grupos ?? []}
+                  etapaSugerida={m.etapa_sugerida}
+                  grupoSugerido={m.grupo_sugerido}
+                  rotuloEtapa={v.etapa}
+                  rotuloGrupo={v.grupo}
+                  podeIgnorar={m.status !== "ignorado"}
+                  gmail={gmail && m.status !== "ignorado"}
+                  linkGmail={m.links.find((l) => /google\.com/.test(l)) ?? null}
+                />
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>

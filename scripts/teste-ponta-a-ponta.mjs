@@ -328,18 +328,20 @@ try {
 
   // E4) Quadro de entregas
   await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
-  await ana.p.getByText("2 e-mail(s) para confirmar").waitFor();
-  confere(await ana.p.getByText("1 de 2 entregaram").isVisible(), "quadro: 1 de 2 entregaram");
-  confere(await ana.p.getByText(/reenviada 1x/).isVisible(), "quadro mostra o reenvio");
+  await ana.p.getByRole("link", { name: /Caixa de e-mails.*2 para confirmar/ }).waitFor();
+  confere(true, "painel mostra 2 e-mails para confirmar");
+  confere((await ana.p.locator("dl div", { hasText: "Recebidas" }).innerText()).includes("1/2"), "painel: 1/2 recebidas");
+  confere(await ana.p.getByRole("link", { name: /Equipe Azul/ }).getByText("Sem análise").isVisible(), "cartão mostra a situação da equipe");
   await largura(ana.p, "quadro de entregas");
   await ana.p.screenshot({ path: `${FOTOS}/12-quadro-entregas.png`, fullPage: true });
   await ana.p.getByRole("link", { name: /Equipe Azul/ }).click();
   await ana.p.waitForURL(/\/entregas\/[0-9a-f-]{36}$/);
   confere(await ana.p.getByRole("link", { name: /docs\.google\.com\/presentation/ }).isVisible(), "entrega mostra o link do e-mail");
+  await ana.p.getByText("Detalhes da análise").click();
   await ana.p.getByRole("link", { name: /\d\d\/\d\d\/\d{4} às/ }).first().click(); // a primeira versão
-  await ana.p.getByText("Substituída por um reenvio", { exact: true }).waitFor();
+  await ana.p.getByText(/Substituída por um reenvio/).waitFor();
   const urlPrimeira = ana.p.url();
-  const href = await ana.p.getByRole("link", { name: "relatório final.pdf" }).getAttribute("href");
+  const href = await ana.p.getByRole("link", { name: /relatório final\.pdf/ }).getAttribute("href");
   const baixado = await ana.p.request.get(href);
   confere(baixado.status() === 200 && (await baixado.text()) === "conteudo do relatorio", "anexo do e-mail é baixado da área privada");
   await ana.p.screenshot({ path: `${FOTOS}/13-detalhe-entrega.png`, fullPage: true });
@@ -350,31 +352,32 @@ try {
   confere((await itemNovo.getByLabel("Equipe", { exact: true }).inputValue()).length > 0, "equipe sugerida pelo assunto já vem escolhida");
   await largura(ana.p, "caixa de e-mails");
   await ana.p.screenshot({ path: `${FOTOS}/14-caixa.png`, fullPage: true });
-  await itemNovo.getByRole("button", { name: "Confirmar como entrega" }).click();
+  await itemNovo.getByRole("button", { name: "É entrega" }).click();
   await itemNovo.waitFor({ state: "detached" });
   confere(true, "e-mail confirmado sai de “Para confirmar”");
   const itemGmail = ana.p.locator("li.rounded-2xl", { hasText: "forwarding-noreply@google.com" });
   confere(await itemGmail.getByText("987654").isVisible(), "código do Gmail aparece aberto no texto do e-mail");
-  confere(!(await itemGmail.getByRole("button", { name: "Confirmar como entrega" }).count()), "confirmação do Gmail não oferece virar entrega");
+  confere(!(await itemGmail.getByRole("button", { name: "É entrega" }).count()), "confirmação do Gmail não oferece virar entrega");
   await itemGmail.getByRole("button", { name: "Já confirmei no Gmail" }).click();
-  await ana.p.getByText("Nada para confirmar.").waitFor();
+  await ana.p.getByText("Tudo em dia. Nada para confirmar.").waitFor();
   confere(true, "caixa fica vazia depois das decisões");
   await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
-  await ana.p.getByText("2 de 2 entregaram").waitFor();
-  confere(true, "quadro: 2 de 2 depois de confirmar");
+  confere((await ana.p.locator("dl div", { hasText: "Recebidas" }).innerText()).includes("2/2"), "painel: 2/2 depois de confirmar");
 
   // E6) Registro à mão, com arquivo
+  await ana.p.getByText("Registrar entrega à mão").click();
   await ana.p.getByLabel("Equipe", { exact: true }).selectOption({ label: "Equipe Roxa" });
   await ana.p.getByLabel("Escolher arquivos").setInputFiles([{ name: "foto do quadro.jpg", mimeType: "image/jpeg", buffer: Buffer.from("jpg") }]);
   await ana.p.getByLabel("Comentário (opcional)").fill("Recebido em mãos");
   await ana.p.getByRole("button", { name: "Registrar entrega" }).click();
   await ana.p.getByText("Entrega registrada.").waitFor();
+  await ana.p.reload();
   await ana.p.getByRole("link", { name: /Equipe Roxa/ }).getByText("Registrada à mão", { exact: true }).waitFor();
   confere(true, "registro à mão com arquivo aparece no quadro");
 
   // E7) Professor vê e baixa; curioso não vê nada
   await prof.p.goto(urlPrimeira);
-  const hrefProf = await prof.p.getByRole("link", { name: "relatório final.pdf" }).getAttribute("href");
+  const hrefProf = await prof.p.getByRole("link", { name: /relatório final\.pdf/ }).getAttribute("href");
   confere((await prof.p.request.get(hrefProf)).status() === 200, "professor baixa o anexo");
   confere((await curioso.p.goto(`${APP}/app/${SLUG}/entregas`)).status() === 404, "curioso não abre o quadro");
   confere((await curioso.p.goto(`${APP}/app/${SLUG}/entregas/caixa`)).status() === 404, "curioso não abre a caixa de e-mails");
@@ -384,11 +387,14 @@ try {
   // (A IA é o "Gemini de mentira" de scripts/gemini-falso.mjs; o modelo configurado
   //  simula cota esgotada, então o Handback precisa trocar para o modelo reserva.)
   await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
-  await ana.p.getByRole("button", { name: /Analisar com IA as 2 entrega/ }).click();
-  await ana.p.getByText("Para revisar · EXCELENTE").first().waitFor({ timeout: 60000 });
+  await ana.p.getByRole("button", { name: /Analisar com IA as 2 sem análise/ }).click();
+  await ana.p.getByText("Para revisar", { exact: true }).first().waitFor({ timeout: 60000 });
   await ana.p.waitForFunction(() => document.querySelectorAll("li").length && ![...document.querySelectorAll("button")].some((b) => /Analisando/.test(b.textContent)), null, { timeout: 60000 });
   await ana.p.reload();
-  confere((await ana.p.getByText("Para revisar · EXCELENTE").count()) === 2, "análise em lote das 2 entregas");
+  confere((await ana.p.locator("li a", { hasText: "Para revisar" }).filter({ hasText: "EXCELENTE" }).count()) === 2, "análise em lote das 2 entregas");
+  confere((await ana.p.locator("dl div", { hasText: "Para revisar" }).innerText()).includes("2"), "painel conta 2 para revisar");
+  await largura(ana.p, "painel da aula");
+  await ana.p.screenshot({ path: `${FOTOS}/14b-painel.png`, fullPage: true });
   const pedidos = readFileSync(process.env.REGISTRO_IA, "utf8").trim().split("\n").map((l) => JSON.parse(l));
   confere(pedidos.every((x) => x.temRegras && x.temEsquema), "pedido à IA leva as regras (sem notas) e o formato de resposta");
   confere(pedidos.some((x) => x.modelo === "modelo-sem-cota") && pedidos.some((x) => x.modelo === "gemini-flash-latest"), "sem cota no modelo principal, troca para o reserva");
@@ -398,24 +404,40 @@ try {
 
   await ana.p.getByRole("link", { name: /Equipe Azul/ }).click();
   await ana.p.waitForURL(/\/entregas\/[0-9a-f-]{36}$/);
-  await ana.p.getByText("Sugestão: EXCELENTE").waitFor();
-  confere(await ana.p.getByText("✅ Protótipo navegável").isVisible() || await ana.p.getByText("Protótipo navegável").first().isVisible(), "checklist item a item");
-  confere(await ana.p.getByText("Link externo não lido pela IA").isVisible(), "aviso de leitura do link aparece");
+  await ana.p.getByText("IA sugeriu").waitFor();
+  confere(await ana.p.getByRole("radio", { name: "EXCELENTE" }).getAttribute("aria-checked") === "true", "conceito sugerido já vem marcado");
+  const checklist = ana.p.getByRole("region", { name: "Checklist" });
+  confere(await checklist.getByText("Protótipo navegável").isVisible(), "checklist item a item");
+  confere(await checklist.getByRole("img", { name: "Entregue" }).first().isVisible(), "checklist com ícone de situação");
+  confere(await ana.p.getByText("Não lido pela IA (só o endereço foi considerado)").isVisible(), "aviso de leitura do link aparece junto do link");
+  confere(await ana.p.getByRole("link", { name: /relatório final\.pdf.*Lido pela IA/ }).isVisible() || await ana.p.getByText("Lido pela IA").first().isVisible(), "arquivo marcado como lido pela IA");
+  // O mais importante aparece sem rolar (tela de celular).
+  const dobra = await ana.p.evaluate(() => {
+    const alto = window.innerHeight;
+    const topo = (sel) => document.querySelector(sel)?.getBoundingClientRect().top ?? 9999;
+    return { devolutiva: topo("textarea[name=devolutiva]"), checklist: topo("section[aria-label=Checklist]"), alto };
+  });
+  confere(dobra.devolutiva < dobra.alto && dobra.checklist < dobra.alto, "conceito, devolutiva e checklist aparecem sem rolar");
+  confere(await ana.p.getByRole("button", { name: "Aprovar devolutiva" }).isVisible(), "botão Aprovar sempre visível no rodapé");
+  await ana.p.getByText("Detalhes da análise").click();
   confere(await ana.p.getByText(/gemini-flash-latest/).isVisible(), "mostra o modelo usado");
   await largura(ana.p, "análise e devolutiva");
   await ana.p.screenshot({ path: `${FOTOS}/15-analise.png`, fullPage: true });
 
   // Revisão: muda o conceito, edita, salva rascunho, aprova, reabre, aprova de novo.
-  await ana.p.getByLabel("Conceito").selectOption("BOM");
-  await ana.p.getByLabel("Devolutiva para o grupo").fill("Pessoal, ótima entrega! Ajustem o roteiro de teste e seguimos.");
+  await ana.p.getByRole("radio", { name: "BOM", exact: true }).click();
+  await ana.p.getByLabel(/^Devolutiva para/).fill("Pessoal, ótima entrega! Ajustem o roteiro de teste e seguimos.");
   await ana.p.getByRole("button", { name: "Salvar rascunho" }).click();
   await ana.p.getByText("Rascunho salvo.").waitFor();
   await ana.p.reload();
-  confere((await ana.p.getByLabel("Devolutiva para o grupo").inputValue()).startsWith("Pessoal, ótima entrega!"), "rascunho editado fica salvo");
+  confere((await ana.p.getByLabel(/^Devolutiva para/).inputValue()).startsWith("Pessoal, ótima entrega!"), "rascunho editado fica salvo");
+  confere(await ana.p.getByRole("radio", { name: "BOM", exact: true }).getAttribute("aria-checked") === "true", "conceito revisado fica salvo");
   await ana.p.getByRole("button", { name: "Aprovar devolutiva" }).click();
   await ana.p.getByText("Aprovada · BOM").waitFor();
   confere(await ana.p.getByRole("button", { name: "Copiar devolutiva" }).isVisible(), "devolutiva aprovada com botão de copiar");
+  await ana.p.getByText("Detalhes da análise").click();
   confere(!(await ana.p.getByRole("button", { name: "Analisar de novo" }).count()), "aprovada não é reanalisada sem reabrir");
+  confere(await ana.p.getByRole("link", { name: /Seguinte →|Voltar ao painel/ }).isVisible(), "depois de aprovar, ir para a próxima");
   await ana.p.getByRole("button", { name: "Reabrir para editar" }).click();
   await ana.p.getByRole("button", { name: "Aprovar devolutiva" }).waitFor();
   await ana.p.getByRole("button", { name: "Aprovar devolutiva" }).click();
@@ -423,14 +445,20 @@ try {
   confere(true, "reabrir e aprovar de novo");
   await ana.p.screenshot({ path: `${FOTOS}/16-devolutiva-aprovada.png`, fullPage: true });
   await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
-  confere(await ana.p.getByText("1 devolutiva(s) aprovada(s)").isVisible(), "quadro conta as devolutivas aprovadas");
-  confere(await ana.p.getByText("Aprovada · BOM").isVisible(), "quadro mostra o conceito aprovado");
+  confere((await ana.p.locator("dl div", { hasText: "Aprovadas" }).innerText()).includes("1"), "painel conta as devolutivas aprovadas");
+  const cartaoAzul = ana.p.getByRole("link", { name: /Equipe Azul/ });
+  confere((await cartaoAzul.getByText("Aprovada", { exact: true }).isVisible()) && (await cartaoAzul.getByText("BOM", { exact: true }).isVisible()), "painel mostra o conceito aprovado");
+  await ana.p.getByRole("link", { name: /^Aprovadas/ }).click();
+  await ana.p.waitForURL(/filtro=aprovadas/);
+  confere((await ana.p.evaluate(() => [...document.querySelectorAll("main a")].filter((a) => /\/entregas\/[0-9a-f-]{36}$/.test(a.getAttribute("href"))).length)) === 1, "filtro Aprovadas mostra só a aprovada");
 
   // Professor vê a análise interna; falha da IA aparece com mensagem clara.
   await prof.p.goto(`${APP}/app/${SLUG}/entregas`);
   await prof.p.getByRole("link", { name: /Equipe Roxa/ }).click();
-  await prof.p.getByText("Análise interna (só para quem avalia)").click();
+  await prof.p.getByText("Análise interna").click();
   confere(await prof.p.getByText(/Pontos fortes/).isVisible(), "professor lê a análise interna");
+  await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
+  await ana.p.getByText("Registrar entrega à mão").click();
   await ana.p.getByLabel("Equipe", { exact: true }).selectOption({ label: "Equipe Roxa" });
   await ana.p.getByLabel("Comentário (opcional)").fill("FORCAR_ERRO nesta versão");
   await ana.p.getByRole("button", { name: "Registrar entrega" }).click();

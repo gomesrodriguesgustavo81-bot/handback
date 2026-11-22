@@ -111,3 +111,47 @@ export async function reabrirDevolutiva(slug: string, entregaId: string): Promis
   await supabase.rpc("reabrir_devolutiva", { p_entrega: entregaId });
   revalidatePath(`/app/${slug}`, "layout");
 }
+
+/**
+ * Aprova de uma vez as devolutivas prontas (sem edição) de uma etapa.
+ * Só entram as que têm conceito e texto; as demais ficam para revisar.
+ */
+export async function aprovarProntas(slug: string, etapaId: string): Promise<{ ok: boolean; mensagem: string }> {
+  const { empresa, podeAvaliar } = await contextoDaEmpresa(slug);
+  if (!podeAvaliar) return { ok: false, mensagem: "Você não tem permissão para fazer isso." };
+  const supabase = await criarClienteServidor();
+  const { data } = await supabase
+    .from("entregas")
+    .select("id, analises(status, conceito, devolutiva)")
+    .eq("org_id", empresa.id)
+    .eq("etapa_id", etapaId)
+    .eq("status", "recebida");
+  type Linha = { id: string; analises: { status: string; conceito: string | null; devolutiva: string } | null };
+  const prontas = ((data ?? []) as unknown as Linha[]).filter(
+    (e) => e.analises?.status === "pronta" && e.analises.conceito && e.analises.devolutiva.trim(),
+  );
+  let feitas = 0;
+  for (const e of prontas) {
+    const { error } = await supabase.rpc("revisar_devolutiva", {
+      p_entrega: e.id,
+      p_conceito: e.analises!.conceito,
+      p_devolutiva: e.analises!.devolutiva,
+      p_aprovar: true,
+    });
+    if (!error) feitas++;
+  }
+  revalidatePath(`/app/${slug}`, "layout");
+  if (!prontas.length) return { ok: false, mensagem: "Nenhuma devolutiva pronta para aprovar." };
+  return feitas === prontas.length
+    ? { ok: true, mensagem: `${feitas} devolutiva(s) aprovada(s).` }
+    : { ok: false, mensagem: `${feitas} de ${prontas.length} aprovadas. Abra as que faltaram para ver o motivo.` };
+}
+
+/** Decide um e-mail da caixa: “É entrega” (com etapa e grupo) ou “Ignorar”. */
+export async function decidirEmail(slug: string, emailId: string, _a: Resultado, dados: FormData): Promise<Resultado> {
+  if (dados.get("acao") === "ignorar") {
+    await ignorarEmail(slug, emailId);
+    return { ok: true, mensagem: "E-mail ignorado." };
+  }
+  return importarEmail(slug, emailId, _a, dados);
+}
