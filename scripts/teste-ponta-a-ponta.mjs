@@ -270,7 +270,10 @@ try {
   await ana.p.goto(`${APP}/app/${SLUG}/ajustes`);
   const ENDERECO = (await ana.p.locator("code", { hasText: "@caixa.handback.test" }).innerText()).trim();
   confere(/^entregas\+[a-z0-9]{12}@caixa\.handback\.test$/.test(ENDERECO), `endereço de recebimento da empresa (${ENDERECO})`);
-  await ana.p.getByText("Como ligar o encaminhamento no Gmail").click();
+  confere(await ana.p.getByRole("button", { name: "Copiar endereço" }).isVisible(), "botão para copiar o endereço da turma");
+  await ana.p.getByText("Ver a mensagem pronta").click();
+  confere((await ana.p.locator("pre", { hasText: ENDERECO }).innerText()).includes("[ENTREGA] Encontro 1 - Equipe Azul"), "mensagem pronta para a turma, com o endereço e o assunto de exemplo");
+  await ana.p.getByText("Opcional: receber no seu Gmail").click();
   await largura(ana.p, "ajustes com recebimento por e-mail");
   await ana.p.screenshot({ path: `${FOTOS}/11-recebimento.png`, fullPage: true });
 
@@ -345,6 +348,11 @@ try {
   const baixado = await ana.p.request.get(href);
   confere(baixado.status() === 200 && (await baixado.text()) === "conteudo do relatorio", "anexo do e-mail é baixado da área privada");
   await ana.p.screenshot({ path: `${FOTOS}/13-detalhe-entrega.png`, fullPage: true });
+
+  // E5) Caixa: professor também vê o endereço da turma
+  await prof.p.goto(`${APP}/app/${SLUG}/entregas/caixa`);
+  await prof.p.getByText("Endereço para receber as entregas").click();
+  confere(await prof.p.getByText(ENDERECO, { exact: true }).isVisible(), "professor vê o endereço da turma na caixa de e-mails");
 
   // E5) Caixa: confirma o remetente novo e descarta a confirmação do Gmail (depois de ver o código)
   await ana.p.goto(`${APP}/app/${SLUG}/entregas/caixa`);

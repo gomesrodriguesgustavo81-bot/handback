@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { FormAcao } from "@/components/form-acao";
 import { AreaTexto, Aviso, Campo, Cartao, Escolha } from "@/components/ui";
 import { contextoDaEmpresa } from "@/lib/empresa";
+import { EnderecoDaTurma } from "@/components/endereco-turma";
 import { enderecoDeRecebimento } from "@/lib/emails/endereco";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { salvarAjustes } from "./acoes";
@@ -23,47 +24,52 @@ export default async function Ajustes({ params }: PageProps<"/app/[slug]/ajustes
     .single();
   const endereco = config ? enderecoDeRecebimento(config.caixa_token) : null;
   const etiqueta = `[${config?.etiqueta_assunto ?? "ENTREGA"}]`;
+  const exemploAssunto = `${etiqueta} ${v.etapa} 1 - ${v.grupo} Azul`;
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
     <Cartao className="flex flex-col gap-4">
-      <h2 className="text-lg font-semibold">Recebimento por e-mail</h2>
-      <p className="text-sm text-suave">
-        Quem entrega não usa o Handback: manda um e-mail para quem avalia, com o assunto começando por{" "}
-        <strong>{etiqueta}</strong> (ex.: “{etiqueta} {v.etapa} 2 - {v.grupo} Azul”). O Gmail de quem recebe encaminha esses
-        e-mails para o endereço abaixo, e o Handback faz a triagem.
-      </p>
+      <div className="flex flex-col gap-1">
+        <h2 className="text-lg font-semibold">Recebimento por e-mail</h2>
+        <p className="text-sm text-suave">
+          Quem entrega não usa o Handback: manda um e-mail para o endereço abaixo, com o assunto começando por{" "}
+          <strong>{etiqueta}</strong>. O Handback separa por {v.etapa.toLowerCase()} e {v.grupo.toLowerCase()} sozinho.
+          Ninguém precisa configurar nada.
+        </p>
+      </div>
       {endereco ? (
-        <div className="flex flex-col gap-1">
-          <span className="text-sm font-medium">Endereço de recebimento desta empresa</span>
-          <code className="break-all rounded-lg bg-fundo px-3 py-2 text-sm">{endereco}</code>
-        </div>
+        <EnderecoDaTurma endereco={endereco} etiqueta={etiqueta} exemploAssunto={exemploAssunto} />
       ) : (
         <Aviso tipo="alerta">
           O serviço de recebimento de e-mails ainda não foi ligado ao Handback. Quando for, o endereço desta empresa aparece aqui.
         </Aviso>
       )}
-      <details className="text-sm">
-        <summary className="cursor-pointer font-medium text-marca-forte">Como ligar o encaminhamento no Gmail (uma vez só)</summary>
-        <ol className="mt-2 flex list-decimal flex-col gap-2 pl-5">
-          <li>
-            No Gmail de quem recebe as entregas, abra <strong>Configurações (engrenagem) › Ver todas as configurações ›
-            Encaminhamento e POP/IMAP</strong> e toque em <strong>Adicionar um endereço de encaminhamento</strong>. Cole o
-            endereço acima.
-          </li>
-          <li>
-            O Gmail manda um código de confirmação para o Handback. Ele aparece em{" "}
-            <strong>Entregas › Caixa de e-mails › Para confirmar</strong>. Copie o código (ou abra o link) e confirme no
-            Gmail. <em>Não</em> ative “encaminhar uma cópia dos e-mails recebidos”.
-          </li>
-          <li>
-            Na busca do Gmail, digite <code>subject:{config?.etiqueta_assunto ?? "ENTREGA"}</code>, abra as opções da busca
-            e toque em <strong>Criar filtro</strong>. Marque <strong>Encaminhar para</strong>, escolha o endereço do Handback
-            e toque em <strong>Criar filtro</strong>.
-          </li>
-          <li>Pronto: os próximos e-mails de entrega chegam sozinhos em Entregas. Nada muda para quem entrega.</li>
-        </ol>
-      </details>
+      {endereco ? (
+        <details className="text-sm">
+          <summary className="cursor-pointer font-medium text-marca-forte">
+            Opcional: receber no seu Gmail e encaminhar para o Handback
+          </summary>
+          <p className="mt-2 text-suave">
+            Só se você preferir que as entregas cheguem primeiro no seu e-mail. Leva uns 5 minutos, uma vez só.
+          </p>
+          <ol className="mt-2 flex list-decimal flex-col gap-2 pl-5">
+            <li>
+              No Gmail, abra <strong>Configurações (engrenagem) › Ver todas as configurações › Encaminhamento e POP/IMAP</strong>{" "}
+              e toque em <strong>Adicionar um endereço de encaminhamento</strong>. Cole o endereço acima.
+            </li>
+            <li>
+              O Gmail manda um código de confirmação para o Handback. Ele aparece em{" "}
+              <strong>Entregas › Caixa de e-mails › Para confirmar</strong>. Copie o código e confirme no Gmail.{" "}
+              <em>Não</em> ative “encaminhar uma cópia dos e-mails recebidos”.
+            </li>
+            <li>
+              Na busca do Gmail, digite <code>subject:{config?.etiqueta_assunto ?? "ENTREGA"}</code>, abra as opções da busca e
+              toque em <strong>Criar filtro</strong>. Marque <strong>Encaminhar para</strong>, escolha o endereço do Handback e
+              toque em <strong>Criar filtro</strong>.
+            </li>
+          </ol>
+        </details>
+      ) : null}
     </Cartao>
 
     <Cartao className="flex flex-col gap-4">

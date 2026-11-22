@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DecisaoEmail } from "@/components/decisao-email";
+import { Dobra } from "@/components/conceito";
+import { EnderecoDaTurma } from "@/components/endereco-turma";
+import { enderecoDeRecebimento } from "@/lib/emails/endereco";
 import { Vazio } from "@/components/ui";
 import { contextoDaEmpresa } from "@/lib/empresa";
 import { criarClienteServidor } from "@/lib/supabase/server";
@@ -46,7 +49,7 @@ export default async function CaixaDeEmails({ params, searchParams }: PageProps<
 
   const contar = (status: string) =>
     supabase.from("emails_recebidos").select("id", { count: "exact", head: true }).eq("org_id", empresa.id).eq("status", status);
-  const [etapas, { data: grupos }, { data }, { count: nConfirmar }, { count: nIgnorados }] = await Promise.all([
+  const [etapas, { data: grupos }, { data }, { count: nConfirmar }, { count: nIgnorados }, { data: caixa }] = await Promise.all([
     etapasDaEmpresa(empresa.id),
     supabase.from("grupos").select("id, nome").eq("org_id", empresa.id).eq("ativo", true).order("nome"),
     supabase
@@ -58,7 +61,10 @@ export default async function CaixaDeEmails({ params, searchParams }: PageProps<
       .limit(100),
     contar("confirmar"),
     contar("ignorado"),
+    supabase.from("organizacoes").select("caixa_token, etiqueta_assunto").eq("id", empresa.id).maybeSingle(),
   ]);
+  const endereco = caixa?.caixa_token ? enderecoDeRecebimento(caixa.caixa_token) : null;
+  const etiqueta = `[${caixa?.etiqueta_assunto ?? "ENTREGA"}]`;
   const emails = (data ?? []) as Email[];
   const contagem: Record<Aba, number> = { confirmar: nConfirmar ?? 0, ignorados: nIgnorados ?? 0 };
   const opcoesEtapa = etapas.map((e) => ({ id: e.id, nome: `${v.etapa} ${e.numero}` }));
@@ -67,6 +73,12 @@ export default async function CaixaDeEmails({ params, searchParams }: PageProps<
     <section className="flex flex-col gap-4">
       <NavEntregas slug={slug} atual="caixa" paraConfirmar={nConfirmar ?? 0} />
       <p className="text-sm text-suave">E-mails que o Handback não conseguiu ligar sozinho a {v.grupos.toLowerCase()}. Confirme ou ignore.</p>
+
+      {endereco ? (
+        <Dobra titulo="Endereço para receber as entregas" extra="copiar e mandar para a turma">
+          <EnderecoDaTurma endereco={endereco} etiqueta={etiqueta} exemploAssunto={`${etiqueta} ${v.etapa} 1 - ${v.grupo} Azul`} comTitulo={false} />
+        </Dobra>
+      ) : null}
 
       <nav aria-label="Filtrar e-mails" className="flex gap-1.5">
         {(Object.keys(ABAS) as Aba[]).map((a) => (
