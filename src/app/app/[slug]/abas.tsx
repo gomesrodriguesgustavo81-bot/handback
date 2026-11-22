@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 export function AbasEmpresa({ abas }: { abas: { href: string; nome: string; exato?: boolean }[] }) {
   const caminho = usePathname();
   return (
-    <nav aria-label="Seções da empresa" className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+    <nav aria-label="Seções da empresa" className="print:hidden -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
       <ul className="flex min-w-max gap-1 border-b border-borda">
         {abas.map((a) => {
           const ativa = a.exato ? caminho === a.href : caminho === a.href || caminho.startsWith(a.href + "/");

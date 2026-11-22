@@ -51,6 +51,7 @@ export async function salvarAjustes(slug: string, _a: Resultado, dados: FormData
       conceitos,
       regra_checklist: regra,
       exemplos_devolutiva: exemplos,
+      enviar_conceito: dados.get("enviar_conceito") === "sim",
     })
     .eq("id", empresa.id)
     .select("id");

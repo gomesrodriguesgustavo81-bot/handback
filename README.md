@@ -41,7 +41,7 @@ npm run dev                    # http://localhost:3000
 npm run typecheck && npm run lint && npm run build
 npm test                       # testes da triagem de e-mails e da IA (regras, leitura de arquivos)
 npm run test:banco             # testa as regras de acesso num Postgres 16 local
-npm run test:e2e               # ponta a ponta (Supabase local + app rodando + node scripts/gemini-falso.mjs)
+npm run test:e2e               # ponta a ponta (Supabase local + app rodando + node scripts/gemini-falso.mjs + node scripts/google-falso.mjs)
 ```
 
 Supabase local completo (precisa de Docker): `npx supabase start`. As migrações

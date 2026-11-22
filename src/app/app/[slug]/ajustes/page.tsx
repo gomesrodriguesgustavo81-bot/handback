@@ -18,7 +18,7 @@ export default async function Ajustes({ params }: PageProps<"/app/[slug]/ajustes
   const supabase = await criarClienteServidor();
   const { data: config } = await supabase
     .from("organizacoes")
-    .select("caixa_token, etiqueta_assunto, modo_entrega, assuntos_ignorar, conceitos, regra_checklist, exemplos_devolutiva")
+    .select("caixa_token, etiqueta_assunto, modo_entrega, assuntos_ignorar, conceitos, regra_checklist, exemplos_devolutiva, enviar_conceito")
     .eq("id", empresa.id)
     .single();
   const endereco = config ? enderecoDeRecebimento(config.caixa_token) : null;
@@ -136,6 +136,15 @@ export default async function Ajustes({ params }: PageProps<"/app/[slug]/ajustes
             rows={6}
             defaultValue={config?.exemplos_devolutiva ?? ""}
             dica="A IA imita o tom e o tamanho destes exemplos. Separe um do outro com uma linha só com ---. Se ficar vazio, ela usa as últimas devolutivas aprovadas aqui no Handback."
+          />
+          <Escolha
+            rotulo="No e-mail da devolutiva"
+            name="enviar_conceito"
+            defaultValue={config?.enviar_conceito === false ? "nao" : "sim"}
+            opcoes={[
+              { valor: "sim", nome: "Mandar o conceito junto com o texto" },
+              { valor: "nao", nome: "Mandar só o texto (o conceito fica só no Handback)" },
+            ]}
           />
         </fieldset>
       </FormAcao>

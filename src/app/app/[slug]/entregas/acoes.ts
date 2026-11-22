@@ -7,6 +7,9 @@ import { criarClienteServidor } from "@/lib/supabase/server";
 import { lerLinks } from "@/lib/textos";
 import { analisarEntrega } from "@/lib/ia/analisar";
 import { iaConfigurada } from "@/lib/ia/gemini";
+import { enviarDevolutiva } from "@/lib/envio";
+import { decifrar, ErroGmail, revogar } from "@/lib/gmail";
+import { criarClienteAdmin } from "@/lib/supabase/admin";
 
 export type ArquivoEnviado = { caminho: string; nome: string; tamanho: number; tipo: string };
 
@@ -154,4 +157,50 @@ export async function decidirEmail(slug: string, emailId: string, _a: Resultado,
     return { ok: true, mensagem: "E-mail ignorado." };
   }
   return importarEmail(slug, emailId, _a, dados);
+}
+
+/** Envia a devolutiva aprovada pelo Gmail de quem está logado. */
+export async function enviarDevolutivaPorEmail(
+  slug: string,
+  entregaId: string,
+): Promise<{ ok: boolean; mensagem: string; reconectar?: boolean }> {
+  const { podeAvaliar } = await contextoDaEmpresa(slug);
+  if (!podeAvaliar) return { ok: false, mensagem: "Você não tem permissão para fazer isso." };
+  const supabase = await criarClienteServidor();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, mensagem: "Entre de novo para enviar." };
+  try {
+    const { para } = await enviarDevolutiva(supabase, user.id, entregaId);
+    revalidatePath(`/app/${slug}`, "layout");
+    return { ok: true, mensagem: `Enviada para ${para.join(", ")}.` };
+  } catch (e) {
+    revalidatePath(`/app/${slug}`, "layout");
+    return {
+      ok: false,
+      mensagem: e instanceof Error ? e.message : "Não foi possível enviar. Tente de novo.",
+      reconectar: e instanceof ErroGmail && e.reconectar,
+    };
+  }
+}
+
+/** Desconecta o Gmail de quem está logado (e avisa o Google para apagar a permissão). */
+export async function desconectarGmail(slug: string): Promise<void> {
+  const supabase = await criarClienteServidor();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const admin = criarClienteAdmin();
+  if (!user || !admin) return;
+  const { data } = await admin.from("contas_gmail").select("token_cifrado").eq("user_id", user.id).maybeSingle();
+  if (data) {
+    try {
+      await revogar(decifrar(data.token_cifrado));
+    } catch {
+      /* a permissão some do Handback de qualquer jeito */
+    }
+    await admin.from("contas_gmail").delete().eq("user_id", user.id);
+  }
+  revalidatePath(`/app/${slug}`, "layout");
 }

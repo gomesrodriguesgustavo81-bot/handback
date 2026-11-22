@@ -437,20 +437,57 @@ try {
   confere(await ana.p.getByRole("button", { name: "Copiar devolutiva" }).isVisible(), "devolutiva aprovada com botão de copiar");
   await ana.p.getByText("Detalhes da análise").click();
   confere(!(await ana.p.getByRole("button", { name: "Analisar de novo" }).count()), "aprovada não é reanalisada sem reabrir");
-  confere(await ana.p.getByRole("link", { name: /Seguinte →|Voltar ao painel/ }).isVisible(), "depois de aprovar, ir para a próxima");
+  confere(await ana.p.getByRole("link", { name: "Conectar meu Gmail" }).first().isVisible(), "aprovada sem Gmail conectado pede para conectar");
   await ana.p.getByRole("button", { name: "Reabrir para editar" }).click();
   await ana.p.getByRole("button", { name: "Aprovar devolutiva" }).waitFor();
   await ana.p.getByRole("button", { name: "Aprovar devolutiva" }).click();
   await ana.p.getByText("Aprovada · BOM").waitFor();
   confere(true, "reabrir e aprovar de novo");
   await ana.p.screenshot({ path: `${FOTOS}/16-devolutiva-aprovada.png`, fullPage: true });
+
+  // ===================== FASE 4: envio pelo Gmail =====================
+  // (O Google é o "Google de mentira" de scripts/google-falso.mjs.)
+  const urlFolhaAzul = ana.p.url();
+  await ana.p.getByRole("link", { name: "Conectar meu Gmail" }).first().click();
+  await ana.p.getByText("Gmail conectado.").waitFor();
+  confere(ana.p.url().startsWith(urlFolhaAzul), "depois de conectar o Gmail, volta para a mesma folha");
+  confere(await ana.p.getByText(/Sai do seu Gmail \(professora@gmail\.test\)/).isVisible(), "mostra de qual Gmail vai sair");
+  confere(await ana.p.getByText(/Vai para:.*a1@aluno\.test/).isVisible(), "mostra para quem vai antes de enviar");
+  await ana.p.getByRole("button", { name: "Enviar para a equipe" }).click();
+  await ana.p.getByText(/Enviada em .* para .*a1@aluno\.test/).waitFor();
+  const enviados = readFileSync(process.env.REGISTRO_GMAIL, "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  const env = enviados.at(-1);
+  confere(enviados.length === 1, "uma devolutiva enviada pelo Gmail");
+  confere(/^To: a1@aluno\.test/m.test(env.cabecalho), "vai para quem mandou a entrega");
+  confere(new RegExp(`^In-Reply-To: <e2-${sufixo}@aluno>`, "m").test(env.cabecalho), "responde na mesma conversa do e-mail da entrega");
+  confere(env.texto.startsWith("Conceito: BOM\n\nPessoal, ótima entrega!"), "e-mail leva o conceito e a devolutiva aprovada");
+  confere(await ana.p.getByRole("link", { name: /Seguinte →|Voltar ao painel/ }).isVisible(), "depois de enviar, ir para a próxima");
+  await largura(ana.p, "devolutiva enviada");
+  await ana.p.screenshot({ path: `${FOTOS}/17-devolutiva-enviada.png`, fullPage: true });
+
   await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
+  confere((await ana.p.locator("dl div", { hasText: "Enviadas" }).innerText()).includes("1"), "painel conta as enviadas");
   confere((await ana.p.locator("dl div", { hasText: "Aprovadas" }).innerText()).includes("1"), "painel conta as devolutivas aprovadas");
   const cartaoAzul = ana.p.getByRole("link", { name: /Equipe Azul/ });
-  confere((await cartaoAzul.getByText("Aprovada", { exact: true }).isVisible()) && (await cartaoAzul.getByText("BOM", { exact: true }).isVisible()), "painel mostra o conceito aprovado");
+  confere((await cartaoAzul.getByText("Enviada", { exact: true }).isVisible()) && (await cartaoAzul.getByText("BOM", { exact: true }).isVisible()), "painel mostra o conceito e que foi enviada");
+  confere(await ana.p.getByText("professora@gmail.test").isVisible(), "painel mostra o Gmail conectado");
   await ana.p.getByRole("link", { name: /^Aprovadas/ }).click();
   await ana.p.waitForURL(/filtro=aprovadas/);
   confere((await ana.p.evaluate(() => [...document.querySelectorAll("main a")].filter((a) => /\/entregas\/[0-9a-f-]{36}$/.test(a.getAttribute("href"))).length)) === 1, "filtro Aprovadas mostra só a aprovada");
+
+  // Relatório da aula
+  await ana.p.getByRole("link", { name: "Relatório da aula →" }).click();
+  await ana.p.getByText("Relatório da aula", { exact: true }).waitFor();
+  confere(await ana.p.getByText("Pessoal, ótima entrega! Ajustem o roteiro de teste e seguimos.").isVisible(), "relatório traz a devolutiva aprovada");
+  confere(await ana.p.getByRole("button", { name: "Imprimir ou salvar PDF" }).isVisible(), "relatório pode ser impresso");
+  await largura(ana.p, "relatório da aula");
+  await ana.p.screenshot({ path: `${FOTOS}/18-relatorio.png`, fullPage: true });
+
+  // Desconectar o Gmail
+  await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
+  await ana.p.getByRole("button", { name: "Desconectar" }).click();
+  await ana.p.getByRole("link", { name: "Conectar meu Gmail" }).waitFor();
+  confere(true, "Gmail desconectado; painel volta a oferecer a conexão");
 
   // Professor vê a análise interna; falha da IA aparece com mensagem clara.
   await prof.p.goto(`${APP}/app/${SLUG}/entregas`);

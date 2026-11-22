@@ -25,11 +25,12 @@ export function SeloConceito({ conceito, grande = false }: { conceito: string | 
   );
 }
 
-export type Situacao = "revisar" | "aprovada" | "analisando" | "sem-analise" | "falhou" | "nao-entregou" | "aguardando";
+export type Situacao = "revisar" | "aprovada" | "enviada" | "analisando" | "sem-analise" | "falhou" | "nao-entregou" | "aguardando";
 
 export const ROTULO_SITUACAO: Record<Situacao, string> = {
   revisar: "Para revisar",
   aprovada: "Aprovada",
+  enviada: "Enviada",
   analisando: "Analisando…",
   "sem-analise": "Sem análise",
   falhou: "Análise falhou",
@@ -40,6 +41,7 @@ export const ROTULO_SITUACAO: Record<Situacao, string> = {
 const ESTILO_SITUACAO: Record<Situacao, string> = {
   revisar: "bg-alerta-fundo text-alerta",
   aprovada: "bg-marca-clara text-marca-forte",
+  enviada: "bg-ok-fundo text-ok",
   analisando: "bg-info-fundo text-info",
   "sem-analise": "bg-neutro-fundo text-neutro",
   falhou: "bg-erro-fundo text-erro",

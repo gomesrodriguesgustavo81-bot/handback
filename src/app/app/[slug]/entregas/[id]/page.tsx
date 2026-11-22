@@ -4,6 +4,9 @@ import { notFound } from "next/navigation";
 import { BotaoAnalisar, FolhaDevolutiva } from "@/components/analise";
 import { Bloco, Dobra, IconeItem, PilulaAtraso, SeloConceito, type StatusItem } from "@/components/conceito";
 import { Aviso } from "@/components/ui";
+import { AvisoGmail } from "@/components/aviso-gmail";
+import { meuGmail } from "@/lib/envio";
+import { gmailConfigurado } from "@/lib/gmail";
 import { contextoDaEmpresa } from "@/lib/empresa";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { dataHoraBR, passouMaisDe, tamanhoLegivel } from "@/lib/textos";
@@ -39,6 +42,10 @@ type Analise = {
   conceito_ia: string | null;
   justificativa: string;
   analise_interna: string;
+  envio_status: "enviando" | "enviada" | "erro" | null;
+  enviada_em: string | null;
+  enviada_para: string[];
+  envio_erro: string;
   evolucao: string;
   arquivos_lidos: string[];
   avisos_leitura: string[];
@@ -49,8 +56,9 @@ type Analise = {
   atualizada_em: string;
 };
 
-export default async function FolhaDaEquipe({ params }: PageProps<"/app/[slug]/entregas/[id]">) {
+export default async function FolhaDaEquipe({ params, searchParams }: PageProps<"/app/[slug]/entregas/[id]">) {
   const { slug, id } = await params;
+  const { gmail: avisoGmail } = await searchParams;
   const { empresa, podeAvaliar } = await contextoDaEmpresa(slug);
   if (!podeAvaliar || !/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const v = empresa.vocabulario;
@@ -69,7 +77,7 @@ export default async function FolhaDaEquipe({ params }: PageProps<"/app/[slug]/e
   if (!entrega) notFound();
 
   const caminhos = entrega.arquivos_entrega.map((a) => a.caminho);
-  const [assinados, { data: analiseBruta }, { data: daEtapa }, { data: doGrupo }] = await Promise.all([
+  const [assinados, { data: analiseBruta }, { data: daEtapa }, { data: doGrupo }, gmail, { data: destinos }] = await Promise.all([
     // Links temporários (1 hora) para baixar os arquivos da área privada.
     caminhos.length ? supabase.storage.from("entregas").createSignedUrls(caminhos, 3600).then((r) => r.data ?? []) : Promise.resolve([]),
     supabase.from("analises").select("*").eq("entrega_id", entrega.id).maybeSingle(),
@@ -85,6 +93,8 @@ export default async function FolhaDaEquipe({ params }: PageProps<"/app/[slug]/e
       .select("id, etapas(numero, titulo), analises(status, conceito)")
       .eq("grupo_id", entrega.grupo_id)
       .eq("status", "recebida"),
+    meuGmail(supabase),
+    supabase.rpc("destinatarios_da_entrega", { p_entrega: entrega.id }).maybeSingle<{ para: string[]; copia: string[] }>(),
   ]);
   const a = analiseBruta as Analise | null;
   const urlDe = new Map(assinados.map((s) => [s.path, s.signedUrl]));
@@ -286,6 +296,7 @@ export default async function FolhaDaEquipe({ params }: PageProps<"/app/[slug]/e
         </div>
       </header>
 
+      <AvisoGmail aviso={avisoGmail} />
       {substituida ? (
         <Aviso tipo="alerta">
           Substituída por um reenvio.{" "}
@@ -310,6 +321,15 @@ export default async function FolhaDaEquipe({ params }: PageProps<"/app/[slug]/e
           destinatario={nome}
           proxima={proxima ? `${base}/${proxima.id}` : null}
           painel={painel}
+          envio={{
+            enviada: Boolean(a.enviada_em),
+            em: a.enviada_em ? dataHoraBR(a.enviada_em) : "",
+            para: a.enviada_para ?? [],
+            erro: a.envio_status === "erro" || (a.envio_status === "enviada" && a.envio_erro) ? a.envio_erro : "",
+          }}
+          gmail={{ configurado: gmailConfigurado(), email: gmail && !gmail.invalida ? gmail.email : null }}
+          destinos={destinos ?? { para: [], copia: [] }}
+          conectarHref={`/api/gmail/conectar?voltar=${encodeURIComponent(`${base}/${entrega.id}`)}`}
         >
           {checklist}
           {arquivos}

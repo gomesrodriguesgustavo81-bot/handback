@@ -112,3 +112,48 @@ na primeira vez. Todas as contas ficam no **seu nome**, porque o negócio é seu
 
 A chave fica só no servidor: nunca aparece no navegador nem no GitHub. Se a cota
 de um modelo acabar, o Handback tenta os modelos reserva sozinho.
+
+---
+
+## Parte 6 · Enviar as devolutivas pelo Gmail
+
+Cada pessoa que avalia conecta o **próprio Gmail**. O Handback pede ao Google só a
+permissão de **enviar** e-mails (não lê a caixa de ninguém). A devolutiva vai para a
+equipe na mesma conversa do e-mail da entrega, com cópia para os integrantes.
+
+Para isso o Handback precisa de um "cadastro de aplicativo" no Google (grátis):
+
+1. Acesse **console.cloud.google.com** com a sua conta Google e crie um projeto
+   chamado **Handback** (menu do topo › **Novo projeto**).
+2. Em **APIs e serviços › Biblioteca**, procure **Gmail API** e toque em **Ativar**.
+3. Em **APIs e serviços › Tela de permissão OAuth** (ou "Google Auth Platform"):
+   - Tipo de usuário: **Externo**.
+   - Nome do app: **Handback**; e-mail de suporte: o seu.
+   - Em **Escopos** (ou "Acesso a dados"), adicione `.../auth/gmail.send`.
+   - Em **Usuários de teste** (ou "Público"), adicione o seu Gmail e o de cada
+     pessoa que vai usar no piloto (até 100).
+4. Em **APIs e serviços › Credenciais › Criar credenciais › ID do cliente OAuth**:
+   - Tipo: **Aplicativo da Web**.
+   - **URIs de redirecionamento autorizados** — adicione os dois:
+     - `https://handback-six.vercel.app/api/gmail/retorno`
+     - `https://handback-handback.vercel.app/api/gmail/retorno`
+   - Toque em **Criar**. Aparecem o **ID do cliente** e a **Chave secreta do cliente**.
+5. Na Vercel, projeto **handback** › **Settings › Environment Variables**, cadastre:
+
+   | Nome | Valor |
+   |---|---|
+   | `GOOGLE_CLIENT_ID` | o ID do cliente (termina em `.apps.googleusercontent.com`) |
+   | `GOOGLE_CLIENT_SECRET` | a chave secreta do cliente |
+
+6. Em **Deployments**, toque nos **⋯** do mais recente › **Redeploy**.
+
+Pronto: no painel aparece **Conectar meu Gmail**. Enquanto o app estiver "em teste",
+o Google mostra um aviso de "app não verificado" (toque em **Continuar**) e só as
+contas cadastradas em "Usuários de teste" conseguem conectar. Para liberar para
+qualquer pessoa, peça a **verificação** do app na mesma tela (gratuita; o Google
+pode levar alguns dias ou semanas).
+
+A conexão fica guardada **cifrada** no banco e só o servidor consegue lê-la. Se a
+chave secreta do Supabase for trocada, cada pessoa precisa conectar o Gmail de novo.
+Para desconectar, use **Desconectar** no painel (o Handback também avisa o Google
+para apagar a permissão).

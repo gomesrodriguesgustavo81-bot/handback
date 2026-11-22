@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState, useTransition, startTransition, ty
 import { useRouter } from "next/navigation";
 import { analisarComIA, aprovarProntas, reabrirDevolutiva, revisarDevolutiva } from "@/app/app/[slug]/entregas/acoes";
 import { CONCEITOS_REVISAO, ESTILO_CONCEITO } from "./conceito";
+import { BotaoEnviar } from "./envio";
 import type { Resultado } from "./form-acao";
 import { Aviso, Botao, LinkBotao } from "./ui";
 
@@ -147,6 +148,10 @@ export function FolhaDevolutiva({
   destinatario,
   proxima,
   painel,
+  envio,
+  gmail,
+  destinos,
+  conectarHref,
   children,
 }: {
   slug: string;
@@ -159,6 +164,11 @@ export function FolhaDevolutiva({
   destinatario: string;
   proxima: string | null;
   painel: string;
+  envio: { enviada: boolean; em: string; para: string[]; erro: string };
+  /** configurado: o servidor tem as chaves do Google; email: Gmail conectado (null = não conectado). */
+  gmail: { configurado: boolean; email: string | null };
+  destinos: { para: string[]; copia: string[] };
+  conectarHref: string;
   children: ReactNode;
 }) {
   const router = useRouter();
@@ -247,9 +257,36 @@ export function FolhaDevolutiva({
             />
           </label>
           {aprovada ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <BotaoCopiar texto={devolutiva} />
-              <span className="text-xs text-suave">O envio por e-mail chega na próxima fase.</span>
+            <div className="flex flex-col gap-2 rounded-xl border border-borda p-3 text-sm">
+              {envio.enviada ? (
+                <p className="break-words font-semibold text-marca-forte">
+                  Enviada em {envio.em} para {envio.para.join(", ")}
+                </p>
+              ) : (
+                <p className="break-words">
+                  <span className="text-suave">Vai para:</span> {destinos.para.join(", ") || "ninguém (cadastre os e-mails dos integrantes)"}
+                  {destinos.copia.length ? (
+                    <>
+                      {" "}
+                      <span className="text-suave">· cópia:</span> {destinos.copia.join(", ")}
+                    </>
+                  ) : null}
+                </p>
+              )}
+              {envio.erro ? <Aviso tipo="erro">O último envio falhou: {envio.erro}</Aviso> : null}
+              <p className="text-xs text-suave">
+                {!gmail.configurado
+                  ? "O envio por e-mail ainda não foi configurado no servidor. Por enquanto, copie o texto."
+                  : gmail.email
+                    ? `Sai do seu Gmail (${gmail.email}), na mesma conversa do e-mail da entrega.`
+                    : "Conecte seu Gmail para enviar daqui. O Handback só envia; não lê sua caixa."}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <BotaoCopiar texto={devolutiva} />
+                {envio.enviada && gmail.configurado && gmail.email ? (
+                  <BotaoEnviar slug={slug} entregaId={entregaId} texto="Enviar de novo" variante="secundario" conectarHref={conectarHref} perguntar="Enviar esta devolutiva de novo?" />
+                ) : null}
+              </div>
             </div>
           ) : (
             <span className="text-xs text-suave">Nada é enviado sem a sua aprovação.</span>
@@ -260,7 +297,7 @@ export function FolhaDevolutiva({
 
       {children}
 
-      <div className="sticky bottom-0 z-10 -mx-4 grid grid-cols-2 gap-2 border-t border-borda bg-cartao px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:mx-0 sm:rounded-2xl sm:border">
+      <div className="sticky bottom-0 z-10 -mx-4 grid grid-cols-2 items-start gap-2 border-t border-borda bg-cartao px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:mx-0 sm:rounded-2xl sm:border">
         {aprovada ? (
           <>
             <Botao
@@ -276,9 +313,18 @@ export function FolhaDevolutiva({
             >
               {reabrindo ? "Reabrindo…" : "Reabrir para editar"}
             </Botao>
-            <LinkBotao href={proxima ?? painel}>
-              {proxima ? "Seguinte →" : "Voltar ao painel"}
-            </LinkBotao>
+            {!envio.enviada && gmail.configurado && gmail.email && destinos.para.length ? (
+              <BotaoEnviar slug={slug} entregaId={entregaId} conectarHref={conectarHref} />
+            ) : !envio.enviada && gmail.configurado && !gmail.email ? (
+              <a
+                href={conectarHref}
+                className="inline-flex min-h-11 items-center justify-center rounded-xl bg-marca px-4 font-medium text-sobre-marca hover:bg-marca-forte"
+              >
+                Conectar meu Gmail
+              </a>
+            ) : (
+              <LinkBotao href={proxima ?? painel}>{proxima ? "Seguinte →" : "Voltar ao painel"}</LinkBotao>
+            )}
           </>
         ) : (
           <>
@@ -295,7 +341,7 @@ export function FolhaDevolutiva({
   );
 }
 
-export function BotaoCopiar({ texto }: { texto: string }) {
+export function BotaoCopiar({ texto, rotulo = "Copiar devolutiva" }: { texto: string; rotulo?: string }) {
   const [copiado, setCopiado] = useState(false);
   return (
     <Botao
@@ -311,7 +357,7 @@ export function BotaoCopiar({ texto }: { texto: string }) {
         }
       }}
     >
-      {copiado ? "Copiado ✓" : "Copiar devolutiva"}
+      {copiado ? "Copiado ✓" : rotulo}
     </Botao>
   );
 }

@@ -23,7 +23,7 @@ export default async function LayoutEmpresa({ children, params }: LayoutProps<"/
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 print:hidden">
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-2xl font-semibold">{empresa.nome}</h1>
           <Selo>{FRENTES[empresa.frente].curto}</Selo>
