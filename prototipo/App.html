@@ -1,0 +1,1706 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<style>
+  :root {
+    color-scheme: light;
+    --bg:#f8fafc; --surface:#fff; --border:#e2e8f0; --border2:#cbd5e1;
+    --text:#0f172a; --text2:#334155; --muted:#64748b; --faint:#94a3b8; --primary:#0f172a;
+    --exc-bg:#dcfce7; --exc-tx:#166534; --bom-bg:#dbeafe; --bom-tx:#1e40af;
+    --reg-bg:#fef3c7; --reg-tx:#92400e; --ruim-bg:#fee2e2; --ruim-tx:#991b1b;
+    --pend-bg:#f1f5f9; --pend-tx:#64748b;
+    --ok-bg:#dcfce7; --ok-tx:#166534; --parc-bg:#fef3c7; --parc-tx:#92400e; --nao-bg:#fee2e2; --nao-tx:#991b1b;
+    --azul-bg:#e0e7ff; --azul-tx:#3730a3; --lar-bg:#fff7ed; --lar-tx:#9a3412;
+    --radius:14px; --nav-h:62px; --safe-b:env(safe-area-inset-bottom,0px);
+  }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; background:var(--bg); color:var(--text); }
+  body { font-family:'Segoe UI',Roboto,system-ui,-apple-system,sans-serif; font-size:15px; line-height:1.45; }
+  button,select { font:inherit; color:inherit; }
+  :focus-visible { outline:2px solid #6366f1; outline-offset:2px; }
+  [hidden] { display:none !important; }
+  .wrap { max-width:1100px; margin:0 auto; padding:0 16px; }
+
+  header { position:sticky; top:0; z-index:10; background:rgba(248,250,252,.94); backdrop-filter:blur(8px); border-bottom:1px solid var(--border); }
+  .topo { display:flex; align-items:center; gap:12px; padding:12px 0 8px; }
+  .topo .t { flex:1; min-width:0; }
+  .eyebrow { font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+  h1 { margin:2px 0 0; font-size:19px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .icone { width:40px; height:40px; border-radius:12px; border:1px solid var(--border); background:var(--surface); display:inline-flex; align-items:center; justify-content:center; cursor:pointer; flex:none; }
+  .filtro { display:flex; gap:8px; align-items:center; padding-bottom:12px; }
+  select { flex:1; min-width:0; appearance:none; -webkit-appearance:none; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:10px 12px; font-weight:600; font-size:14px; }
+  .pill { font-size:12px; font-weight:700; border-radius:999px; padding:5px 10px; white-space:nowrap; display:inline-flex; align-items:center; }
+
+  main.wrap { padding-top:16px; padding-bottom:calc(var(--nav-h) + 40px + var(--safe-b)); }
+  .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+  .kpi { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px; }
+  .kpi .r { font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); }
+  .kpi .v { font-size:24px; font-weight:800; margin-top:2px; }
+  @media (max-width:420px) { .kpis { grid-template-columns:repeat(2,1fr); } }
+
+  .titulo-secao { font-size:12px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:20px 0 10px; }
+  .lista { display:grid; gap:12px; }
+  @media (min-width:720px) { .lista { grid-template-columns:repeat(2,1fr); } }
+  @media (min-width:1050px) { .lista { grid-template-columns:repeat(3,1fr); } }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; cursor:pointer; display:flex; flex-direction:column; gap:8px; }
+  .card:hover { border-color:var(--border2); box-shadow:0 4px 16px rgba(15,23,42,.06); }
+  .linha { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+  .nome { font-weight:700; font-size:16px; }
+  .sub { font-size:12.5px; color:var(--muted); }
+  .rodape-card { display:flex; justify-content:space-between; align-items:center; gap:8px; padding-top:10px; border-top:1px solid var(--border); flex-wrap:wrap; }
+
+  .b-EXCELENTE{background:var(--exc-bg);color:var(--exc-tx)} .b-BOM{background:var(--bom-bg);color:var(--bom-tx)}
+  .b-REGULAR{background:var(--reg-bg);color:var(--reg-tx)} .b-RUIM{background:var(--ruim-bg);color:var(--ruim-tx)}
+  .b-PENDENTE{background:var(--pend-bg);color:var(--pend-tx)}
+  .badge { border-radius:999px; padding:4px 10px; font-size:11.5px; font-weight:800; letter-spacing:.05em; white-space:nowrap; }
+  .st-sem{background:var(--pend-bg);color:var(--faint)} .st-rec{background:var(--azul-bg);color:var(--azul-tx)}
+  .st-ana{background:var(--lar-bg);color:var(--lar-tx)} .st-apr{background:var(--azul-bg);color:var(--azul-tx)}
+  .st-env{background:var(--ok-bg);color:var(--ok-tx)} .st-atr{background:var(--nao-bg);color:var(--nao-tx)}
+  .sit-recebendo{background:var(--ok-bg);color:var(--ok-tx)} .sit-futura{background:var(--azul-bg);color:var(--azul-tx)}
+  .sit-encerrada,.sit-sem{background:var(--pend-bg);color:var(--muted)}
+
+  .itens { list-style:none; margin:0; padding:0; }
+  .itens li { display:flex; gap:10px; align-items:flex-start; padding:8px 0; border-bottom:1px solid var(--border); font-size:14px; }
+  .itens li:last-child { border-bottom:0; }
+  .ic { flex:none; width:22px; text-align:center; }
+  .ev { display:block; font-size:12.5px; color:var(--muted); margin-top:2px; }
+  .caixa { background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:12px 14px; font-size:14px; color:var(--text2); white-space:pre-line; }
+
+  nav { position:fixed; left:0; right:0; bottom:0; z-index:20; height:calc(var(--nav-h) + var(--safe-b)); padding-bottom:var(--safe-b); background:var(--surface); border-top:1px solid var(--border); }
+  nav .wrap { display:flex; height:var(--nav-h); }
+  .nav { flex:1; border:0; background:none; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:11.5px; font-weight:600; color:var(--faint); cursor:pointer; }
+  .nav.ativo { color:var(--text); }
+  .nav span:first-child { font-size:20px; line-height:1; }
+
+  .fundo { position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:30; opacity:0; pointer-events:none; transition:opacity .2s; }
+  .fundo.aberto { opacity:1; pointer-events:auto; }
+  .folha { position:fixed; left:0; right:0; bottom:0; z-index:31; background:var(--surface); border-radius:20px 20px 0 0; max-height:92vh; display:flex; flex-direction:column; transform:translateY(105%); transition:transform .25s ease; box-shadow:0 -8px 40px rgba(15,23,42,.18); }
+  .folha.aberta { transform:translateY(0); }
+  @media (min-width:900px) { .folha { left:auto; top:0; width:560px; max-height:none; border-radius:0; transform:translateX(105%); } .folha.aberta { transform:translateX(0); } .alca { display:none; } }
+  .folha-cab { padding:10px 20px 12px; border-bottom:1px solid var(--border); }
+  .alca { width:40px; height:4px; border-radius:4px; background:var(--border2); margin:0 auto 10px; }
+  .folha-cab .linha { align-items:center; }
+  .folha-cab h2 { margin:0; font-size:19px; font-weight:800; flex:1; min-width:0; }
+  .folha-corpo { overflow-y:auto; padding:8px 20px calc(24px + var(--safe-b)); }
+
+  .hist { list-style:none; margin:0; padding:0; }
+  .hist li { padding:12px 0; border-bottom:1px solid var(--border); }
+  .hist li:last-child { border-bottom:0; }
+  .vazio { text-align:center; color:var(--muted); padding:36px 16px; }
+  .vazio b { display:block; color:var(--text); font-size:16px; margin-bottom:4px; }
+  .esq { height:120px; border-radius:var(--radius); background:linear-gradient(90deg,#eef2f7 25%,#f6f8fb 37%,#eef2f7 63%); background-size:400% 100%; animation:br 1.3s ease infinite; }
+  @keyframes br { 0%{background-position:100% 50%} 100%{background-position:0 50%} }
+  .versao { text-align:center; font-size:11px; color:var(--faint); margin-top:28px; }
+  .btn { border:1px solid var(--border); background:var(--surface); border-radius:12px; padding:11px 16px; font-weight:700; font-size:14.5px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:8px; }
+  .btn-prim { background:var(--primary); color:#fff; border-color:var(--primary); }
+  .btn-peq { padding:7px 12px; font-size:13px; border-radius:10px; }
+  .btn[disabled] { opacity:.5; cursor:wait; }
+  .acoes-topo { display:flex; gap:10px; margin-top:12px; }
+  .acoes-topo .btn { flex:1; }
+  #acoes-aprovacao { flex-wrap:wrap; }
+  #acoes-aprovacao .btn { flex:1 1 calc(50% - 10px); min-width:0; white-space:normal; }
+  #acoes-aprovacao .btn-prim, #acoes-aprovacao .btn.dica { flex-basis:100%; }
+  .triagem { background:var(--lar-bg); border:1px solid #fed7aa; border-radius:var(--radius); padding:14px 16px; margin-top:16px; }
+  .triagem h3 { margin:0 0 4px; font-size:15px; color:var(--lar-tx); }
+  .tri-item { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:12px; margin-top:10px; }
+  .tri-item .botoes { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  .toast { position:fixed; left:50%; transform:translateX(-50%); bottom:calc(var(--nav-h) + 16px + var(--safe-b)); z-index:50; background:var(--primary); color:#fff; padding:10px 16px; border-radius:12px; font-size:14px; font-weight:600; max-width:calc(100% - 32px); white-space:pre-line; }
+  .toast.erro-t { background:var(--nao-tx); }
+  .jornada { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-top:8px; }
+  .seta { color:var(--faint); font-size:13px; }
+  .interna { background:#f8fafc; border:1px dashed var(--border2); }
+  .carregando { position:fixed; inset:0; z-index:60; background:rgba(248,250,252,.88); display:flex; align-items:center; justify-content:center; padding:24px; }
+  .carregando .cx { background:#fff; border:1px solid var(--border); border-radius:18px; padding:22px; max-width:320px; text-align:center; }
+  .spin { width:34px; height:34px; border-radius:50%; border:3px solid var(--border); border-top-color:var(--primary); animation:gira .8s linear infinite; margin:0 auto 12px; }
+  @keyframes gira { to { transform:rotate(360deg); } }
+  .modal-fundo { position:fixed; inset:0; z-index:70; background:rgba(15,23,42,.5); display:flex; align-items:center; justify-content:center; padding:16px; }
+  .modal { background:#fff; border-radius:18px; width:100%; max-width:440px; padding:20px; box-shadow:0 20px 60px rgba(15,23,42,.3); }
+  .modal h3 { margin:0 0 6px; font-size:18px; }
+  .modal label { display:block; font-size:13px; font-weight:700; margin:12px 0 4px; color:var(--text2); }
+  .modal select { width:100%; }
+  .modal .botoes { display:flex; gap:10px; margin-top:18px; }
+  .modal .botoes .btn { flex:1; }
+  .btn-perigo { color:var(--nao-tx); border-color:#fecaca; }
+  textarea.fb { width:100%; min-height:180px; border:1px solid var(--border2); border-radius:12px; padding:12px 14px; font:inherit; font-size:14.5px; line-height:1.55; resize:vertical; }
+  .linha-fb { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .salvo { font-size:12px; color:var(--muted); font-weight:600; text-transform:none; letter-spacing:0; }
+  .aprovar-box { display:flex; gap:10px; align-items:center; justify-content:space-between; border:1px solid var(--border); border-radius:12px; padding:12px 14px; margin-top:12px; flex-wrap:wrap; }
+  .usuario { font-size:11px; color:var(--muted); }
+  .barra { display:flex; height:12px; border-radius:999px; overflow:hidden; background:var(--pend-bg); margin:8px 0 4px; }
+  .barra span { display:block; height:100%; }
+  .legenda { display:flex; flex-wrap:wrap; gap:6px; }
+  .falta { display:flex; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); font-size:14px; }
+  .falta:last-child { border-bottom:0; }
+  .link-btn { background:none; border:0; color:var(--text2); font-weight:600; font-size:13px; cursor:pointer; text-decoration:underline; text-underline-offset:3px; padding:4px 0; }
+  .form .campo { margin-bottom:14px; }
+  .form label { display:block; font-size:13px; font-weight:700; color:var(--text2); margin-bottom:4px; }
+  .form input, .form textarea, .form select { width:100%; border:1px solid var(--border2); border-radius:10px; padding:10px 12px; font:inherit; font-size:14.5px; background:#fff; }
+  .form textarea { min-height:90px; resize:vertical; line-height:1.5; }
+  .form input[type=checkbox] { width:auto; flex:none; }
+  .form .ajuda { font-size:12px; color:var(--muted); margin-top:4px; }
+  .grade2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .bloco { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:14px; }
+  .bloco h3 { margin:0 0 4px; font-size:16px; }
+  .prof { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+  .prof:last-child { border-bottom:0; }
+  .girando { animation:gira .8s linear infinite; }
+  a.btn { color:inherit; text-decoration:none; }
+  .pilha { display:grid; gap:10px; }
+  .versao div:first-child { font-weight:600; color:var(--muted); }
+  .btn[disabled].dica { opacity:.55; cursor:not-allowed; }
+  .cal { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px; margin-bottom:14px; }
+  .cal-cab { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+  .cal-cab b { font-size:17px; text-transform:capitalize; }
+  .cal-cab .icone { width:38px; height:38px; }
+  .cal-grade { display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:3px; }
+  .cal-sem { font-size:11px; font-weight:700; color:var(--faint); text-align:center; padding:4px 0; text-transform:uppercase; }
+  .cal-dia { min-height:62px; border-radius:9px; padding:3px; background:var(--bg, #f8fafc); border:1px solid transparent; cursor:pointer; display:flex; flex-direction:column; gap:2px; overflow:hidden; text-align:left; font:inherit; color:inherit; }
+  .cal-dia.fora { opacity:.35; }
+  .cal-dia .n { font-size:12.5px; font-weight:700; padding:1px 3px; }
+  .cal-dia.hoje .n { background:var(--primary); color:#fff; border-radius:6px; align-self:flex-start; }
+  .cal-dia.sel { border-color:var(--primary); }
+  .ev { font-size:10.5px; font-weight:700; border-radius:5px; padding:1px 4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.4; }
+  .ev-aula { background:var(--azul-bg); color:var(--azul-tx); }
+  .ev-prazo { background:var(--nao-bg); color:var(--nao-tx); }
+  .ev-dev { background:var(--lar-bg); color:var(--lar-tx); }
+  .ev-extra { background:var(--ok-bg); color:var(--ok-tx); }
+  .cal-acoes { display:flex; gap:6px; margin-left:auto; flex-shrink:0; }
+  .cal-leg { display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; font-size:12px; color:var(--muted); }
+  .cal-leg span { display:inline-flex; align-items:center; gap:4px; }
+  .cal-leg i { width:10px; height:10px; border-radius:3px; display:inline-block; }
+  .cal-detalhe { margin-top:12px; border-top:1px solid var(--border); padding-top:10px; }
+  .cal-detalhe .item { display:flex; gap:10px; align-items:flex-start; padding:8px 0; cursor:pointer; }
+  .cal-detalhe .item + .item { border-top:1px dashed var(--border); }
+  .ag-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; cursor:pointer; }
+  .ag-card.hoje { border-color:var(--primary); box-shadow:0 0 0 2px color-mix(in srgb, var(--primary) 20%, transparent); }
+  .ag-card.passada { opacity:.72; }
+  .ag-datas { display:grid; gap:4px; margin:10px 0; font-size:14px; }
+  .ag-datas .d { display:flex; gap:8px; align-items:baseline; }
+  .ag-datas .d b { min-width:92px; font-variant-numeric:tabular-nums; }
+  .ag-datas .d.lembrete { color:var(--muted); }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .ag-prox { background:var(--azul-bg); color:var(--azul-tx); border-radius:var(--radius); padding:12px 14px; margin-bottom:14px; font-size:14px; }
+  .ag-prox b { display:block; font-size:15px; margin-bottom:2px; }
+  .erro { background:var(--nao-bg); color:var(--nao-tx); border-radius:12px; padding:12px 14px; font-size:14px; }
+</style>
+</head>
+<body data-k="<?= k ?>">
+<header>
+  <div class="wrap">
+    <div class="topo">
+      <div class="t"><div class="eyebrow" id="eyebrow">Consultoria</div><h1 id="titulo">Carregando…</h1></div>
+      <button class="icone" id="btn-atualizar" aria-label="Atualizar">⟳</button>
+    </div>
+    <div class="filtro" id="filtro">
+      <select id="sel-aula" aria-label="Aula"></select>
+      <span class="pill" id="sit-aula" hidden></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section id="v-painel">
+    <div class="kpis" id="kpis"></div>
+    <div class="acoes-topo">
+      <button class="btn" id="btn-buscar">📥 Buscar entregas</button>
+      <button class="btn btn-prim" id="btn-analisar">🤖 Analisar</button>
+    </div>
+    <div class="acoes-topo" id="acoes-aprovacao"></div>
+    <div id="triagem"></div>
+    <div class="titulo-secao">Equipes nesta aula</div>
+    <div class="lista" id="lista"><div class="esq"></div><div class="esq"></div><div class="esq"></div></div>
+  </section>
+  <section id="v-aulas" hidden>
+    <div class="acoes-topo" style="margin-top:0;margin-bottom:12px"><button class="btn btn-prim" id="btn-nova-aula">+ Nova aula</button></div>
+    <div class="lista" id="lista-aulas"></div>
+  </section>
+  <section id="v-equipes" hidden>
+    <div class="acoes-topo" style="margin-top:0;margin-bottom:12px"><button class="btn btn-prim" id="btn-nova-equipe">+ Nova equipe</button></div>
+    <div class="lista" id="lista-equipes"></div>
+  </section>
+  <section id="v-agenda" hidden><div id="agenda-topo"></div><div id="agenda-cal"></div><div class="titulo-secao">Por aula</div><div class="lista" id="lista-agenda"></div></section>
+  <section id="v-ajustes" hidden><div id="ajustes"></div></section>
+  <div class="versao" id="versao"></div>
+</main>
+
+<nav>
+  <div class="wrap">
+    <button class="nav ativo" data-aba="painel"><span>▦</span><span>Painel</span></button>
+    <button class="nav" data-aba="aulas"><span>☰</span><span>Aulas</span></button>
+    <button class="nav" data-aba="equipes"><span>👥</span><span>Equipes</span></button>
+    <button class="nav" data-aba="agenda"><span>📅</span><span>Agenda</span></button>
+    <button class="nav" data-aba="ajustes" id="nav-ajustes" hidden><span>⚙️</span><span>Ajustes</span></button>
+  </div>
+</nav>
+
+<div id="camada-toast"></div>
+<div id="camada-carregando"></div>
+<div id="camada-modal"></div>
+<div class="fundo" id="fundo"></div>
+<aside class="folha" id="folha" role="dialog" aria-modal="true" aria-labelledby="folha-titulo">
+  <div class="folha-cab"><div class="alca"></div>
+    <div class="linha"><h2 id="folha-titulo"></h2><span id="folha-extra"></span><button class="icone" id="btn-fechar" aria-label="Fechar">✕</button></div>
+  </div>
+  <div class="folha-corpo" id="folha-corpo"></div>
+</aside>
+
+<script>
+/* ===== Estado e utilitários ===== */
+const E = { dados: null, aulaId: '', aba: 'painel', salvarPendente: null };
+/** Link pessoal (vazio quando é o assistente). */
+const TOKEN = /^[a-zA-Z0-9]*$/.test(document.body.dataset.k || '') ? (document.body.dataset.k || '') : '';
+const $ = (id) => document.getElementById(id);
+
+/** Chama o servidor. Fora do Google, explica como abrir corretamente. */
+function api(nome, ...args) {
+  return new Promise((ok, falha) => {
+    if (!(window.google && google.script && google.script.run)) {
+      return falha(new Error('Abra o app pelo link do Apps Script (termina em /dev ou /exec), não pelo arquivo no computador.'));
+    }
+    google.script.run
+      .withSuccessHandler((txt) => { let r; try { r = JSON.parse(txt); } catch (e) { return falha(new Error('Resposta inválida do servidor.')); } r.ok ? ok(r.dados) : falha(new Error(r.erro)); })
+      .withFailureHandler((e) => falha(new Error((e && e.message) || String(e)))).apiRun(TOKEN, nome, args);
+  });
+}
+
+/** Cria elementos com segurança (texto sempre como texto). */
+function h(tag, attrs, ...filhos) {
+  const el = document.createElement(tag);
+  Object.entries(attrs || {}).forEach(([k, v]) => {
+    if (v === null || v === undefined || v === false) return;
+    if (k === 'class') el.className = v;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v === true ? '' : v);
+  });
+  filhos.flat(Infinity).forEach((f) => { if (f !== null && f !== undefined && f !== false) el.append(f.nodeType ? f : document.createTextNode(String(f))); });
+  return el;
+}
+
+const CONCEITOS = ['EXCELENTE', 'BOM', 'REGULAR', 'RUIM'];
+const badge = (c) => h('span', { class: 'badge b-' + (CONCEITOS.includes(c) ? c : 'PENDENTE') }, CONCEITOS.includes(c) ? c : 'PENDENTE');
+const SIT = { recebendo: '● Recebendo entregas', futura: 'Ainda não começou', encerrada: 'Prazo encerrado', 'sem datas': 'Sem datas' };
+const pillSit = (s) => h('span', { class: 'pill sit-' + (s === 'sem datas' ? 'sem' : s) }, SIT[s] || s);
+const ICONE = { ENTREGUE: '✅', PARCIAL: '🟡', NAO_ENTREGUE: '❌' };
+
+/** Situação de uma equipe numa aula, a partir da última entrega dela. */
+function situacao(ent) {
+  if (!ent) return { txt: 'Sem entrega', cls: 'st-sem' };
+  const s = (ent.status || '').toLowerCase();
+  if (s.startsWith('enviad') || s.startsWith('📨')) return { txt: '📨 Devolutiva enviada', cls: 'st-env' };
+  if (s.startsWith('aprovad')) return { txt: '✅ Aprovada', cls: 'st-apr' };
+  if (ent.conceito) return { txt: '⏳ Aguardando aprovação', cls: 'st-ana' };
+  return { txt: '📥 Recebida', cls: 'st-rec' };
+}
+
+/** Substituídas, ignoradas e "possíveis" (ainda não confirmadas) não contam. */
+const contaComoEntrega = (e) => !/substitu|ignorad|poss[ií]vel/i.test(e.status || '');
+
+/** Última entrega da equipe naquela aula. */
+function entregaDe(idEquipe, idAula) {
+  const lista = E.dados.entregas.filter((e) => e.idEquipe === idEquipe && e.idAula === idAula && contaComoEntrega(e));
+  return lista.length ? lista[lista.length - 1] : null;
+}
+
+/* ===== Carregar ===== */
+async function carregar() {
+  try {
+    E.dados = await api('apiInicio');
+    if (!E.aulaId || !E.dados.aulas.some((a) => a.id === E.aulaId)) {
+      E.aulaId = E.dados.aulaDaVez || (E.dados.aulas[0] && E.dados.aulas[0].id) || '';
+    }
+    $('nav-ajustes').hidden = !(E.dados.usuario || {}).dono;
+    const u = E.dados.usuario || {};
+    $('versao').replaceChildren(
+      h('div', null, '© ' + new Date().getFullYear() + ' · Avaliação Contínua de Entregas · Todos os direitos reservados'),
+      h('div', { style: 'margin-top:2px' }, 'Conectado como ' + (u.nome || '?')));
+    E.versaoTecnica = E.dados.versao + ' · App 12';
+    carregarDrive();
+    if (!E.agenda) carregarAgenda().catch(() => null);
+    render();
+    carregarTriagem();
+  } catch (e) {
+    $('titulo').textContent = 'Consultoria';
+    $('lista').replaceChildren(h('div', { class: 'erro', style: 'grid-column:1/-1' }, '⚠️ ' + e.message));
+  }
+}
+
+/** ⟳ Recarrega tudo (painel, aulas, equipes, ajustes, "para confirmar") e avisa. */
+async function atualizarTudo() {
+  const b = $('btn-atualizar');
+  if (b.disabled) return;
+  b.disabled = true;
+  b.classList.add('girando');
+  try {
+    if (E.salvarPendente) { try { await E.salvarPendente(); } catch (e) { /* aviso já mostrado */ } }
+    await Promise.all([carregar(), E.gestao || E.aba !== 'painel' ? carregarGestao().catch(() => null) : null, carregarAgenda().catch(() => null)]);
+    render();
+    const agora = new Date();
+    aviso('✅ Atualizado às ' + String(agora.getHours()).padStart(2, '0') + ':' + String(agora.getMinutes()).padStart(2, '0'));
+  } catch (e) {
+    aviso('Erro ao atualizar: ' + e.message, true);
+  } finally {
+    b.disabled = false;
+    b.classList.remove('girando');
+  }
+}
+
+function render() {
+  if (E.aba === 'painel') renderPainel();
+  if (E.aba === 'aulas') renderAulas();
+  if (E.aba === 'equipes') renderEquipes();
+  if (E.aba === 'ajustes') renderAjustes();
+  if (E.aba === 'agenda') renderAgenda();
+}
+
+/* ===== Painel ===== */
+/** Botão Analisar: conta só as entregas recebidas da aula selecionada. */
+function atualizarBotaoAnalisar() {
+  const pend = E.dados.entregas.filter((e) => e.status === 'Recebida' && e.idAula === E.aulaId).length;
+  const outras = E.dados.entregas.filter((e) => e.status === 'Recebida' && e.idAula !== E.aulaId).length;
+  $('btn-analisar').textContent = pend ? '🤖 Analisar (' + pend + ')' : '🤖 Analisar';
+  $('btn-analisar').disabled = !pend && !outras;
+}
+
+function renderPainel() {
+  const d = E.dados;
+  atualizarBotaoAnalisar();
+  renderTriagem();
+  const aula = d.aulas.find((a) => a.id === E.aulaId);
+  $('eyebrow').textContent = d.professor ? 'Consultoria · ' + d.professor : 'Consultoria';
+  $('titulo').textContent = aula ? 'Aula ' + aula.numero + ' — ' + aula.titulo : 'Cadastre uma aula';
+  $('sel-aula').replaceChildren(...d.aulas.map((a) => h('option', { value: a.id, selected: a.id === E.aulaId ? 'selected' : null }, 'Aula ' + a.numero + ' — ' + a.titulo)));
+  $('sit-aula').hidden = !aula;
+  if (aula) $('sit-aula').replaceWith(Object.assign(pillSit(aula.situacao), { id: 'sit-aula' }));
+
+  if (!aula || !d.equipes.length) {
+    $('kpis').replaceChildren();
+    $('lista').replaceChildren(h('div', { class: 'vazio', style: 'grid-column:1/-1' }, h('b', null, 'Faltam dados'), 'Cadastre aulas e equipes na planilha.'));
+    return;
+  }
+  const ents = d.equipes.map((eq) => entregaDe(eq.id, aula.id));
+  const conta = (f) => ents.filter(f).length;
+  const kpis = [
+    ['Recebidas', conta(Boolean) + '/' + d.equipes.length],
+    ['Aguardando aprovação', conta((e) => e && situacao(e).cls === 'st-ana')],
+    ['Aprovadas', conta((e) => e && situacao(e).cls === 'st-apr')],
+    ['Devolutivas enviadas', conta((e) => e && situacao(e).cls === 'st-env')]
+  ];
+  $('kpis').replaceChildren(...kpis.map(([r, v]) => h('div', { class: 'kpi' }, h('div', { class: 'r' }, r), h('div', { class: 'v' }, v))));
+  const aguardando = ents.filter((e) => e && situacao(e).cls === 'st-ana').length;
+  const aprovadasTotal = d.entregas.filter((e) => /^aprovad/i.test(e.status || '') && e.idAula === E.aulaId).length;
+  const aprovadasOutras = d.entregas.filter((e) => /^aprovad/i.test(e.status || '') && e.idAula !== E.aulaId).length;
+  const u = d.usuario || {};
+  $('acoes-aprovacao').replaceChildren(...[
+    h('button', { class: 'btn', onclick: () => abrirRelatorio(aula) }, '📊 Relatório da aula'),
+    aguardando ? h('button', { class: 'btn', onclick: () => aprovarTodas(aula, aguardando) }, '✅ Aprovar todas (' + aguardando + ')') : null,
+    u.dono && aguardando ? h('button', { class: 'btn', onclick: () => avisarProfessor(aula) }, '📣 Avisar professor') : null,
+    u.dono && conta((e) => !e) && aula.situacao !== 'futura' ? h('button', { class: 'btn', onclick: () => abrirCobranca(aula) }, '📣 Cobrar quem não entregou (' + conta((e) => !e) + ')') : null,
+    u.dono ? (aprovadasTotal || aprovadasOutras
+      ? h('button', { class: 'btn btn-prim', onclick: abrirEnvio }, '📨 Enviar aprovadas (' + aprovadasTotal + (aprovadasOutras ? ' nesta aula · ' + aprovadasOutras + ' em outras' : '') + ')')
+      : h('button', { class: 'btn dica', disabled: 'disabled', title: 'Aprove as devolutivas primeiro (no detalhe de cada equipe).' }, '📨 Enviar aprovadas (0) · aprove primeiro')) : null].filter(Boolean));
+
+  $('lista').replaceChildren(...d.equipes.map((eq, i) => {
+    const ent = ents[i];
+    const sit = situacao(ent);
+    const ok = ent ? ent.checklist.filter((c) => c.status === 'ENTREGUE').length : 0;
+    return h('article', { class: 'card', tabindex: '0', onclick: () => abrirEquipe(eq.id), onkeydown: (ev) => { if (ev.key === 'Enter') abrirEquipe(eq.id); } },
+      h('div', { class: 'linha' }, h('div', null, h('div', { class: 'nome' }, eq.nome), eq.tema ? h('div', { class: 'sub' }, eq.tema) : null), badge(ent && ent.conceito)),
+      ent ? h('div', { class: 'sub' }, 'Enviado ' + ent.enviadoEm + (ent.checklist.length ? '  ·  ' + ok + '/' + ent.checklist.length + ' itens entregues' : '')) : h('div', { class: 'sub' }, 'Nenhuma entrega recebida ainda.'),
+      h('div', { class: 'rodape-card' }, h('span', { class: 'pill ' + sit.cls }, sit.txt), ent && ent.atraso ? h('span', { class: 'pill st-atr' }, 'Com atraso') : null));
+  }));
+}
+
+/* ===== Detalhe da equipe ===== */
+function abrirEquipe(idEquipe) {
+  const d = E.dados;
+  const eq = d.equipes.find((x) => x.id === idEquipe);
+  const aula = d.aulas.find((a) => a.id === E.aulaId);
+  const ent = aula ? entregaDe(eq.id, aula.id) : null;
+  $('folha-titulo').textContent = eq.nome;
+  $('folha-extra').replaceChildren(badge(ent && ent.conceito));
+
+  const secoes = [];
+  if (aula) {
+    secoes.push(h('div', { class: 'titulo-secao' }, 'Pedido · Aula ' + aula.numero + ' (prazo ' + aula.recebeAte + ')'));
+    const status = {};
+    (ent ? ent.checklist : []).forEach((c) => { status[c.item.toLowerCase()] = c; });
+    secoes.push(h('ul', { class: 'itens' }, aula.itens.map((it) => {
+      const c = status[it.toLowerCase()];
+      return h('li', null, h('span', { class: 'ic' }, c ? (ICONE[c.status] || '•') : '•'), h('span', null, it, c && c.evidencia ? h('span', { class: 'ev' }, c.evidencia) : null));
+    })));
+    if (aula.metricas) secoes.push(h('div', { class: 'titulo-secao' }, 'Métricas'), h('div', { class: 'caixa' }, aula.metricas));
+    secoes.push(h('div', { class: 'titulo-secao' }, 'Entrega'));
+    if (ent) {
+      const alvo = h('div', null, h('div', { class: 'esq', style: 'height:80px' }));
+      secoes.push(h('div', { class: 'caixa' }, 'Enviada por ' + ent.remetente + ' em ' + ent.enviadoEm + (ent.atraso ? ' (com atraso)' : '') + '\n' + situacao(ent).txt), alvo);
+      carregarDetalhes(ent.id, alvo);
+    } else {
+      secoes.push(h('div', { class: 'caixa' }, 'Nenhuma entrega recebida para esta aula. (Use 📥 Buscar entregas.)'));
+    }
+  }
+
+  // Histórico da equipe em todas as aulas (pedido x entrega)
+  secoes.push(h('div', { class: 'titulo-secao' }, 'Histórico da equipe'));
+  secoes.push(h('ul', { class: 'hist' }, d.aulas.map((a) => {
+    const e = entregaDe(eq.id, a.id);
+    const ok = e ? e.checklist.filter((c) => c.status === 'ENTREGUE').length : 0;
+    const total = e && e.checklist.length ? e.checklist.length : a.itens.length;
+    return h('li', null,
+      h('div', { class: 'linha' }, h('div', null, h('div', { style: 'font-weight:700' }, 'Aula ' + a.numero + ' — ' + a.titulo),
+        h('div', { class: 'sub' }, 'Pedido: ' + a.itens.length + ' item(ns)  ·  ' + (e ? (e.checklist.length ? 'Entregue: ' + ok + '/' + total : 'Recebida em ' + e.enviadoEm) : (a.situacao === 'futura' ? 'Ainda não começou' : 'Sem entrega')))),
+        badge(e && e.conceito)),
+      e && e.evolucao ? h('div', { class: 'sub', style: 'margin-top:4px' }, e.evolucao) : null);
+  })));
+
+  secoes.push(h('div', { class: 'acoes-topo' },
+    h('button', { class: 'btn', onclick: () => abrirFechamento(eq.id) }, '🏁 Fechamento do curso'),
+    linkDriveEquipe(eq.id) ? h('a', { class: 'btn', href: linkDriveEquipe(eq.id), target: '_blank', rel: 'noopener', style: 'text-decoration:none' }, '📁 Pasta no Drive') : null));
+  secoes.push(h('div', { class: 'titulo-secao' }, 'Integrantes'), h('div', { class: 'caixa' }, eq.emails.join('\n') || '(sem e-mails)'));
+  $('folha-corpo').replaceChildren(...secoes);
+  $('fundo').classList.add('aberto');
+  $('folha').classList.add('aberta');
+  $('folha-corpo').scrollTop = 0;
+}
+async function fechar() {
+  if (E.salvarPendente) { try { await E.salvarPendente(); } catch (e) { /* aviso já mostrado */ } }
+  E.salvarPendente = null;
+  $('fundo').classList.remove('aberto'); $('folha').classList.remove('aberta');
+}
+
+/* ===== Gestão: aulas, equipes e ajustes (Passo 9) ===== */
+async function carregarGestao() {
+  E.gestao = await api('apiGestao');
+  $('nav-ajustes').hidden = !E.gestao.dono;
+  return E.gestao;
+}
+
+/** Campo de formulário. tipo: texto | numero | data | longo | simnao | modo | status */
+function campo(id, rotulo, valor, tipo, ajuda) {
+  let el;
+  if (tipo === 'longo') el = h('textarea', { id });
+  else if (tipo === 'simnao' || tipo === 'modo' || tipo === 'status') {
+    const ops = tipo === 'simnao' ? ['SIM', 'NÃO'] : tipo === 'modo' ? ['CONFIRMAR', 'AUTOMÁTICO'] : ['Planejada', 'Recebendo', 'Analisada', 'Concluída'];
+    el = h('select', { id }, ops.map((o) => h('option', { value: o }, o)));
+  } else el = h('input', { id, type: tipo === 'data' ? 'date' : tipo === 'numero' ? 'number' : 'text' });
+  el.value = valor === undefined || valor === null ? '' : valor;
+  if ((tipo === 'simnao' || tipo === 'modo') && !el.value) el.selectedIndex = 0;
+  return h('div', { class: 'campo' }, h('label', { for: id }, rotulo), el, ajuda ? h('div', { class: 'ajuda' }, ajuda) : null);
+}
+const valor = (id) => ($(id) ? $(id).value : '');
+
+function abrirFolha(titulo, conteudo) {
+  E.salvarPendente = null;
+  $('folha-titulo').textContent = titulo;
+  $('folha-extra').replaceChildren();
+  $('folha-corpo').replaceChildren(...conteudo.filter(Boolean));
+  $('fundo').classList.add('aberto'); $('folha').classList.add('aberta');
+  $('folha-corpo').scrollTop = 0;
+}
+
+async function salvarCom(btn, fn, okMsg) {
+  btn.disabled = true;
+  try {
+    const r = await fn();
+    await fechar();
+    aviso(okMsg + (r && r.aviso ? '\n' + r.aviso : ''));
+    await Promise.all([carregar(), carregarGestao()]);
+    if (E.agenda) await carregarAgenda().catch(() => null);
+    render();
+    sincronizarAgendaSilencioso();
+  } catch (e) { btn.disabled = false; aviso('Erro: ' + e.message, true); }
+}
+
+function confirmarAcao(titulo, texto, rotulo, fn) {
+  $('camada-modal').replaceChildren(h('div', { class: 'modal-fundo' }, h('div', { class: 'modal', role: 'alertdialog', 'aria-modal': 'true' },
+    h('h3', null, titulo), h('div', { class: 'sub' }, texto),
+    h('div', { class: 'botoes' }, h('button', { class: 'btn', onclick: fecharModal }, 'Cancelar'),
+      h('button', { class: 'btn btn-perigo', onclick: (ev) => { fecharModal(); fn(ev); } }, rotulo)))));
+}
+
+/* --- Aulas --- */
+async function renderAulas() {
+  $('eyebrow').textContent = 'Planejamento';
+  $('titulo').textContent = 'Aulas';
+  if (!E.gestao) { $('lista-aulas').replaceChildren(h('div', { class: 'esq' })); try { await carregarGestao(); } catch (e) { return $('lista-aulas').replaceChildren(h('div', { class: 'erro' }, e.message)); } }
+  const sit = Object.fromEntries((E.dados.aulas || []).map((a) => [a.id, a.situacao]));
+  const aulas = E.gestao.aulas;
+  $('lista-aulas').replaceChildren(...(aulas.length ? aulas.map((a) => h('article', { class: 'card', tabindex: '0', onclick: () => editarAula(a) },
+    h('div', { class: 'linha' }, h('div', null, h('div', { class: 'nome' }, 'Aula ' + a.numero + ' — ' + a.titulo),
+      h('div', { class: 'sub' }, 'Entregas de ' + br(a.recebeDe) + ' a ' + br(a.recebeAte) + '  ·  ' + a.entregas + ' entrega(s)')), sit[a.id] ? pillSit(sit[a.id]) : null),
+    h('div', { class: 'sub' }, a.entregaveis.split('\n').filter((x) => x.trim()).length + ' item(ns) pedido(s)' + (a.metricas ? ' · com métricas' : ''))))
+    : [h('div', { class: 'vazio' }, h('b', null, 'Nenhuma aula'), 'Toque em "+ Nova aula".')]));
+}
+const br = (iso) => (iso ? iso.split('-').reverse().join('/') : '—');
+
+function editarAula(a, pre) {
+  const nova = !a;
+  a = a || Object.assign({ numero: (E.gestao.aulas.reduce((m, x) => Math.max(m, Number(x.numero) || 0), 0) + 1), titulo: '', status: 'Planejada' }, pre || {});
+  const btn = h('button', { class: 'btn btn-prim', style: 'flex:1' }, 'Salvar');
+  btn.addEventListener('click', () => salvarCom(btn, () => api('apiSalvarAula', {
+    id: a.id || '', numero: valor('f-num'), titulo: valor('f-tit'), dataAula: valor('f-data'), recebeDe: valor('f-de'), recebeAte: valor('f-ate'),
+    entregaveis: valor('f-ent'), metricas: valor('f-met'), observacoes: valor('f-obs'), status: valor('f-st')
+  }), nova ? '✅ Aula criada' : '✅ Aula salva'));
+  abrirFolha(nova ? 'Nova aula' : 'Aula ' + a.numero, [
+    h('div', { class: 'form', style: 'margin-top:12px' },
+      h('div', { class: 'grade2' }, campo('f-num', 'Nº', a.numero, 'numero'), campo('f-st', 'Status', a.status, 'status')),
+      campo('f-tit', 'Título', a.titulo, 'texto'),
+      campo('f-data', 'Data da aula', a.dataAula, 'data'),
+      h('div', { class: 'grade2' }, campo('f-de', 'Recebe entregas de', a.recebeDe, 'data'), campo('f-ate', 'Até (inclusive)', a.recebeAte, 'data')),
+      campo('f-ent', 'O que deve ser entregue', a.entregaveis, 'longo', 'Um item por linha. A IA confere cada item (✅ 🟡 ❌).'),
+      campo('f-met', 'Métricas / critérios de qualidade', a.metricas, 'longo'),
+      campo('f-obs', 'Observações para a IA (opcional)', a.observacoes, 'longo', 'Ex.: "Sem a pesquisa secundária, o conceito é RUIM."')),
+    h('div', { class: 'acoes-topo' }, btn),
+    nova ? null : h('div', { class: 'acoes-topo' },
+      h('button', { class: 'btn', onclick: () => instrucoesAula(a) }, '📋 Instruções para as equipes'),
+      h('button', { class: 'btn', onclick: async () => { await fechar(); E.aulaId = a.id; irPara('painel'); } }, '▦ Ver no painel')),
+    nova ? null : h('div', { class: 'acoes-topo' }, h('button', { class: 'btn btn-perigo', onclick: () => confirmarAcao('Excluir a Aula ' + a.numero + '?',
+      'Só é possível excluir aulas sem entregas registradas.', 'Excluir', async () => {
+        try { await api('apiExcluirAula', a.id); await fechar(); aviso('Aula excluída'); await Promise.all([carregar(), carregarGestao()]); render(); sincronizarAgendaSilencioso(); }
+        catch (e) { aviso('Erro: ' + e.message, true); }
+      }) }, '🗑️ Excluir aula'))
+  ]);
+}
+
+async function instrucoesAula(a) {
+  try {
+    const r = await api('apiInstrucoesAula', a.id);
+    const area = h('textarea', { style: 'width:100%;height:46vh;font-family:monospace;font-size:12.5px;border:1px solid var(--border2);border-radius:10px;padding:10px', readonly: true });
+    area.value = r.texto;
+    $('camada-modal').replaceChildren(h('div', { class: 'modal-fundo' }, h('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true', style: 'max-width:620px' },
+      h('h3', null, '📋 Instruções — Aula ' + a.numero), h('div', { class: 'sub', style: 'margin-bottom:8px' }, 'Copie e envie às equipes (e-mail, WhatsApp, Classroom…).'), area,
+      h('div', { class: 'botoes' }, h('button', { class: 'btn', onclick: fecharModal }, 'Fechar'),
+        h('button', { class: 'btn btn-prim', onclick: async () => {
+          try { await navigator.clipboard.writeText(r.texto); aviso('Texto copiado'); } catch (e) { area.select(); document.execCommand('copy'); aviso('Texto copiado'); }
+        } }, '📋 Copiar texto')))));
+  } catch (e) { aviso('Erro: ' + e.message, true); }
+}
+
+/* --- Equipes --- */
+async function renderEquipes() {
+  $('eyebrow').textContent = 'Cadastro';
+  $('titulo').textContent = 'Equipes';
+  if (!E.gestao) { $('lista-equipes').replaceChildren(h('div', { class: 'esq' })); try { await carregarGestao(); } catch (e) { return $('lista-equipes').replaceChildren(h('div', { class: 'erro' }, e.message)); } }
+  const eqs = E.gestao.equipes;
+  $('lista-equipes').replaceChildren(...(eqs.length ? eqs.map((q) => h('article', { class: 'card', tabindex: '0', onclick: () => editarEquipe(q) },
+    h('div', { class: 'linha' }, h('div', null, h('div', { class: 'nome' }, q.nome), q.tema ? h('div', { class: 'sub' }, q.tema) : null), h('span', { class: 'pill st-sem' }, q.entregas + ' entrega(s)')),
+    h('div', { class: 'sub' }, (q.emails ? q.emails.split(',').length : 0) + ' integrante(s): ' + q.emails)))
+    : [h('div', { class: 'vazio' }, h('b', null, 'Nenhuma equipe'), 'Toque em "+ Nova equipe".')]));
+}
+
+function editarEquipe(q) {
+  const nova = !q;
+  q = q || { nome: '', tema: '', emails: '', obs: '' };
+  const btn = h('button', { class: 'btn btn-prim', style: 'flex:1' }, 'Salvar');
+  btn.addEventListener('click', () => salvarCom(btn, () => api('apiSalvarEquipe', { id: q.id || '', nome: valor('q-nome'), tema: valor('q-tema'), emails: valor('q-em'), obs: valor('q-obs') }),
+    nova ? '✅ Equipe criada' : '✅ Equipe salva'));
+  abrirFolha(nova ? 'Nova equipe' : q.nome, [
+    h('div', { class: 'form', style: 'margin-top:12px' },
+      campo('q-nome', 'Nome da equipe', q.nome, 'texto', 'É o nome que vai no assunto padrão: [ENTREGA] Aula N - Nome da Equipe'),
+      campo('q-tema', 'Tema / projeto', q.tema, 'texto'),
+      campo('q-em', 'E-mails dos integrantes', q.emails, 'longo', 'Separados por vírgula. Qualquer um pode enviar a entrega; todos recebem a devolutiva. Inclua e-mails pessoais que eles usem.'),
+      campo('q-obs', 'Observações', q.obs, 'longo')),
+    h('div', { class: 'acoes-topo' }, btn),
+    nova || !linkDriveEquipe(q.id) ? null : h('div', { class: 'acoes-topo' },
+      h('a', { class: 'btn', href: linkDriveEquipe(q.id), target: '_blank', rel: 'noopener', style: 'text-decoration:none' }, '📁 Pasta no Drive')),
+    nova ? null : h('div', { class: 'acoes-topo' },
+      h('button', { class: 'btn', onclick: async () => { await fechar(); abrirEquipe(q.id); } }, '📜 Ver histórico'),
+      h('button', { class: 'btn btn-perigo', onclick: () => confirmarAcao('Excluir "' + q.nome + '"?', 'Só é possível excluir equipes sem entregas registradas.', 'Excluir', async () => {
+        try { await api('apiExcluirEquipe', q.id); await fechar(); aviso('Equipe excluída'); await Promise.all([carregar(), carregarGestao()]); render(); sincronizarAgendaSilencioso(); }
+        catch (e) { aviso('Erro: ' + e.message, true); }
+      }) }, '🗑️ Excluir'))
+  ]);
+}
+
+/* --- Ajustes (só o assistente) --- */
+async function renderAjustes() {
+  $('eyebrow').textContent = 'Configurações';
+  $('titulo').textContent = 'Ajustes';
+  const alvo = $('ajustes');
+  alvo.replaceChildren(h('div', { class: 'esq' }));
+  let g;
+  try { g = await carregarGestao(); } catch (e) { return alvo.replaceChildren(h('div', { class: 'erro' }, e.message)); }
+  if (!g.dono) return alvo.replaceChildren(h('div', { class: 'vazio' }, 'Só o assistente acessa os ajustes.'));
+
+  // Professores
+  const nome = h('input', { id: 'p-nome', type: 'text', placeholder: 'Ex.: Prof. Ricardo Alves' });
+  const email = h('input', { id: 'p-email', type: 'email', placeholder: 'ricardo@gmail.com' });
+  const enviar = h('input', { type: 'checkbox', id: 'p-env' }); enviar.checked = true;
+  const resultado = h('div');
+  const add = h('button', { class: 'btn btn-prim', style: 'width:100%' }, '+ Dar acesso');
+  add.addEventListener('click', async () => {
+    add.disabled = true;
+    try {
+      const r = await api('apiProfessores', 'adicionar', { nome: nome.value, email: email.value, enviar: enviar.checked });
+      sincronizarAgendaSilencioso();
+      await renderAjustes();
+      $('ajustes').prepend(h('div', { class: 'bloco', style: 'background:var(--azul-bg)' }, h('b', null, r.enviado ? '✅ Acesso criado e link enviado por e-mail.' : '✅ Acesso criado.'),
+        h('div', { class: 'sub', style: 'margin:6px 0' }, 'Link pessoal (aparece só agora; envie por um canal privado se não foi por e-mail):'),
+        h('div', { style: 'word-break:break-all;font-family:monospace;font-size:12px;background:#fff;border-radius:8px;padding:8px' }, r.link)));
+      window.scrollTo(0, 0);
+    } catch (e) { add.disabled = false; aviso('Erro: ' + e.message, true); }
+  });
+  const blocoProf = h('div', { class: 'bloco' }, h('h3', null, '👥 Professores'),
+    h('div', { class: 'sub', style: 'margin-bottom:8px' }, 'Cada professor tem um link pessoal (funciona com qualquer conta Google). Eles revisam, editam e aprovam. Todos os e-mails saem da SUA conta.'),
+    g.professores.length ? h('div', null, g.professores.map((p) => h('div', { class: 'prof' },
+      h('div', null, h('div', { style: 'font-weight:700' }, p.nome), h('div', { class: 'sub' }, (p.email || 'sem e-mail') + (p.criadoEm ? ' · desde ' + p.criadoEm : ''))),
+      h('div', { style: 'display:flex;gap:8px' },
+        p.email ? h('button', { class: 'btn btn-peq', onclick: async () => { try { await api('apiProfessores', 'reenviar', { id: p.id }); aviso('Link reenviado para ' + p.email); } catch (e) { aviso('Erro: ' + e.message, true); } } }, 'Reenviar link') : null,
+        h('button', { class: 'btn btn-peq btn-perigo', onclick: () => confirmarAcao('Revogar o acesso de ' + p.nome + '?', 'O link dessa pessoa para de funcionar na hora.', 'Revogar', async () => {
+          try { await api('apiProfessores', 'revogar', { id: p.id }); aviso('Acesso revogado'); renderAjustes(); sincronizarAgendaSilencioso(); } catch (e) { aviso('Erro: ' + e.message, true); }
+        }) }, 'Revogar'))))) : h('div', { class: 'sub' }, 'Nenhum professor cadastrado ainda.'),
+    h('div', { class: 'form', style: 'margin-top:14px' },
+      h('div', { class: 'campo' }, h('label', { for: 'p-nome' }, 'Nome'), nome),
+      h('div', { class: 'campo' }, h('label', { for: 'p-email' }, 'E-mail'), email),
+      h('label', { for: 'p-env', style: 'display:flex;gap:8px;align-items:center;font-weight:600;margin-bottom:12px' }, enviar, 'Enviar o link por e-mail agora')),
+    add, resultado);
+
+  // Configurações
+  const salvar = h('button', { class: 'btn btn-prim', style: 'width:100%' }, 'Salvar ajustes');
+  salvar.addEventListener('click', async () => {
+    salvar.disabled = true;
+    const valores = Object.fromEntries(g.config.map((c) => [c.chave, valor('c-' + c.chave)]));
+    try { await api('apiSalvarConfig', valores); aviso('✅ Ajustes salvos'); } catch (e) { aviso('Erro: ' + e.message, true); }
+    salvar.disabled = false;
+  });
+  const blocoCfg = h('div', { class: 'bloco form' }, h('h3', null, '⚙️ Configurações'),
+    h('div', { class: 'sub', style: 'margin-bottom:12px' }, 'O que a planilha usa por trás. Mudanças valem para as próximas buscas, análises e envios.'),
+    g.config.map((c) => campo('c-' + c.chave, c.rotulo, c.valor, c.tipo)), salvar);
+
+  // Verificação
+  const saida = h('div');
+  const blocoVer = h('div', { class: 'bloco' }, h('h3', null, '🩺 Verificar instalação'),
+    h('button', { class: 'btn', style: 'width:100%;margin-top:8px', onclick: async () => {
+      saida.replaceChildren(h('div', { class: 'esq', style: 'height:60px' }));
+      try { const r = await api('apiVerificar'); saida.replaceChildren(h('div', { class: 'caixa', style: 'margin-top:10px;font-size:13px' }, r.linhas.join('\n'))); }
+      catch (e) { saida.replaceChildren(h('div', { class: 'erro' }, e.message)); }
+    } }, 'Verificar agora'), saida);
+
+  const blocoDrive = h('div', { class: 'bloco' }, h('h3', null, '📁 Arquivos no Drive'),
+    h('div', { class: 'sub', style: 'margin-bottom:10px' }, 'Os anexos de cada entrega vão para "Entregas — Consultoria › Equipe › Aula", no SEU Drive. Acontece sozinho depois do 📥 Buscar.'),
+    h('div', { class: 'pilha' },
+      E.drive && E.drive.raiz ? h('a', { class: 'btn', href: E.drive.raiz, target: '_blank', rel: 'noopener', style: 'text-decoration:none' }, '📁 Abrir a pasta') : null,
+      h('button', { class: 'btn', onclick: async (ev) => {
+        ev.target.disabled = true;
+        try { const r = await api('apiSincronizarDrive'); aviso(r.ocupado ? 'O Drive está sendo organizado; tente em instantes.' : '📁 ' + r.arquivos + ' arquivo(s) novo(s) salvo(s)' + (r.restantes ? ' · faltam ' + r.restantes + ' (toque de novo)' : '') + (r.falhas.length ? '\n❌ ' + r.falhas.join('\n') : ''), r.falhas.length > 0); await carregarDrive(); renderAjustes(); }
+        catch (e) { aviso('Erro: ' + e.message, true); }
+        ev.target.disabled = false;
+      } }, '🔄 Organizar agora'),
+      h('button', { class: 'btn', onclick: async (ev) => {
+        ev.target.disabled = true;
+        try { const r = await api('apiCompartilharDrive'); aviso('👥 Pasta compartilhada (só leitura) com ' + r.total + ' professor(es)' + (r.compartilhados ? '' : ' (todos já tinham acesso)')); }
+        catch (e) { aviso('Erro: ' + e.message, true); }
+        ev.target.disabled = false;
+      } }, '👥 Compartilhar com os professores')));
+  const blocoSobre = h('div', { class: 'bloco' }, h('h3', null, 'ℹ️ Sobre'),
+    h('div', { class: 'sub' }, 'Avaliação Contínua de Entregas · versão ' + (E.versaoTecnica || '?')));
+  const blocoAuto = h('div', { class: 'bloco', id: 'bloco-auto' }, h('h3', null, '🤖 Modo automático'), h('div', { class: 'esq', style: 'height:60px' }));
+  const blocoBackup = h('div', { class: 'bloco', id: 'bloco-backup' }, h('h3', null, '💾 Cópias de segurança'), h('div', { class: 'esq', style: 'height:40px' }));
+  const blocoFim = h('div', { class: 'bloco' }, h('h3', null, '🏁 Fim do curso'),
+    h('div', { class: 'sub', style: 'margin-bottom:10px' }, 'Relatório final de cada equipe (jornada aula a aula, evolução, pontos fortes e o que desenvolver). Também dá para gerar um por um no detalhe da equipe.'),
+    h('button', { class: 'btn', style: 'width:100%', onclick: (ev) => gerarTodosFechamentos(ev.target) }, '🏁 Gerar o fechamento de todas as equipes'));
+  alvo.replaceChildren(blocoProf, blocoAuto, blocoDrive, blocoBackup, blocoFim, blocoCfg, blocoVer, blocoSobre);
+  renderAutomacao(); renderBackup();
+}
+
+/* ===== Detalhes da análise (Passo 4) ===== */
+async function carregarDetalhes(id, alvo) {
+  try {
+    const d = await api('apiDetalhes', id);
+    const blocos = [];
+    if (d.conceito) {
+      const passos = (d.jornada || '').split('➔').map((x) => x.trim()).filter(Boolean);
+      blocos.push(h('div', { class: 'titulo-secao' }, 'Conceito e evolução'),
+        h('div', { class: 'caixa' }, h('div', { style: 'font-weight:700' }, d.evolucao),
+          passos.length ? h('div', { class: 'jornada' }, passos.flatMap((p, i) => [i ? h('span', { class: 'seta' }, '➔') : null, badge(p)])) : null,
+          d.justificativa ? h('div', { style: 'margin-top:10px' }, d.justificativa) : null));
+      blocos.push(h('div', { class: 'titulo-secao' }, 'Análise para o professor · interna'), h('div', { class: 'caixa interna' }, d.analise));
+      blocos.push(...blocoRevisao(d));
+    } else {
+      blocos.push(h('div', { class: 'caixa' }, 'Ainda não analisada. Toque em 🤖 Analisar.'));
+    }
+    if (d.arquivos) blocos.push(h('div', { class: 'titulo-secao' }, 'Arquivos lidos'), h('div', { class: 'caixa' }, d.arquivos));
+    if (d.avisos) blocos.push(h('div', { class: 'titulo-secao' }, 'Avisos'), h('div', { class: 'caixa' }, d.avisos));
+    blocos.push(h('div', { class: 'acoes-topo' },
+      d.link ? h('a', { class: 'btn', href: d.link, target: '_blank', rel: 'noopener', style: 'text-decoration:none' }, '✉️ Ver e-mail') : null,
+      !/enviad/i.test(d.status) ? h('button', { class: 'btn', onclick: () => reanalisar(d.id) }, d.conceito ? '🔄 Refazer análise' : '🤖 Analisar esta') : null),
+      !/enviad/i.test(d.status) ? h('div', { class: 'acoes-topo' },
+        h('button', { class: 'btn', onclick: () => corrigir(d.id) }, '✏️ Corrigir aula/equipe'),
+        h('button', { class: 'btn btn-perigo', onclick: () => excluir(d.id, d.equipe) }, '🗑️ Excluir')) : null);
+    alvo.replaceChildren(...blocos);
+  } catch (e) {
+    alvo.replaceChildren(h('div', { class: 'erro' }, e.message));
+  }
+}
+
+/* Tela de progresso com cronômetro e lista do que já ficou pronto. */
+let timerProg = null;
+function carregando(on, txt, sub, linhas, aoCancelar) {
+  clearInterval(timerProg);
+  if (!on) return $('camada-carregando').replaceChildren();
+  const t0 = Date.now();
+  const relogio = h('div', { class: 'sub', style: 'font-variant-numeric:tabular-nums;margin-top:6px' }, '0:00');
+  timerProg = setInterval(() => {
+    const s = Math.floor((Date.now() - t0) / 1000);
+    relogio.textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') + (s > 90 ? ' · a IA está demorando mais que o normal, mas continua trabalhando' : '');
+  }, 1000);
+  $('camada-carregando').replaceChildren(h('div', { class: 'carregando' }, h('div', { class: 'cx' },
+    h('div', { class: 'spin' }), h('b', null, txt), sub ? h('div', { class: 'sub', style: 'margin-top:4px' }, sub) : null, relogio,
+    linhas && linhas.length ? h('div', { style: 'text-align:left;margin-top:12px;font-size:13px' }, linhas.map((l) => h('div', null, l))) : null,
+    aoCancelar ? h('button', { class: 'btn', style: 'margin-top:14px;width:100%', onclick: () => aoCancelar() }, '⏹ Cancelar') : null)));
+}
+
+/** Abre a lista para escolher o que analisar (marcadas: só a aula selecionada). */
+function analisar() {
+  const pend = E.dados.entregas.filter((e) => e.status === 'Recebida');
+  if (!pend.length) return aviso('Não há entregas esperando análise.');
+  pend.sort((a, b) => (b.idAula === E.aulaId ? 1 : 0) - (a.idAula === E.aulaId ? 1 : 0));
+  const marcados = new Set(pend.filter((e) => e.idAula === E.aulaId).map((e) => e.id));
+  const lista = h('div', { style: 'max-height:46vh;overflow:auto;margin-top:10px' }, pend.map((e) => {
+    const cb = h('input', { type: 'checkbox', 'aria-label': 'Analisar ' + e.equipe });
+    cb.checked = marcados.has(e.id);
+    cb.addEventListener('change', () => { cb.checked ? marcados.add(e.id) : marcados.delete(e.id); });
+    return h('label', { style: 'display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer' }, cb,
+      h('div', null, h('div', { style: 'font-weight:700' }, e.equipe),
+        h('div', { class: 'sub' }, e.aula + (e.idAula === E.aulaId ? '' : ' · outra aula') + (e.enviadoEm ? ' · enviado ' + e.enviadoEm : ''))));
+  }));
+  $('camada-modal').replaceChildren(h('div', { class: 'modal-fundo' }, h('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true' },
+    h('h3', null, '🤖 O que analisar?'),
+    h('div', { class: 'sub' }, 'Marcadas: as entregas recebidas da aula selecionada. Desmarque o que não quiser agora.'),
+    lista,
+    h('div', { class: 'botoes' },
+      h('button', { class: 'btn', onclick: fecharModal }, 'Cancelar'),
+      h('button', { class: 'btn btn-prim', onclick: () => {
+        const ids = pend.filter((e) => marcados.has(e.id));
+        if (!ids.length) return aviso('Marque pelo menos uma.', true);
+        fecharModal();
+        executarAnalise(ids);
+      } }, 'Analisar marcadas')))));
+}
+
+/**
+ * Analisa uma por vez, com progresso. ⏹ Cancelar para NA HORA: a tela fecha,
+ * as próximas não começam e o resultado da que estava em andamento é
+ * descartado no servidor (nada é gravado).
+ */
+async function executarAnalise(fila) {
+  const prontas = [];
+  let cancelado = false;
+  let liberar = null;
+  E.analisando = true;
+  const cancelar = () => {
+    if (cancelado) return;
+    cancelado = true;
+    api('apiPendentesAnalise', 'cancelar').catch(() => {});
+    if (liberar) liberar();
+  };
+  for (let i = 0; i < fila.length && !cancelado; i++) {
+    const it = fila[i];
+    carregando(true, '🤖 Analisando ' + (i + 1) + ' de ' + fila.length, it.equipe + ' · ' + it.aula + '\n(costuma levar de 20 s a 1 min)', prontas, cancelar);
+    // Espera a análise OU o cancelamento (o que vier primeiro)
+    const parar = new Promise((ok) => { liberar = () => ok({ parou: true }); });
+    const resultado = await Promise.race([
+      api('apiAnalisarUma', it.id).then((r) => ({ r }), (e) => ({ e })),
+      parar
+    ]);
+    liberar = null;
+    if (resultado.parou) break;
+    if (resultado.r) prontas.push('✅ ' + resultado.r.equipe + ': ' + resultado.r.conceito + ' (' + resultado.r.segundos + ' s)');
+    else if (!/^CANCELADA/.test(resultado.e.message)) prontas.push('❌ ' + it.equipe + ': ' + resultado.e.message.split('\n')[0]);
+  }
+  E.analisando = false;
+  carregando(false);
+  const feitas = prontas.filter((p) => p.startsWith('✅')).length;
+  aviso(cancelado
+    ? '⏹ Análise cancelada. ' + feitas + ' concluída(s) antes de cancelar; as demais continuam como "Recebida".' + (prontas.length ? '\n' + prontas.join('\n') : '')
+    : '🤖 Análise concluída\n' + prontas.join('\n'), prontas.some((p) => p.startsWith('❌')));
+  await carregar();
+}
+
+/* Se tentar fechar a página durante a análise, o navegador avisa. */
+window.addEventListener('beforeunload', (ev) => { if (E.analisando) { ev.preventDefault(); ev.returnValue = ''; } });
+
+async function reanalisar(id) {
+  const eqId = E.dados.entregas.find((x) => x.id === id).idEquipe;
+  try {
+    let liberar;
+    const parar = new Promise((ok) => { liberar = () => ok({ parou: true }); });
+    carregando(true, '🤖 Analisando de novo…', '(costuma levar de 20 s a 1 min)', null,
+      () => { api('apiPendentesAnalise', 'cancelar').catch(() => {}); liberar(); });
+    const res = await Promise.race([api('apiReanalisar', id).then(() => ({}), (e) => ({ e })), parar]);
+    carregando(false);
+    if (res.parou) { aviso('⏹ Cancelado: a análise anterior foi mantida.'); return; }
+    if (res.e) throw res.e;
+    aviso('✅ Análise atualizada');
+    await carregar();
+    abrirEquipe(eqId);
+  } catch (e) {
+    carregando(false);
+    aviso('Erro: ' + e.message, true);
+  }
+}
+
+/* ===== Corrigir / excluir ===== */
+function fecharModal() { $('camada-modal').replaceChildren(); }
+
+/** Abre o formulário para escolher a aula e a equipe certas. */
+function corrigir(id) {
+  const ent = E.dados.entregas.find((x) => x.id === id) || {};
+  const selAula = h('select', { id: 'c-aula' }, E.dados.aulas.map((a) => h('option', { value: a.id, selected: a.id === ent.idAula ? 'selected' : null }, 'Aula ' + a.numero + ' — ' + a.titulo + ' (' + a.recebeDe + ' a ' + a.recebeAte + ')')));
+  const selEq = h('select', { id: 'c-eq' }, E.dados.equipes.map((q) => h('option', { value: q.id, selected: q.id === ent.idEquipe ? 'selected' : null }, q.nome)));
+  $('camada-modal').replaceChildren(h('div', { class: 'modal-fundo', onclick: (ev) => { if (ev.target === ev.currentTarget) fecharModal(); } },
+    h('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true' },
+      h('h3', null, '✏️ Corrigir aula/equipe'),
+      h('div', { class: 'sub' }, '“' + (ent.assunto || ent.aula || '') + '”' + (ent.enviadoEm ? ' · enviado ' + ent.enviadoEm : '')),
+      h('label', { for: 'c-aula' }, 'Aula'), selAula,
+      h('label', { for: 'c-eq' }, 'Equipe'), selEq,
+      h('div', { class: 'sub', style: 'margin-top:10px' }, 'Se mudar a aula ou a equipe, a análise anterior é descartada e a entrega volta para a fila de análise.'),
+      h('div', { class: 'botoes' },
+        h('button', { class: 'btn', onclick: fecharModal }, 'Cancelar'),
+        h('button', { class: 'btn btn-prim', onclick: async (ev) => {
+          ev.target.disabled = true;
+          try {
+            const r = await api('apiCorrigirEntrega', id, selAula.value, selEq.value);
+            fecharModal(); fechar();
+            aviso(r.mudou ? '✅ Corrigida. Toque em 🤖 Analisar para a nova análise.' : '✅ Confirmada');
+            await carregar();
+            sincronizarDriveSilencioso();
+          } catch (e) { ev.target.disabled = false; aviso('Erro: ' + e.message, true); }
+        } }, 'Salvar')))));
+  selAula.focus();
+}
+
+async function excluir(id, nome) {
+  $('camada-modal').replaceChildren(h('div', { class: 'modal-fundo' }, h('div', { class: 'modal', role: 'alertdialog', 'aria-modal': 'true' },
+    h('h3', null, '🗑️ Excluir esta entrega?'),
+    h('div', { class: 'sub' }, (nome || '') + ' — a entrega sai do app e o e-mail não será importado de novo. A linha continua na planilha como histórico.'),
+    h('div', { class: 'botoes' },
+      h('button', { class: 'btn', onclick: fecharModal }, 'Cancelar'),
+      h('button', { class: 'btn btn-perigo', onclick: async (ev) => {
+        ev.target.disabled = true;
+        try { await api('apiExcluirEntrega', id); fecharModal(); fechar(); aviso('Entrega excluída'); await carregar(); }
+        catch (e) { ev.target.disabled = false; aviso('Erro: ' + e.message, true); }
+      } }, 'Excluir')))));
+}
+
+/* ===== Revisão e aprovação (Passo 5) ===== */
+function blocoRevisao(d) {
+  const info = E.dados.entregas.find((x) => x.id === d.id) || {};
+  const enviada = /enviad/i.test(d.status);
+  const aprovada = /^aprovad/i.test(d.status);
+  const ind = h('span', { class: 'salvo' }, enviada ? '🔒 Enviada' : 'Salva automaticamente');
+  const area = h('textarea', { class: 'fb', 'aria-label': 'Feedback à equipe' });
+  area.value = d.feedback;
+  let base = d.feedback, pendente = false, timer = null;
+  const salvar = async () => {
+    clearTimeout(timer);
+    if (!pendente) return;
+    pendente = false;
+    const texto = area.value;
+    ind.textContent = 'Salvando…';
+    try {
+      await api('apiSalvarFeedback', d.id, texto, base);
+      base = texto;
+      ind.textContent = 'Salvo ✓';
+    } catch (e) {
+      ind.textContent = '⚠️ Não salvo';
+      if (/^CONFLITO/.test(e.message)) aviso(e.message.replace(/^CONFLITO:\s*/, ''), true);
+      else { pendente = true; aviso('Erro ao salvar: ' + e.message, true); }
+      throw e;
+    }
+  };
+  if (enviada) area.readOnly = true;
+  else {
+    area.addEventListener('input', () => { pendente = true; ind.textContent = 'Editando…'; clearTimeout(timer); timer = setTimeout(() => salvar().catch(() => {}), 1500); });
+    area.addEventListener('blur', () => salvar().catch(() => {}));
+    E.salvarPendente = salvar;
+  }
+
+  const sel = h('select', { 'aria-label': 'Conceito', disabled: enviada ? 'disabled' : null },
+    ['EXCELENTE', 'BOM', 'REGULAR', 'RUIM'].map((c) => h('option', { value: c, selected: c === d.conceito ? 'selected' : null }, c)));
+  sel.addEventListener('change', async () => {
+    try { await api('apiMudarConceito', d.id, sel.value); aviso('Conceito alterado para ' + sel.value); await recarregarEquipe(d.id); }
+    catch (e) { aviso('Erro: ' + e.message, true); sel.value = d.conceito; }
+  });
+
+  const botao = enviada ? h('span', { class: 'sub' }, '🔒 Devolutiva já enviada')
+    : aprovada ? h('button', { class: 'btn', onclick: () => aprovar(d.id, false) }, '↩️ Desfazer aprovação')
+    : h('button', { class: 'btn btn-prim', onclick: () => aprovar(d.id, true) }, '✅ Aprovar devolutiva');
+
+  return [
+    h('div', { class: 'titulo-secao linha-fb' }, h('span', null, 'Feedback à equipe (editável)'), ind), area,
+    h('div', { class: 'aprovar-box' },
+      h('div', null, h('div', { class: 'sub' }, 'Conceito'), sel),
+      h('div', { style: 'text-align:right' }, botao,
+        aprovada && info.aprovadoPor ? h('div', { class: 'sub', style: 'margin-top:4px' }, 'Aprovada por ' + info.aprovadoPor + (info.aprovadoEm ? ' em ' + info.aprovadoEm : '')) : null)),
+    (E.dados.usuario || {}).dono && !enviada ? h('div', { class: 'acoes-topo' },
+      h('button', { class: 'btn', onclick: () => enviarTeste(d.id) }, '👁️ Enviar teste para mim'),
+      aprovada ? h('button', { class: 'btn btn-prim', onclick: () => enviarUma(d.id, info.equipe || '') }, '📨 Enviar esta devolutiva') : null) : null,
+    h('div', { class: 'sub', style: 'margin-top:6px' }, 'Analisado por ' + d.modelo + '.' + (enviada ? '' : ' Depois de aprovada, o envio é feito no painel em "📨 Enviar aprovadas".'))
+  ].filter(Boolean);
+}
+
+async function recarregarEquipe(idEntrega) {
+  const ent = E.dados.entregas.find((x) => x.id === idEntrega);
+  await carregar();
+  if (ent) abrirEquipe(ent.idEquipe);
+}
+
+async function aprovar(id, sim) {
+  try {
+    if (E.salvarPendente) await E.salvarPendente();
+    await api('apiAprovar', id, sim);
+    aviso(sim ? '✅ Devolutiva aprovada' : 'Aprovação desfeita');
+    await recarregarEquipe(id);
+  } catch (e) { aviso('Erro: ' + e.message, true); }
+}
+
+function aprovarTodas(aula, n) {
+  $('camada-modal').replaceChildren(h('div', { class: 'modal-fundo' }, h('div', { class: 'modal', role: 'alertdialog', 'aria-modal': 'true' },
+    h('h3', null, '✅ Aprovar ' + n + ' devolutiva(s)?'),
+    h('div', { class: 'sub' }, 'Aula ' + aula.numero + ' — ' + aula.titulo + '. Recomendação: leia os feedbacks antes. Nada é enviado agora.'),
+    h('div', { class: 'botoes' },
+      h('button', { class: 'btn', onclick: fecharModal }, 'Cancelar'),
+      h('button', { class: 'btn btn-prim', onclick: async (ev) => {
+        ev.target.disabled = true;
+        try { const r = await api('apiAprovarTodas', aula.id); fecharModal(); aviso('✅ ' + r.total + ' aprovada(s)'); await carregar(); }
+        catch (e) { ev.target.disabled = false; aviso('Erro: ' + e.message, true); }
+      } }, 'Aprovar todas')))));
+}
+
+async function avisarProfessor(aula) {
+  try { const r = await api('apiAvisarProfessor', aula.id); aviso('📣 Professor avisado (' + r.aguardando + ' aguardando)'); }
+  catch (e) { aviso('Erro: ' + e.message, true); }
+}
+
+/* ===== Envio das devolutivas (Passo 6) ===== */
+async function enviarTeste(id) {
+  try {
+    if (E.salvarPendente) await E.salvarPendente();
+    carregando(true, '👁️ Enviando o teste para você…');
+    const r = await api('apiEnviarTeste', id);
+    carregando(false);
+    aviso('👁️ Teste enviado para ' + r.para + '. Confira na sua caixa de entrada.');
+  } catch (e) { carregando(false); aviso('Erro: ' + e.message, true); }
+}
+
+/** 📨 Envia só esta devolutiva (já aprovada), com confirmação. */
+function enviarUma(id, equipe) {
+  $('camada-modal').replaceChildren(h('div', { class: 'modal-fundo' }, h('div', { class: 'modal', role: 'alertdialog', 'aria-modal': 'true' },
+    h('h3', null, '📨 Enviar a devolutiva' + (equipe ? ' de ' + equipe : '') + '?'),
+    h('div', { class: 'sub' }, 'Sai da sua conta, respondendo na conversa da equipe, com os integrantes em cópia. Depois de enviada, fica bloqueada.'),
+    h('div', { class: 'botoes' }, h('button', { class: 'btn', onclick: fecharModal }, 'Cancelar'),
+      h('button', { class: 'btn btn-prim', onclick: async (ev) => {
+        ev.target.disabled = true;
+        fecharModal();
+        carregando(true, '📨 Enviando…');
+        try {
+          if (E.salvarPendente) await E.salvarPendente();
+          const r = await api('apiEnviarAprovadas', [id]);
+          carregando(false);
+          if (r.falhas.length) aviso('❌ ' + r.falhas.join('\n'), true); else aviso('📨 Devolutiva enviada');
+          await fechar();
+          await carregar();
+        } catch (e) { carregando(false); aviso('Erro: ' + e.message, true); }
+      } }, 'Enviar agora')))));
+}
+
+async function abrirEnvio() {
+  let fila;
+  try { carregando(true, 'Preparando o envio…'); fila = await api('apiFilaEnvio'); carregando(false); }
+  catch (e) { carregando(false); return aviso('Erro: ' + e.message, true); }
+  if (!fila.length) return aviso('Não há devolutivas aprovadas para enviar.');
+  // Pré-marca só as da aula selecionada; as de outras aulas aparecem desmarcadas
+  const idsDaAula = new Set(E.dados.entregas.filter((e) => e.idAula === E.aulaId).map((e) => e.id));
+  fila.sort((a, b) => (idsDaAula.has(b.id) ? 1 : 0) - (idsDaAula.has(a.id) ? 1 : 0));
+  const marcados = new Set(fila.filter((f) => idsDaAula.has(f.id)).map((f) => f.id));
+  const lista = h('div', { style: 'max-height:46vh;overflow:auto;margin-top:10px' }, fila.map((f) => {
+    const cb = h('input', { type: 'checkbox', 'aria-label': 'Enviar para ' + f.equipe });
+    cb.checked = marcados.has(f.id);
+    cb.addEventListener('change', () => { cb.checked ? marcados.add(f.id) : marcados.delete(f.id); });
+    return h('label', { style: 'display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer' }, cb,
+      h('div', { style: 'flex:1;min-width:0' },
+        h('div', { style: 'font-weight:700' }, f.equipe, ' ', badge(f.conceito)),
+        h('div', { class: 'sub' }, f.aula + (f.aprovadoPor ? ' · aprovada por ' + f.aprovadoPor : '')),
+        h('div', { class: 'sub', style: 'word-break:break-all' }, 'Para: ' + f.para + (f.cc.length ? ' · cópia: ' + f.cc.length + ' pessoa(s)' : '') + (f.naConversa ? ' · na mesma conversa' : ' · e-mail novo'))));
+  }));
+  $('camada-modal').replaceChildren(h('div', { class: 'modal-fundo' }, h('div', { class: 'modal', role: 'alertdialog', 'aria-modal': 'true' },
+    h('h3', null, '📨 Enviar devolutivas'),
+    h('div', { class: 'sub' }, 'Os e-mails saem da sua conta, respondendo na conversa de cada equipe. Depois de enviadas, ficam bloqueadas.'),
+    lista,
+    h('div', { class: 'botoes' },
+      h('button', { class: 'btn', onclick: fecharModal }, 'Cancelar'),
+      h('button', { class: 'btn btn-prim', onclick: async (ev) => {
+        if (!marcados.size) return aviso('Marque pelo menos uma.', true);
+        ev.target.disabled = true;
+        fecharModal();
+        carregando(true, '📨 Enviando ' + marcados.size + ' devolutiva(s)…');
+        try {
+          const r = await api('apiEnviarAprovadas', Array.from(marcados));
+          carregando(false);
+          aviso('📨 Enviadas: ' + r.enviados.length + (r.enviados.length ? ' (' + r.enviados.join(', ') + ')' : '') +
+            (r.falhas.length ? '\n❌ Falhas:\n' + r.falhas.join('\n') : ''), r.falhas.length > 0);
+          await carregar();
+        } catch (e) { carregando(false); aviso('Erro: ' + e.message, true); }
+      } }, 'Enviar agora')))));
+}
+
+/* ===== Relatório da aula (Passo 7) ===== */
+async function abrirRelatorio(aula) {
+  $('folha-titulo').textContent = '📊 Aula ' + aula.numero;
+  $('folha-extra').replaceChildren();
+  $('folha-corpo').replaceChildren(h('div', { class: 'esq', style: 'margin-top:12px' }), h('div', { class: 'esq', style: 'margin-top:12px' }));
+  $('fundo').classList.add('aberto'); $('folha').classList.add('aberta');
+  try { renderRelatorio(await api('apiRelatorioAula', aula.id)); }
+  catch (e) { $('folha-corpo').replaceChildren(h('div', { class: 'erro', style: 'margin-top:12px' }, e.message)); }
+}
+
+function renderRelatorio(d) {
+  const u = E.dados.usuario || {};
+  const cores = { EXCELENTE: 'var(--exc-tx)', BOM: 'var(--bom-tx)', REGULAR: 'var(--reg-tx)', RUIM: 'var(--ruim-tx)' };
+  const total = Object.values(d.conceitos).reduce((a, b) => a + b, 0);
+  const lista = (txt) => h('div', { class: 'caixa' }, txt || '—');
+  const blocos = [
+    h('div', { class: 'sub', style: 'margin-top:8px' }, d.aula.titulo),
+    h('div', { class: 'kpis', style: 'margin-top:12px' },
+      h('div', { class: 'kpi' }, h('div', { class: 'r' }, 'Entregaram'), h('div', { class: 'v' }, d.entregaram + '/' + d.totalEquipes)),
+      h('div', { class: 'kpi' }, h('div', { class: 'r' }, 'Com atraso'), h('div', { class: 'v' }, d.atrasadas.length)),
+      h('div', { class: 'kpi' }, h('div', { class: 'r' }, 'Analisadas'), h('div', { class: 'v' }, total)),
+      h('div', { class: 'kpi' }, h('div', { class: 'r' }, 'Sem análise'), h('div', { class: 'v' }, d.aguardandoAnalise))),
+    h('div', { class: 'titulo-secao' }, 'Conceitos da turma'),
+    total ? h('div', { class: 'barra', role: 'img', 'aria-label': Object.entries(d.conceitos).map(([k, v]) => k + ' ' + v).join(', ') },
+      Object.entries(d.conceitos).filter(([, v]) => v).map(([k, v]) => h('span', { style: 'width:' + (v / total * 100) + '%;background:' + cores[k] }))) : null,
+    h('div', { class: 'legenda' }, Object.entries(d.conceitos).map(([k, v]) => h('span', { class: 'badge b-' + k }, k + ' · ' + v))),
+    d.porConceito.length ? h('ul', { class: 'hist', style: 'margin-top:8px' }, d.porConceito.map((x) => h('li', { class: 'linha' },
+      h('div', null, h('div', { style: 'font-weight:600' }, x.equipe), x.evolucao ? h('div', { class: 'sub' }, x.evolucao) : null), badge(x.conceito)))) : null,
+    h('div', { class: 'titulo-secao' }, 'Itens do pedido que mais faltaram'),
+    d.itensFaltando.length ? h('div', null, d.itensFaltando.map((f) => h('div', { class: 'falta' },
+      h('div', null, f.item, h('div', { class: 'sub' }, f.equipes.join(', '))),
+      h('div', { style: 'white-space:nowrap;font-weight:600' }, (f.nao ? '❌ ' + f.nao : '') + (f.nao && f.parcial ? '  ' : '') + (f.parcial ? '🟡 ' + f.parcial : ''))))) : h('div', { class: 'caixa' }, 'Nenhum item faltando nas entregas analisadas. ✅'),
+    d.semEntrega.length ? h('div', null, h('div', { class: 'titulo-secao' }, 'Não entregaram'), lista(d.semEntrega.join('\n'))) : null,
+    d.atrasadas.length ? h('div', null, h('div', { class: 'titulo-secao' }, 'Entregaram com atraso'), lista(d.atrasadas.join('\n'))) : null
+  ];
+  const r = d.relatorio;
+  blocos.push(h('div', { class: 'titulo-secao' }, 'Leitura da IA sobre a turma' + (r ? ' · ' + r.geradoEm : '')));
+  if (r) {
+    blocos.push(h('div', { class: 'sub', style: 'margin:0 0 4px' }, 'Resumo'), lista(r.resumo),
+      h('div', { class: 'sub', style: 'margin:10px 0 4px' }, 'Destaques'), lista(r.destaques),
+      h('div', { class: 'sub', style: 'margin:10px 0 4px' }, 'Precisam de atenção'), lista(r.atencao),
+      h('div', { class: 'sub', style: 'margin:10px 0 4px' }, 'Sugestões para a próxima aula'), lista(r.sugestoes));
+  } else {
+    blocos.push(h('div', { class: 'caixa' }, 'Ainda não gerado. Toque em "🤖 Gerar leitura da IA".'));
+  }
+  blocos.push(h('div', { class: 'acoes-topo' },
+    h('button', { class: 'btn btn-prim', onclick: () => gerarRelatorio(d.aula) }, r ? '🔄 Atualizar leitura da IA' : '🤖 Gerar leitura da IA'),
+    u.dono && r ? h('button', { class: 'btn', onclick: () => enviarRelatorio(d.aula) }, '📧 Enviar ao professor') : null));
+  $('folha-corpo').replaceChildren(...blocos.filter(Boolean));
+}
+
+async function gerarRelatorio(aula) {
+  try {
+    carregando(true, '🤖 A IA está lendo a turma…', '(costuma levar de 20 s a 1 min)');
+    const d = await api('apiGerarRelatorio', aula.id);
+    carregando(false);
+    renderRelatorio(d);
+    aviso('📊 Relatório atualizado');
+  } catch (e) { carregando(false); aviso('Erro: ' + e.message, true); }
+}
+
+async function enviarRelatorio(aula) {
+  try {
+    carregando(true, '📧 Enviando o relatório ao professor…');
+    await api('apiRelatorioAula', aula.id, 'enviar');
+    carregando(false);
+    aviso('📧 Relatório enviado ao professor');
+  } catch (e) { carregando(false); aviso('Erro: ' + e.message, true); }
+}
+
+/* ===== Drive (Passo 10) ===== */
+async function carregarDrive() {
+  try { E.drive = await api('apiPastasDrive'); } catch (e) { E.drive = null; }
+}
+const linkDriveEquipe = (idEquipe) => (E.drive && E.drive.pastas && E.drive.pastas[idEquipe]) || '';
+
+/** Salva no Drive os arquivos novos, em segundo plano (sem travar a tela). */
+async function sincronizarDriveSilencioso() {
+  try {
+    const r = await api('apiSincronizarDrive');
+    if (r && r.arquivos) aviso('📁 ' + r.arquivos + ' arquivo(s) salvo(s) no Drive');
+    await carregarDrive();
+  } catch (e) { /* o Drive é complementar: não atrapalha o fluxo */ }
+}
+
+/* ===== Agenda (Passo 11) ===== */
+async function carregarAgenda() { E.agenda = await api('apiAgenda'); return E.agenda; }
+
+/** Atualiza o Google Agenda em segundo plano (só o assistente, só se a agenda já existe). */
+async function sincronizarAgendaSilencioso() {
+  if (!E.agenda || !E.agenda.criada) return;
+  try {
+    const r = await api('apiSincronizarAgenda');
+    if (r && (r.criados || r.atualizados || r.removidos)) aviso('📅 Google Agenda atualizado');
+    await carregarAgenda();
+    if (E.aba === 'agenda') renderAgenda();
+  } catch (e) { /* a agenda é complementar: não atrapalha o fluxo */ }
+}
+
+const DIAS_SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+const dataLocal = (iso) => { const [a, m, d] = iso.split('-').map(Number); return new Date(a, m - 1, d); };
+const diaSemana = (iso) => DIAS_SEMANA[dataLocal(iso).getDay()] + ', ' + iso.split('-').reverse().slice(0, 2).join('/');
+const hojeIso = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+function emDias(iso) {
+  const n = Math.round((dataLocal(iso) - dataLocal(hojeIso())) / 864e5);
+  return n === 0 ? 'hoje' : n === 1 ? 'amanhã' : n === -1 ? 'ontem' : n > 0 ? 'em ' + n + ' dias' : 'há ' + (-n) + ' dias';
+}
+
+/** Situação de cada equipe na aula, para os chips da agenda. */
+function chipsEquipes(aula) {
+  const hoje = hojeIso();
+  const prazoPassou = aula.recebeAte && aula.recebeAte < hoje;
+  return E.dados.equipes.map((q) => {
+    const ent = entregaDe(q.id, aula.id);
+    let txt, cls;
+    if (!ent) { txt = prazoPassou ? '❌ ' + q.nome : '⏳ ' + q.nome; cls = prazoPassou ? 'st-atr' : 'st-sem'; }
+    else if (/^(📨|enviad)/i.test(ent.status)) { txt = '📨 ' + q.nome; cls = 'st-env'; }
+    else if (ent.atraso) { txt = '⚠️ ' + q.nome + ' (atraso)'; cls = 'st-ana'; }
+    else { txt = '✅ ' + q.nome; cls = 'st-rec'; }
+    return h('span', { class: 'pill ' + cls, title: ent ? situacao(ent).txt : 'Sem entrega' }, txt);
+  });
+}
+
+async function renderAgenda() {
+  $('eyebrow').textContent = 'Calendário';
+  $('titulo').textContent = 'Agenda';
+  if (!E.agenda) {
+    $('lista-agenda').replaceChildren(h('div', { class: 'esq' }), h('div', { class: 'esq' }));
+    try { await carregarAgenda(); } catch (e) { return $('lista-agenda').replaceChildren(h('div', { class: 'erro' }, e.message)); }
+  }
+  const g = E.agenda, hoje = hojeIso();
+  const nEquipes = E.dados.equipes.length;
+
+  // Próximos compromissos
+  const marcos = [];
+  g.aulas.forEach((a) => {
+    const nome = 'Aula ' + a.numero + (a.titulo ? ' — ' + a.titulo : '');
+    if (a.dataAula) marcos.push({ dia: a.dataAula, txt: '📚 ' + nome, aula: a });
+    if (a.recebeAte) marcos.push({ dia: a.recebeAte, txt: '⏰ Prazo de entrega · ' + nome, aula: a });
+    if (a.devolutivaAte) marcos.push({ dia: a.devolutivaAte, txt: '📝 Devolutivas · ' + nome, aula: a });
+  });
+  (g.extras || []).forEach((x) => marcos.push({ dia: x.data, txt: '📌 ' + x.titulo, extra: x }));
+  const prox = marcos.filter((m) => m.dia >= hoje).sort((x, y) => (x.dia < y.dia ? -1 : x.dia > y.dia ? 1 : 0)).slice(0, 3);
+
+  const topo = [];
+  if (g.dono) {
+    if (!g.criada) {
+      const totalAlunos = E.dados.equipes.reduce((t, q) => t + (q.emails || []).length, 0);
+      const b = h('button', { class: 'btn btn-prim', style: 'width:100%;margin-top:10px' }, '📅 Criar agenda e enviar convites');
+      b.addEventListener('click', () => confirmarAcao('Criar a agenda no Google Agenda?',
+        'Será criada a agenda "Consultoria — Aulas e Entregas" na sua conta. Professores' + (/^n/i.test(g.config.convidarEquipes) ? '' : ' e ' + totalAlunos + ' aluno(s)') +
+        ' recebem convite por e-mail para as aulas e prazos. As devolutivas aparecem só para os professores. Os alunos não veem os e-mails uns dos outros.',
+        'Criar e convidar', () => sincronizarAgenda(b, true)));
+      topo.push(h('div', { class: 'bloco' }, h('h3', null, '📅 Google Agenda'),
+        h('div', { class: 'sub' }, 'Coloque as aulas, os prazos de entrega e os dias de devolutiva no Google Agenda de todo mundo. Depois, qualquer mudança de data no app atualiza a agenda sozinha.'),
+        h('div', { class: 'sub', style: 'margin-top:6px' }, 'Antes, confira o horário das aulas em ⚙️ Ajustes da agenda.'),
+        b, h('button', { class: 'btn', style: 'width:100%;margin-top:10px', onclick: ajustesAgenda }, '⚙️ Ajustes da agenda')));
+    } else {
+      const b = h('button', { class: 'btn' }, '🔄 Atualizar agenda');
+      b.addEventListener('click', () => sincronizarAgenda(b, false));
+      topo.push(h('div', { class: 'bloco' }, h('h3', null, '📅 Google Agenda'),
+        h('div', { class: 'sub', style: 'margin-bottom:10px' }, 'Convites enviados a professores' + (/^n/i.test(g.config.convidarEquipes) ? '' : ' e equipes') + '.' + (g.sincronizadaEm ? ' Atualizada em ' + g.sincronizadaEm + '.' : '')),
+        h('div', { class: 'pilha' }, h('a', { class: 'btn', href: g.url, target: '_blank', rel: 'noopener' }, '📅 Abrir no Google Agenda'), b,
+          h('button', { class: 'btn', onclick: ajustesAgenda }, '⚙️ Ajustes da agenda'))));
+    }
+  } else {
+    topo.push(h('div', { class: 'sub', style: 'margin-bottom:12px' }, g.criada ? '📅 Estas datas também estão no seu Google Agenda (chegaram como convite por e-mail).' : '📅 Datas das aulas, prazos e devolutivas.'));
+  }
+  if (prox.length) {
+    topo.push(h('div', { class: 'ag-prox' }, h('b', null, 'Próximos'), prox.map((m) => h('div', null, diaSemana(m.dia) + ' (' + emDias(m.dia) + ') — ' + m.txt))));
+  }
+  $('agenda-topo').replaceChildren(...topo);
+  E.marcosAgenda = marcos;
+  renderCalendarioMes();
+
+  const comData = g.aulas.filter((a) => a.dataAula || a.recebeAte);
+  const ordenar = (a) => a.dataAula || a.recebeAte;
+  comData.sort((x, y) => (ordenar(x) < ordenar(y) ? -1 : 1));
+  const semData = g.aulas.filter((a) => !a.dataAula && !a.recebeAte);
+  const linhaData = (rot, iso, extra, lembrete) => iso ? h('div', { class: 'd' + (lembrete ? ' lembrete' : '') }, h('b', null, diaSemana(iso)), h('span', null, rot + (extra || '') + ' · ' + emDias(iso))) : null;
+
+  $('lista-agenda').replaceChildren(...comData.map((a) => {
+    const ativa = (a.recebeDe || a.dataAula || '') <= hoje && hoje <= (a.devolutivaAte || a.recebeAte || a.dataAula || '');
+    const passada = (a.devolutivaAte || a.recebeAte || a.dataAula) < hoje;
+    const ents = E.dados.equipes.map((q) => entregaDe(q.id, a.id)).filter(Boolean);
+    const enviadas = ents.filter((e) => /^(📨|enviad)/i.test(e.status)).length;
+    const atrasadoDev = a.devolutivaAte && a.devolutivaAte < hoje && enviadas < ents.length;
+    return h('article', { class: 'ag-card' + (ativa ? ' hoje' : '') + (passada && !atrasadoDev ? ' passada' : ''), tabindex: '0',
+      onclick: () => { E.aulaId = a.id; irPara('painel'); } },
+      h('div', { class: 'linha' }, h('div', { class: 'nome' }, 'Aula ' + a.numero + ' — ' + a.titulo),
+        ativa ? h('span', { class: 'pill sit-recebendo' }, '● Agora') : null),
+      h('div', { class: 'ag-datas' },
+        linhaData('📚 Aula', a.dataAula, g.config.horario ? ' (' + g.config.horario + ')' : ''),
+        linhaData('⏰ Prazo de entrega', a.recebeAte, ' até ' + (g.config.horaPrazo || '23:59')),
+        linhaData('📝 Devolutivas (interno)', a.devolutivaAte, '', true)),
+      h('div', { class: 'sub', style: 'margin-bottom:6px' }, ents.length + '/' + nEquipes + ' entregaram · ' + enviadas + '/' + ents.length + ' devolutivas enviadas' + (atrasadoDev ? ' · ⚠️ devolutivas atrasadas' : '')),
+      h('div', { class: 'chips' }, chipsEquipes(a)));
+  }), ...(semData.length ? [h('div', { class: 'vazio' }, h('b', null, 'Sem data: ' + semData.map((a) => 'Aula ' + a.numero).join(', ')), 'Coloque as datas na aba Aulas para aparecerem na agenda.')] : []),
+  ...(!g.aulas.length ? [h('div', { class: 'vazio' }, h('b', null, 'Nenhuma aula'), 'Cadastre as aulas (com datas) na aba Aulas.')] : []));
+}
+
+/** Calendário mensal: cada dia mostra as aulas (azul), prazos (vermelho) e devolutivas (laranja). */
+const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+function renderCalendarioMes() {
+  const hoje = hojeIso();
+  if (!E.mesAg) { const d = new Date(); E.mesAg = { a: d.getFullYear(), m: d.getMonth() }; E.diaAg = hoje; }
+  const { a, m } = E.mesAg;
+  const iso = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const porDia = {};
+  (E.marcosAgenda || []).forEach((x) => { (porDia[x.dia] = porDia[x.dia] || []).push(x); });
+  const tipo = (x) => (x.extra ? 'extra' : x.txt.startsWith('📚') ? 'aula' : x.txt.startsWith('⏰') ? 'prazo' : 'dev');
+  const curto = (x) => (x.extra ? '📌 ' + x.extra.titulo : ({ aula: '📚 ', prazo: '⏰ ', dev: '📝 ' }[tipo(x)]) + 'A' + x.aula.numero);
+  const mudar = (n) => { const d = new Date(a, m + n, 1); E.mesAg = { a: d.getFullYear(), m: d.getMonth() }; renderCalendarioMes(); };
+
+  const inicio = new Date(a, m, 1); inicio.setDate(1 - inicio.getDay());
+  const dias = [];
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate() + i);
+    if (i === 35 && d.getMonth() !== m) break;
+    const k = iso(d), evs = porDia[k] || [];
+    dias.push(h('button', { class: 'cal-dia' + (d.getMonth() !== m ? ' fora' : '') + (k === hoje ? ' hoje' : '') + (k === E.diaAg ? ' sel' : ''),
+      'aria-label': d.getDate() + ' de ' + MESES[d.getMonth()] + (evs.length ? ', ' + evs.length + ' compromisso(s)' : ''),
+      onclick: () => { E.diaAg = k; if (d.getMonth() !== m) E.mesAg = { a: d.getFullYear(), m: d.getMonth() }; renderCalendarioMes(); } },
+      h('span', { class: 'n' }, d.getDate()),
+      evs.slice(0, 3).map((x) => h('span', { class: 'ev ev-' + tipo(x) }, curto(x))),
+      evs.length > 3 ? h('span', { class: 'ev' }, '+' + (evs.length - 3)) : null));
+  }
+  const sel = (porDia[E.diaAg] || []);
+  const cfg = (E.agenda && E.agenda.config) || {};
+  const detalhe = h('div', { class: 'cal-detalhe' },
+    h('div', { style: 'font-weight:700;margin-bottom:2px' }, E.diaAg ? diaSemana(E.diaAg) + ' · ' + emDias(E.diaAg) : ''),
+    sel.length ? sel.map((x) => {
+      const t = tipo(x);
+      const sub = t === 'aula' ? (cfg.horario || 'Dia inteiro') : t === 'prazo' ? 'Entregas até ' + (cfg.horaPrazo || '23:59')
+        : t === 'dev' ? 'Revisar, aprovar e enviar (interno) · muda junto com o prazo'
+        : (x.extra.horario || 'Dia inteiro') + ' · ' + (x.extra.para === 'professores' ? 'só professores' : 'para todos') + (x.extra.obs ? ' · ' + x.extra.obs : '');
+      const parar = (fn) => (ev) => { ev.stopPropagation(); fn(); };
+      return h('div', { class: 'item', tabindex: '0', onclick: () => { if (x.aula) { E.aulaId = x.aula.id; irPara('painel'); } else editarExtra(x.extra); } },
+        h('span', { class: 'ev ev-' + t, style: 'font-size:12px;padding:3px 6px' }, { aula: 'Aula', prazo: 'Prazo', dev: 'Devolutiva', extra: 'Outro' }[t]),
+        h('div', { style: 'flex:1;min-width:0' }, h('div', { style: 'font-weight:600' }, x.txt.replace(/^\S+\s/, '')), h('div', { class: 'sub' }, sub)),
+        t === 'dev' ? null : h('div', { class: 'cal-acoes' },
+          h('button', { class: 'btn btn-peq', 'aria-label': 'Mudar o dia', onclick: parar(() => (x.extra ? editarExtra(x.extra) : mudarDia(x.aula, t))) }, '📅'),
+          h('button', { class: 'btn btn-peq btn-perigo', 'aria-label': 'Tirar da agenda', onclick: parar(() => tirarDia(x)) }, '✕')));
+    }) : h('div', { class: 'sub' }, 'Nada marcado neste dia.'),
+    h('button', { class: 'btn', style: 'width:100%;margin-top:10px', onclick: () => adicionarNoDia(E.diaAg) }, '+ Pôr algo neste dia'));
+
+  $('agenda-cal').replaceChildren(h('div', { class: 'cal' },
+    h('div', { class: 'cal-cab' },
+      h('button', { class: 'icone', 'aria-label': 'Mês anterior', onclick: () => mudar(-1) }, '‹'),
+      h('b', null, MESES[m] + ' ' + a),
+      h('button', { class: 'icone', 'aria-label': 'Próximo mês', onclick: () => mudar(1) }, '›')),
+    h('div', { class: 'cal-grade' }, ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'].map((s) => h('div', { class: 'cal-sem' }, s)), dias),
+    h('div', { class: 'cal-leg' },
+      h('span', null, h('i', { class: 'ev-aula' }), 'Aula'), h('span', null, h('i', { class: 'ev-prazo' }), 'Prazo de entrega'),
+      h('span', null, h('i', { class: 'ev-dev' }), 'Devolutivas'),
+      h('span', null, h('i', { class: 'ev-extra' }), 'Outros'),
+      E.mesAg.a !== new Date().getFullYear() || E.mesAg.m !== new Date().getMonth()
+        ? h('button', { class: 'link-btn', onclick: () => { E.mesAg = null; renderCalendarioMes(); } }, 'Hoje') : null),
+    detalhe));
+}
+
+/* --- Pôr e tirar dias pelo calendário --- */
+const nomeAula = (a) => 'Aula ' + a.numero + (a.titulo ? ' — ' + a.titulo : '');
+const NOME_CAMPO = { aula: 'o dia da aula', prazo: 'o prazo de entrega' };
+
+async function gravarAgenda(promessa, okMsg) {
+  try {
+    const r = await promessa;
+    aviso(okMsg + (r && r.agenda && (r.agenda.criados || r.agenda.atualizados || r.agenda.removidos) ? '\n📅 Google Agenda atualizado' : ''));
+    await Promise.all([carregar(), carregarAgenda(), E.gestao ? carregarGestao() : null]);
+    renderAgenda();
+  } catch (e) { aviso('Erro: ' + e.message, true); }
+}
+
+function mudarDia(aula, campo) {
+  const atual = campo === 'aula' ? aula.dataAula : aula.recebeAte;
+  const inp = h('input', { type: 'date', id: 'md-data', style: 'width:100%' }); inp.value = atual || E.diaAg || '';
+  $('camada-modal').replaceChildren(h('div', { class: 'modal-fundo' }, h('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true' },
+    h('h3', null, '📅 Mudar ' + NOME_CAMPO[campo]), h('div', { class: 'sub', style: 'margin-bottom:10px' }, nomeAula(aula)),
+    h('div', { class: 'campo' }, inp),
+    h('div', { class: 'botoes' }, h('button', { class: 'btn', onclick: fecharModal }, 'Cancelar'),
+      h('button', { class: 'btn btn-prim', onclick: () => { const v = inp.value; if (!v) return aviso('Escolha a data.', true); fecharModal(); E.diaAg = v; E.mesAg = { a: +v.slice(0, 4), m: +v.slice(5, 7) - 1 };
+        gravarAgenda(api('apiAgendaData', aula.id, campo, v), '✅ ' + nomeAula(aula) + ': ' + NOME_CAMPO[campo] + ' agora é ' + diaSemana(v)); } }, 'Salvar')))));
+}
+
+function tirarDia(x) {
+  if (x.extra) {
+    return confirmarAcao('Tirar "' + x.extra.titulo + '"?', 'Sai do calendário do app e do Google Agenda de todos.', 'Tirar',
+      () => gravarAgenda(api('apiAgendaExtra', 'excluir', { id: x.extra.id }), '✅ Compromisso tirado'));
+  }
+  const campo = x.txt.startsWith('📚') ? 'aula' : 'prazo';
+  confirmarAcao('Tirar ' + NOME_CAMPO[campo] + '?', nomeAula(x.aula) + ' fica sem essa data (sai do Google Agenda de todos). A aula e as entregas continuam no app.' +
+    (campo === 'prazo' ? ' Sem prazo, a busca não marca atraso e não há lembrete de devolutiva.' : ''), 'Tirar',
+    () => gravarAgenda(api('apiAgendaData', x.aula.id, campo, ''), '✅ Data tirada'));
+}
+
+/** "+ Pôr algo neste dia": nova aula, mover aula/prazo para cá ou compromisso avulso. */
+function adicionarNoDia(dia) {
+  if (!dia) return aviso('Toque num dia do calendário primeiro.', true);
+  const aulas = (E.agenda && E.agenda.aulas) || [];
+  const sel = h('select', { id: 'ad-oque', style: 'width:100%' },
+    h('option', { value: 'extra' }, '📌 Outro compromisso (feriado, reunião, sem aula…)'),
+    h('option', { value: 'nova' }, '📚 Nova aula neste dia'),
+    aulas.length ? h('optgroup', { label: 'Mudar para este dia' },
+      aulas.map((a) => h('option', { value: 'aula|' + a.id }, '📚 Dia da ' + nomeAula(a) + (a.dataAula ? ' (agora em ' + br(a.dataAula).slice(0, 5) + ')' : ' (sem data)'))),
+      aulas.map((a) => h('option', { value: 'prazo|' + a.id }, '⏰ Prazo da ' + nomeAula(a) + (a.recebeAte ? ' (agora em ' + br(a.recebeAte).slice(0, 5) + ')' : ' (sem data)')))) : null);
+  const extras = h('div', null,
+    campo('ad-tit', 'Nome', '', 'texto', 'Ex.: Feriado — sem aula · Reunião com o professor · Banca final'),
+    campo('ad-hor', 'Horário (opcional)', '', 'texto', 'Ex.: 14:00-15:00. Vazio = dia inteiro.'),
+    h('div', { class: 'campo' }, h('label', { for: 'ad-para' }, 'Quem vê'),
+      h('select', { id: 'ad-para' }, h('option', { value: 'todos' }, 'Todos (professores e alunos)'), h('option', { value: 'professores' }, 'Só professores'))),
+    campo('ad-obs', 'Observação (opcional)', '', 'texto'));
+  sel.addEventListener('change', () => { extras.hidden = sel.value !== 'extra'; });
+  const ok = h('button', { class: 'btn btn-prim' }, 'Pôr na agenda');
+  ok.addEventListener('click', () => {
+    const v = sel.value;
+    if (v === 'extra') {
+      if (!valor('ad-tit').trim()) return aviso('Dê um nome ao compromisso.', true);
+      const dados = { data: dia, titulo: valor('ad-tit'), horario: valor('ad-hor'), para: valor('ad-para'), obs: valor('ad-obs') };
+      fecharModal();
+      return gravarAgenda(api('apiAgendaExtra', 'salvar', dados), '✅ "' + dados.titulo + '" na agenda');
+    }
+    fecharModal();
+    if (v === 'nova') return novaAulaNoDia(dia);
+    const [campoX, id] = v.split('|');
+    const a = aulas.find((x) => x.id === id);
+    gravarAgenda(api('apiAgendaData', id, campoX, dia), '✅ ' + nomeAula(a) + ': ' + NOME_CAMPO[campoX] + ' agora é ' + diaSemana(dia));
+  });
+  $('camada-modal').replaceChildren(h('div', { class: 'modal-fundo' }, h('div', { class: 'modal form', role: 'dialog', 'aria-modal': 'true', style: 'max-width:520px' },
+    h('h3', null, '+ ' + diaSemana(dia)), h('div', { class: 'campo' }, h('label', { for: 'ad-oque' }, 'O que você quer pôr neste dia?'), sel), extras,
+    h('div', { class: 'botoes' }, h('button', { class: 'btn', onclick: fecharModal }, 'Cancelar'), ok))));
+}
+
+function editarExtra(x) {
+  const ok = h('button', { class: 'btn btn-prim' }, 'Salvar');
+  ok.addEventListener('click', () => {
+    const dados = { id: x.id, data: valor('ex-data'), titulo: valor('ex-tit'), horario: valor('ex-hor'), para: valor('ex-para'), obs: valor('ex-obs') };
+    if (!dados.data) return aviso('Escolha a data.', true);
+    fecharModal(); E.diaAg = dados.data; E.mesAg = { a: +dados.data.slice(0, 4), m: +dados.data.slice(5, 7) - 1 };
+    gravarAgenda(api('apiAgendaExtra', 'salvar', dados), '✅ Compromisso salvo');
+  });
+  const para = h('select', { id: 'ex-para' }, h('option', { value: 'todos' }, 'Todos (professores e alunos)'), h('option', { value: 'professores' }, 'Só professores'));
+  para.value = x.para;
+  $('camada-modal').replaceChildren(h('div', { class: 'modal-fundo' }, h('div', { class: 'modal form', role: 'dialog', 'aria-modal': 'true', style: 'max-width:520px' },
+    h('h3', null, '📌 ' + x.titulo),
+    campo('ex-data', 'Dia', x.data, 'data'), campo('ex-tit', 'Nome', x.titulo, 'texto'), campo('ex-hor', 'Horário (opcional)', x.horario, 'texto', 'Vazio = dia inteiro.'),
+    h('div', { class: 'campo' }, h('label', { for: 'ex-para' }, 'Quem vê'), para), campo('ex-obs', 'Observação', x.obs, 'texto'),
+    h('div', { class: 'botoes' }, h('button', { class: 'btn btn-perigo', onclick: () => { fecharModal(); tirarDia({ extra: x }); } }, 'Tirar'),
+      h('button', { class: 'btn', onclick: fecharModal }, 'Cancelar'), ok))));
+}
+
+/** Nova aula já com a data; o prazo segue o intervalo usado nas outras aulas (ou 4 dias). */
+function novaAulaNoDia(dia) {
+  const aulas = (E.agenda && E.agenda.aulas) || [];
+  const ref = aulas.filter((a) => a.dataAula && a.recebeAte).pop();
+  const gap = ref ? Math.round((dataLocal(ref.recebeAte) - dataLocal(ref.dataAula)) / 864e5) : 4;
+  const d = dataLocal(dia); d.setDate(d.getDate() + gap);
+  const ate = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const abrir = () => editarAula(null, { dataAula: dia, recebeDe: dia, recebeAte: ate });
+  if (E.gestao) abrir(); else carregarGestao().then(abrir).catch((e) => aviso('Erro: ' + e.message, true));
+}
+
+async function sincronizarAgenda(btn, criar) {
+  btn.disabled = true;
+  const txt = btn.textContent;
+  btn.textContent = '⏳ Atualizando o Google Agenda…';
+  try {
+    const r = await api('apiSincronizarAgenda', { criar: !!criar });
+    if (r.ocupado) aviso('A agenda já está sendo atualizada; tente em instantes.');
+    else aviso('📅 ' + (criar ? 'Agenda criada! ' : '') + r.criados + ' evento(s) novo(s), ' + r.atualizados + ' atualizado(s)' + (r.removidos ? ', ' + r.removidos + ' removido(s)' : '') +
+      (r.restantes ? '\nFaltam ' + r.restantes + ': toque em Atualizar de novo.' : '') + (r.falhas && r.falhas.length ? '\n❌ ' + r.falhas.join('\n') : ''), r.falhas && r.falhas.length > 0);
+    await carregarAgenda();
+    renderAgenda();
+  } catch (e) {
+    const perm = /permission|permiss/i.test(e.message);
+    aviso(perm ? '🔐 Falta autorizar o Google Agenda: no editor do Apps Script, escolha a função "autorizarAgenda", toque em ▶ Executar e aceite. Depois tente de novo.' : 'Erro: ' + e.message, true);
+    btn.disabled = false; btn.textContent = txt;
+  }
+}
+
+function ajustesAgenda() {
+  const c = E.agenda.config;
+  const btn = h('button', { class: 'btn btn-prim', style: 'flex:1' }, 'Salvar');
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    try {
+      await api('apiConfigAgenda', { horario: valor('ag-hor'), horaPrazo: valor('ag-prazo'), diasDevolutiva: valor('ag-dias'), convidarEquipes: valor('ag-conv') });
+      await fechar();
+      aviso('✅ Ajustes da agenda salvos');
+      await carregarAgenda();
+      renderAgenda();
+      sincronizarAgendaSilencioso();
+    } catch (e) { btn.disabled = false; aviso('Erro: ' + e.message, true); }
+  });
+  abrirFolha('Ajustes da agenda', [
+    h('div', { class: 'form', style: 'margin-top:12px' },
+      campo('ag-hor', 'Horário das aulas', c.horario, 'texto', 'Ex.: 19:00-22:00. Deixe vazio para eventos de dia inteiro.'),
+      campo('ag-prazo', 'Hora-limite das entregas', c.horaPrazo || '23:59', 'texto', 'No dia "Recebe entregas até" de cada aula.'),
+      campo('ag-dias', 'Devolutivas: quantos dias depois do prazo', c.diasDevolutiva || '3', 'numero', 'Lembrete só para professores e você.'),
+      campo('ag-conv', 'Convidar os alunos das equipes', /^n/i.test(c.convidarEquipes) ? 'NÃO' : 'SIM', 'simnao', 'Eles recebem as aulas e prazos (não as devolutivas) e não veem os e-mails uns dos outros.')),
+    h('div', { class: 'acoes-topo' }, btn)]);
+}
+
+/* ===== Passo 12: automático, cobrança, cópias e fechamento ===== */
+const SIMNAO_AUTO = [
+  ['AUTO_BUSCAR', '📥 Buscar entregas de hora em hora'],
+  ['AUTO_ANALISAR', '🤖 Analisar com a IA o que chegar (nada é enviado sem aprovação)'],
+  ['AUTO_RESUMO_PROFESSORES', '📬 Resumo diário por e-mail (professores e você)'],
+  ['AUTO_LEMBRETE_PRAZO', '⏰ Lembrete às equipes na véspera do prazo (só quem não entregou)'],
+  ['AUTO_BACKUP', '💾 Cópia de segurança toda segunda-feira']
+];
+
+async function renderAutomacao(r) {
+  const alvo = $('bloco-auto');
+  if (!alvo) return;
+  try { r = r || await api('apiAutomacao', 'estado'); } catch (e) { return alvo.replaceChildren(h('h3', null, '🤖 Modo automático'), h('div', { class: 'erro' }, permissaoOuErro(e, 'autorizarAutomacao'))); }
+  const c = r.config;
+  const acao = async (btn, nome, msg) => {
+    btn.disabled = true;
+    try { const x = await api('apiAutomacao', nome); aviso(msg(x)); await renderAutomacao(nome === 'rodar' ? null : x); if (nome === 'rodar') { await carregar(); } }
+    catch (e) { aviso(permissaoOuErro(e, 'autorizarAutomacao'), true); btn.disabled = false; }
+  };
+  const bLiga = h('button', { class: 'btn ' + (r.ligado ? '' : 'btn-prim') }, r.ligado ? '⏸️ Desligar o modo automático' : '▶️ Ligar o modo automático');
+  bLiga.addEventListener('click', () => acao(bLiga, r.ligado ? 'desligar' : 'ligar', (x) => x.ligado ? '🤖 Modo automático ligado: roda de hora em hora' : 'Modo automático desligado'));
+  const bRodar = h('button', { class: 'btn' }, '⚡ Rodar agora');
+  bRodar.addEventListener('click', () => { bRodar.textContent = '⏳ Rodando… (pode levar alguns minutos)'; acao(bRodar, 'rodar', (x) => '🤖 ' + x.resumo); });
+  const salvar = h('button', { class: 'btn btn-prim', style: 'width:100%' }, 'Salvar ajustes do automático');
+  salvar.addEventListener('click', async () => {
+    salvar.disabled = true;
+    const v = Object.fromEntries(SIMNAO_AUTO.map(([k]) => [k, valor('au-' + k)]));
+    Object.assign(v, { AUTO_HORA_DIARIA: valor('au-hora'), BACKUPS_MANTER: valor('au-manter'), TEXTO_LEMBRETE: valor('au-lemb'), TEXTO_COBRANCA: valor('au-cob') });
+    try { const x = await api('apiAutomacao', 'salvar', v); aviso('✅ Ajustes salvos'); renderAutomacao(x); } catch (e) { aviso('Erro: ' + e.message, true); salvar.disabled = false; }
+  });
+  const det = h('details', { style: 'margin-top:12px' }, h('summary', { style: 'cursor:pointer;font-weight:600' }, '⚙️ O que o automático faz'),
+    h('div', { class: 'form', style: 'margin-top:10px' },
+      SIMNAO_AUTO.map(([k, rot]) => campo('au-' + k, rot, /^n/i.test(c[k]) ? 'NÃO' : 'SIM', 'simnao')),
+      h('div', { class: 'grade2' }, campo('au-hora', 'Hora das tarefas diárias', c.AUTO_HORA_DIARIA, 'numero', 'De 0 a 23.'), campo('au-manter', 'Cópias a guardar', c.BACKUPS_MANTER, 'numero')),
+      campo('au-lemb', 'Texto do lembrete da véspera', c.TEXTO_LEMBRETE, 'longo', 'Campos: {equipe} {aula} {prazo} {itens} {email} {assunto} {professor}'),
+      campo('au-cob', 'Texto da cobrança', c.TEXTO_COBRANCA, 'longo', 'Os mesmos campos. Você revisa antes de cada envio.'), salvar));
+  alvo.replaceChildren(h('h3', null, '🤖 Modo automático'),
+    h('div', { class: 'linha', style: 'margin:4px 0 10px' }, h('span', { class: 'pill ' + (r.ligado ? 'sit-recebendo' : 'sit-sem') }, r.ligado ? '● Ligado: de hora em hora' : 'Desligado'),
+      r.ultima ? h('span', { class: 'sub' }, 'Última vez: ' + r.ultima) : null),
+    r.resumo ? h('div', { class: 'caixa', style: 'margin-bottom:10px;font-size:13px' }, r.resumo) : null,
+    h('div', { class: 'sub', style: 'margin-bottom:10px' }, 'Busca, salva no Drive e analisa sozinho; uma vez por dia manda o resumo, os lembretes de prazo e (às segundas) faz a cópia de segurança. Devolutivas continuam precisando de aprovação e do seu envio.'),
+    h('div', { class: 'pilha' }, bLiga, bRodar), det);
+}
+
+/** Mensagem amigável quando falta autorizar no editor. */
+function permissaoOuErro(e, funcao) {
+  return /permission|permiss|autoriza/i.test(e.message)
+    ? '🔐 Falta autorizar: no editor do Apps Script, escolha a função "' + funcao + '", toque em ▶ Executar e aceite. Depois tente de novo.'
+    : 'Erro: ' + e.message;
+}
+
+async function renderBackup(r) {
+  const alvo = $('bloco-backup');
+  if (!alvo) return;
+  try { r = r || await api('apiBackup', 'listar'); } catch (e) { return alvo.replaceChildren(h('h3', null, '💾 Cópias de segurança'), h('div', { class: 'erro' }, permissaoOuErro(e, 'autorizarAutomacao'))); }
+  const b = h('button', { class: 'btn' }, '💾 Fazer uma cópia agora');
+  b.addEventListener('click', async () => {
+    b.disabled = true; b.textContent = '⏳ Copiando a planilha…';
+    try { const x = await api('apiBackup', 'agora'); aviso('💾 Cópia criada: ' + x.nova.nome); renderBackup(x); } catch (e) { aviso(permissaoOuErro(e, 'autorizarAutomacao'), true); b.disabled = false; b.textContent = '💾 Fazer uma cópia agora'; }
+  });
+  alvo.replaceChildren(h('h3', null, '💾 Cópias de segurança'),
+    h('div', { class: 'sub', style: 'margin-bottom:10px' }, 'Cópia completa da planilha no seu Drive. Se algo for apagado por engano, é só abrir a cópia e copiar de volta.'),
+    h('div', { class: 'pilha' }, b, h('a', { class: 'btn', href: r.pasta, target: '_blank', rel: 'noopener' }, '📁 Abrir a pasta das cópias')),
+    r.copias.length ? h('div', { style: 'margin-top:10px' }, r.copias.slice(0, 5).map((c) => h('div', { class: 'prof' },
+      h('div', null, h('div', { style: 'font-weight:600' }, c.em), h('div', { class: 'sub' }, c.nome)),
+      h('a', { class: 'btn btn-peq', href: c.url, target: '_blank', rel: 'noopener' }, 'Abrir')))) : h('div', { class: 'sub', style: 'margin-top:8px' }, 'Nenhuma cópia ainda.'));
+}
+
+/** 📣 Cobrar quem não entregou: escolhe as equipes e revisa o texto antes. */
+async function abrirCobranca(aula) {
+  let r;
+  try { r = await api('apiCobranca', 'previa', aula.id); } catch (e) { return aviso('Erro: ' + e.message, true); }
+  if (!r.equipes.length) return aviso('Todas as equipes já entregaram esta aula. ✅');
+  const marcas = r.equipes.map((q) => { const c = h('input', { type: 'checkbox', value: q.id }); c.checked = !!q.emails && !q.cobradaEm; if (!q.emails) c.disabled = true; return c; });
+  const assunto = h('input', { type: 'text', id: 'cb-assunto' }); assunto.value = r.assunto;
+  const texto = h('textarea', { id: 'cb-texto', style: 'min-height:220px' }); texto.value = r.texto;
+  const salvarTexto = h('input', { type: 'checkbox', id: 'cb-salvar' });
+  const enviar = h('button', { class: 'btn btn-prim', style: 'flex:1' }, '📣 Enviar cobrança');
+  enviar.addEventListener('click', async () => {
+    const ids = marcas.filter((m) => m.checked).map((m) => m.value);
+    if (!ids.length) return aviso('Marque pelo menos uma equipe.', true);
+    enviar.disabled = true; enviar.textContent = '⏳ Enviando…';
+    try {
+      const x = await api('apiCobranca', 'enviar', aula.id, { ids, assunto: assunto.value, texto: texto.value, salvarTexto: salvarTexto.checked });
+      await fechar();
+      aviso('📣 Cobrança enviada para ' + x.enviados.join(', ') + (x.falhas.length ? '\n❌ ' + x.falhas.join('\n') : ''), x.falhas.length > 0);
+    } catch (e) { aviso('Erro: ' + e.message, true); enviar.disabled = false; enviar.textContent = '📣 Enviar cobrança'; }
+  });
+  abrirFolha('📣 Cobrar: ' + r.aula, [
+    h('div', { class: 'sub', style: 'margin:12px 0 6px' }, 'Equipes sem entrega nesta aula. Cada equipe recebe um e-mail só dela, saindo da sua conta.'),
+    h('div', { class: 'bloco', style: 'padding:8px 14px' }, r.equipes.map((q, i) => h('label', { class: 'prof', style: 'cursor:pointer' },
+      h('span', { style: 'display:flex;gap:10px;align-items:center;font-weight:600' }, marcas[i], q.nome),
+      h('span', { class: 'sub' }, !q.emails ? 'sem e-mail cadastrado' : q.cobradaEm ? 'já cobrada em ' + q.cobradaEm : q.emails + ' integrante(s)')))),
+    h('div', { class: 'form' },
+      h('div', { class: 'campo' }, h('label', { for: 'cb-assunto' }, 'Assunto'), assunto),
+      h('div', { class: 'campo' }, h('label', { for: 'cb-texto' }, 'Texto'), texto,
+        h('div', { class: 'ajuda' }, '{equipe}, {itens}, {assunto} etc. são trocados para cada equipe. Exemplo de como fica:')),
+      h('div', { class: 'caixa', style: 'font-size:13px' }, r.exemplo),
+      h('label', { for: 'cb-salvar', style: 'display:flex;gap:8px;align-items:center;font-weight:600;margin-top:10px' }, salvarTexto, 'Usar este texto nas próximas cobranças')),
+    h('div', { class: 'acoes-topo' }, enviar)]);
+}
+
+/** 🏁 Fechamento do curso de uma equipe. */
+async function abrirFechamento(idEquipe) {
+  abrirFolha('🏁 Fechamento do curso', [h('div', { class: 'esq', style: 'height:120px;margin-top:12px' })]);
+  let r;
+  try { r = await api('apiFechamento', idEquipe, 'ver'); } catch (e) { return $('folha-corpo').replaceChildren(h('div', { class: 'erro' }, e.message)); }
+  renderFechamento(idEquipe, r);
+}
+
+function renderFechamento(idEquipe, r) {
+  const f = r.fechamento;
+  const u = (E.dados && E.dados.usuario) || {};
+  $('folha-titulo').textContent = '🏁 ' + r.equipe;
+  $('folha-extra').replaceChildren(f && f.conceito ? badge(f.conceito) : '');
+  const acao = async (btn, nome, txt, ok) => {
+    btn.disabled = true; const t0 = btn.textContent; btn.textContent = txt;
+    try { const x = await api('apiFechamento', idEquipe, nome); aviso(ok); renderFechamento(idEquipe, x); }
+    catch (e) { aviso('Erro: ' + e.message, true); btn.disabled = false; btn.textContent = t0; }
+  };
+  const gerar = h('button', { class: 'btn ' + (f ? '' : 'btn-prim') }, f ? '🔄 Gerar de novo' : '🤖 Gerar o fechamento');
+  gerar.addEventListener('click', () => acao(gerar, 'gerar', '⏳ A IA está escrevendo (até 1 min)…', '🏁 Fechamento gerado'));
+  const enviar = f ? h('button', { class: 'btn btn-prim' }, '📨 Enviar aos professores') : null;
+  if (enviar) enviar.addEventListener('click', () => acao(enviar, 'enviar', '⏳ Enviando…', '📨 Fechamento enviado aos professores'));
+  const sec = (t, txt) => (txt ? [h('div', { class: 'titulo-secao' }, t), h('div', { class: 'caixa' }, txt)] : []);
+  const texto = f ? ['FECHAMENTO DO CURSO — ' + r.equipe, f.conceito ? 'Conceito geral: ' + f.conceito : '', '',
+    'Jornada:', ...r.linha.map((l) => '• ' + l.aula + ': ' + (l.conceito || l.situacao)), '', 'Resumo:', f.resumo, '', 'Evolução:', f.evolucao, '',
+    'Pontos fortes:', f.pontosFortes, '', 'A desenvolver:', f.aDesenvolver, '', 'Recomendação final:', f.recomendacao].join('\n') : '';
+  $('folha-corpo').replaceChildren(
+    h('div', { class: 'titulo-secao' }, 'Jornada aula a aula'),
+    h('ul', { class: 'hist' }, r.linha.map((l) => h('li', null, h('div', { class: 'linha' },
+      h('div', null, h('div', { style: 'font-weight:700' }, l.aula), h('div', { class: 'sub' }, [l.checklist, l.atraso ? 'com atraso' : '', l.conceito ? '' : l.situacao].filter(Boolean).join(' · '))),
+      badge(l.conceito))))),
+    ...(f ? [...sec('Resumo', f.resumo), ...sec('Evolução', f.evolucao), ...sec('Pontos fortes', f.pontosFortes), ...sec('A desenvolver', f.aDesenvolver),
+      ...sec('Recomendação final', f.recomendacao), h('div', { class: 'sub', style: 'margin-top:8px' }, 'Gerado em ' + f.geradoEm + ' · salvo na aba "Fechamento" da planilha')]
+      : [h('div', { class: 'caixa', style: 'margin-top:12px' }, 'Ainda não gerado. A IA lê todas as análises e devolutivas da equipe e escreve o relatório final (sem notas).')]),
+    h('div', { class: 'acoes-topo' }, gerar, enviar,
+      f ? h('button', { class: 'btn', onclick: async () => { try { await navigator.clipboard.writeText(texto); aviso('Texto copiado'); } catch (e) { aviso('Não consegui copiar', true); } } }, '📋 Copiar texto') : null));
+}
+
+async function gerarTodosFechamentos(btn) {
+  const eqs = (E.dados && E.dados.equipes) || [];
+  btn.disabled = true;
+  const falhas = [];
+  for (let i = 0; i < eqs.length; i++) {
+    btn.textContent = '⏳ ' + (i + 1) + '/' + eqs.length + ': ' + eqs[i].nome + '…';
+    try { await api('apiFechamento', eqs[i].id, 'gerar'); } catch (e) { falhas.push(eqs[i].nome + ': ' + e.message); }
+  }
+  btn.disabled = false; btn.textContent = '🏁 Gerar o fechamento de todas as equipes';
+  aviso('🏁 ' + (eqs.length - falhas.length) + ' fechamento(s) gerado(s). Veja no detalhe de cada equipe.' + (falhas.length ? '\n❌ ' + falhas.join('\n') : ''), falhas.length > 0);
+}
+
+/* ===== Aviso rápido ===== */
+let tToast;
+function aviso(txt, erro) {
+  $('camada-toast').replaceChildren(h('div', { class: 'toast' + (erro ? ' erro-t' : ''), role: 'status' }, txt));
+  clearTimeout(tToast); tToast = setTimeout(() => $('camada-toast').replaceChildren(), erro ? 6000 : 4000);
+}
+
+/* ===== Buscar entregas (Passo 3) ===== */
+async function buscar() {
+  const b = $('btn-buscar');
+  b.disabled = true; b.textContent = '⏳ Buscando…';
+  try {
+    const r = await api('apiBuscarEntregas');
+    aviso(r.mensagem);
+    await carregar();
+    sincronizarDriveSilencioso();
+  } catch (e) {
+    aviso('Erro: ' + e.message, true);
+  } finally {
+    b.disabled = false; b.textContent = '📥 Buscar entregas';
+  }
+}
+
+/* ===== Possíveis entregas (fora do padrão) ===== */
+async function carregarTriagem() {
+  try { E.triagem = await api('apiTriagem'); } catch (e) { E.triagem = []; }
+  renderTriagem();
+}
+
+/** Mostra os "Para confirmar" da aula selecionada (e os sem aula definida). */
+function renderTriagem() {
+  const todos = E.triagem || [];
+  const aulaDe = (t) => { const e = E.dados && E.dados.entregas.find((x) => x.id === t.id); return e ? e.idAula : ''; };
+  const daAula = todos.filter((t) => !aulaDe(t) || aulaDe(t) === E.aulaId);
+  const itens = E.triagemTodas ? todos : daAula;
+  const outras = todos.length - daAula.length;
+  if (!todos.length) return $('triagem').replaceChildren();
+  if (!itens.length) {
+    return $('triagem').replaceChildren(h('div', { class: 'sub', style: 'margin-top:12px' }, '🟡 ' + outras + ' e-mail(s) para confirmar em outras aulas. ',
+      h('button', { class: 'link-btn', onclick: () => { E.triagemTodas = true; renderTriagem(); } }, 'Ver')));
+  }
+  $('triagem').replaceChildren(h('div', { class: 'triagem' },
+      h('div', { class: 'linha' }, h('h3', null, '🟡 Para confirmar (' + itens.length + ')' + (E.triagemTodas ? ' · todas as aulas' : '')),
+        outras ? h('button', { class: 'link-btn', onclick: () => { E.triagemTodas = !E.triagemTodas; renderTriagem(); } },
+          E.triagemTodas ? 'Só desta aula' : '+ ' + outras + ' de outras aulas') : null),
+      h('div', { class: 'sub' }, 'E-mails com anexo ou link, mas com assunto fora do padrão (ou de remetente não cadastrado). É entrega?'),
+      itens.map((t) => h('div', { class: 'tri-item' },
+        h('div', { style: 'font-weight:700' }, t.equipe + (t.aula ? ' · ' + t.aula : '')),
+        h('div', { class: 'sub' }, '“' + t.assunto + '”  ·  ' + t.remetente + '  ·  ' + t.enviadoEm),
+        t.arquivos ? h('div', { class: 'sub' }, '📎 ' + t.arquivos) : null,
+        t.avisos ? h('div', { class: 'sub' }, '⚠️ ' + t.avisos) : null,
+        h('div', { class: 'botoes' },
+          h('button', { class: 'btn btn-prim btn-peq', onclick: (ev) => decidir(ev, t.id, 'aceitar') }, '✅ É entrega'),
+          h('button', { class: 'btn btn-peq', onclick: () => corrigir(t.id) }, '✏️ Escolher aula/equipe'),
+          h('button', { class: 'btn btn-peq', onclick: (ev) => decidir(ev, t.id, 'ignorar') }, 'Ignorar'),
+          t.link ? h('a', { class: 'btn btn-peq', href: t.link, target: '_blank', rel: 'noopener', style: 'text-decoration:none' }, '✉️ Ver e-mail') : null)))));
+}
+
+async function decidir(ev, id, decisao) {
+  ev.target.disabled = true;
+  try {
+    await api('apiDecidirTriagem', id, decisao);
+    aviso(decisao === 'aceitar' ? '✅ Entrega confirmada' : 'E-mail ignorado');
+    await carregar();
+    if (decisao === 'aceitar') sincronizarDriveSilencioso();
+  } catch (e) {
+    ev.target.disabled = false;
+    aviso('Erro: ' + e.message, true);
+  }
+}
+
+/* ===== Navegação ===== */
+function irPara(aba) {
+  E.aba = aba;
+  document.querySelectorAll('.nav').forEach((b) => b.classList.toggle('ativo', b.dataset.aba === aba));
+  $('v-painel').hidden = aba !== 'painel';
+  $('v-aulas').hidden = aba !== 'aulas';
+  $('v-equipes').hidden = aba !== 'equipes';
+  $('v-ajustes').hidden = aba !== 'ajustes';
+  $('v-agenda').hidden = aba !== 'agenda';
+  $('filtro').hidden = aba !== 'painel';
+  if (E.dados) render();
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll('.nav').forEach((b) => b.addEventListener('click', () => irPara(b.dataset.aba)));
+$('sel-aula').addEventListener('change', (e) => { E.aulaId = e.target.value; E.triagemTodas = false; renderPainel(); });
+$('btn-atualizar').addEventListener('click', atualizarTudo);
+$('btn-buscar').addEventListener('click', buscar);
+$('btn-analisar').addEventListener('click', analisar);
+$('btn-fechar').addEventListener('click', fechar);
+$('btn-nova-aula').addEventListener('click', () => editarAula(null));
+$('btn-nova-equipe').addEventListener('click', () => editarEquipe(null));
+$('fundo').addEventListener('click', fechar);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { if ($('camada-modal').children.length) fecharModal(); else fechar(); } });
+/* Atualiza sozinho a cada 60 s (para ver o que o outro fez), sem atrapalhar quem está editando. */
+setInterval(() => {
+  const ocupado = document.hidden || $('folha').classList.contains('aberta') || $('camada-modal').children.length || $('camada-carregando').children.length;
+  if (!ocupado && (E.aba === 'painel' || E.aba === 'agenda')) carregar();
+}, 60000);
+carregar();
+</script>
+</body>
+</html>
