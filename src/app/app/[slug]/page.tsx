@@ -69,8 +69,8 @@ export default async function VisaoGeral({ params }: PageProps<"/app/[slug]">) {
         <h2 className="font-semibold">Em construção</h2>
         <ul className="grid gap-3 sm:grid-cols-2">
           <li className="rounded-2xl border border-dashed border-borda p-5">
-            <p className="font-medium">Entregas por e-mail</p>
-            <p className="mt-1 text-sm text-suave">Receber entregas também por e-mail, com triagem do que precisa ser confirmado.</p>
+            <p className="font-medium">Análise com IA</p>
+            <p className="mt-1 text-sm text-suave">Checklist item a item, conceito sugerido e análise interna de cada entrega.</p>
           </li>
           <li className="rounded-2xl border border-dashed border-borda p-5">
             <p className="font-medium">Devolutivas</p>
