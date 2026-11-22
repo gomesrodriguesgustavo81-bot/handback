@@ -76,3 +76,25 @@ export async function salvarConfiguracao(slug: string, campo: string, valorBruto
   revalidatePath("/app", "layout");
   return { ok: true, mensagem: "Salvo" };
 }
+
+/** O administrador do espaço libera o acesso de suporte do Handback por 1, 3 ou 7 dias. */
+export async function liberarSuporte(slug: string, dias: number): Promise<Salvo> {
+  const { empresa } = await contextoDaEmpresa(slug);
+  if (empresa.papel !== "admin") return { ok: false, mensagem: "Só quem administra o espaço pode liberar o suporte." };
+  const supabase = await criarClienteServidor();
+  const { error } = await supabase.rpc("liberar_suporte", { p_org: empresa.id, p_dias: dias });
+  if (error) return { ok: false, mensagem: mensagemDeErro(error, "Não foi possível liberar. Tente de novo.") };
+  revalidatePath(`/app/${slug}`, "layout");
+  return { ok: true, mensagem: "Liberado." };
+}
+
+/** O administrador corta qualquer acesso do Handback ao espaço, na hora. */
+export async function cortarSuporte(slug: string): Promise<Salvo> {
+  const { empresa } = await contextoDaEmpresa(slug);
+  if (empresa.papel !== "admin") return { ok: false, mensagem: "Só quem administra o espaço pode cortar o acesso." };
+  const supabase = await criarClienteServidor();
+  const { error } = await supabase.rpc("cortar_suporte", { p_org: empresa.id });
+  if (error) return { ok: false, mensagem: mensagemDeErro(error, "Não foi possível cortar. Tente de novo.") };
+  revalidatePath(`/app/${slug}`, "layout");
+  return { ok: true, mensagem: "Acesso cortado." };
+}

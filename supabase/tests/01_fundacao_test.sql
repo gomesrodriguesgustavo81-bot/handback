@@ -29,11 +29,12 @@ set role authenticated;
 select pg_temp.como('00000000-0000-0000-0000-00000000000a', 'dono@handback.test');
 select public.criar_organizacao('Escola Alfa', 'escola-alfa', 'educacao', 'Ana@Escola.test');
 select public.criar_organizacao('Contábil Beta', 'contabil-beta', 'escritorio', 'bia@contabil.test');
-select pg_temp.confere((select count(*) from public.organizacoes) = 2, 'dono vê as 2 empresas');
+select pg_temp.confere((select count(*) from public.espacos_da_plataforma()) = 2, 'dono vê os 2 espaços na lista');
+select pg_temp.confere((select count(*) from public.organizacoes) = 0, 'dono não vê o conteúdo dos espaços sem acesso');
+reset role;
 select pg_temp.confere(
   (select vocabulario ->> 'etapa' from public.organizacoes where slug = 'contabil-beta') = 'Competência',
   'escritório recebe o vocabulário padrão');
-reset role;
 select set_config('teste.alfa', (select id::text from public.organizacoes where slug = 'escola-alfa'), false);
 select set_config('teste.beta', (select id::text from public.organizacoes where slug = 'contabil-beta'), false);
 set role authenticated;

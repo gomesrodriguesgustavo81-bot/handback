@@ -66,9 +66,9 @@ select pg_temp.como('30000000-0000-0000-0000-00000000000d', 'admin@zeta.test');
 select pg_temp.confere((select count(*) from public.turmas where org_id = current_setting('t.org')::uuid) = 0, 'outra empresa não vê as turmas');
 select pg_temp.como('30000000-0000-0000-0000-00000000000a', 'dono3@handback.test');
 select public.criar_organizacao('Nova', 'nova-com-turma', 'empresa', '');
+reset role;
 select pg_temp.confere((select count(*) = 1 from public.turmas t join public.organizacoes o on o.id = t.org_id where o.slug = 'nova-com-turma' and t.caixa_token = o.caixa_token),
   'conta nova nasce com uma turma');
 select pg_temp.confere((select not configurada from public.organizacoes where slug = 'nova-com-turma'), 'conta nova ainda vai passar pelo primeiro acesso');
-reset role;
 
 \echo 'TODOS OS TESTES DE TURMAS PASSARAM'

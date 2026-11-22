@@ -197,22 +197,22 @@ try {
 
   // 4) Cria a empresa e convida a Ana
   await dono.p.goto(`${APP}/admin`);
-  await dono.p.getByLabel("Nome da empresa").fill("Escola Alfa");
+  await dono.p.getByLabel("Nome do espaço").fill("Escola Alfa");
   await dono.p.getByLabel("Endereço no Handback").fill(SLUG);
-  await dono.p.getByLabel("Tipo de empresa").selectOption("educacao");
-  await dono.p.getByLabel("E-mail do administrador da empresa").fill(ANA.toUpperCase());
-  await dono.p.getByRole("button", { name: "Criar empresa" }).click();
-  await dono.p.getByText(/Empresa "Escola Alfa" criada/).waitFor();
+  await dono.p.getByLabel("Tipo de uso").selectOption("educacao");
+  await dono.p.getByLabel("E-mail de quem vai administrar").fill(ANA.toUpperCase());
+  await dono.p.getByRole("button", { name: "Criar espaço" }).click();
+  await dono.p.getByText(/Espaço "Escola Alfa" criado/).waitFor();
   confere(true, "empresa criada pelo painel");
   await largura(dono.p, "painel do dono");
   await dono.p.screenshot({ path: `${FOTOS}/2-painel-do-dono.png`, fullPage: true });
 
   // 5) Endereço repetido é recusado com mensagem clara
-  await dono.p.getByLabel("Nome da empresa").fill("Outra");
+  await dono.p.getByLabel("Nome do espaço").fill("Outra");
   await dono.p.getByLabel("Endereço no Handback").fill(SLUG);
-  await dono.p.getByLabel("Tipo de empresa").selectOption("empresa");
-  await dono.p.getByRole("button", { name: "Criar empresa" }).click();
-  await dono.p.getByText("Já existe uma empresa com o endereço").waitFor();
+  await dono.p.getByLabel("Tipo de uso").selectOption("empresa");
+  await dono.p.getByRole("button", { name: "Criar espaço" }).click();
+  await dono.p.getByText("Já existe um espaço com o endereço").waitFor();
   confere(true, "endereço repetido é recusado");
 
   // 6) Ana entra e já é administradora da escola
@@ -1004,6 +1004,36 @@ try {
     await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
     await trocarTurma(ana.p, "Turma A");
   }
+
+  // 7f) Privacidade: o dono não vê o conteúdo; o cliente libera o suporte
+  await dono.p.goto(`${APP}/admin`);
+  const linhaDono = dono.p.locator("li", { hasText: SLUG });
+  confere(/entrega\(s\)/.test(await linhaDono.innerText()) && (await linhaDono.innerText()).includes(ANA), "dono vê o espaço na lista, com os números de uso");
+  confere(!(await linhaDono.getByRole("link", { name: "Entrar para dar suporte" }).count()), "sem suporte liberado, dono não tem como entrar");
+  confere((await dono.p.goto(`${APP}/app/${SLUG}/entregas`)).status() === 404, "dono não abre as entregas do cliente");
+  await dono.p.goto(`${APP}/admin`);
+  await dono.p.locator("li", { hasText: SLUG }).getByText("Acesso de emergência").click();
+  await dono.p.locator("li", { hasText: SLUG }).getByLabel("Motivo (o cliente vai ler)").fill("Teste do acesso de emergência");
+  await dono.p.locator("li", { hasText: SLUG }).getByRole("button", { name: "Entrar em emergência e avisar o cliente" }).click();
+  await dono.p.getByText(/Conecte o seu Gmail antes|Não entrou/).waitFor();
+  confere(true, "emergência só com o cliente avisado por e-mail");
+  await largura(dono.p, "administração do Handback");
+  await dono.p.screenshot({ path: `${FOTOS}/34-administracao.png`, fullPage: true });
+
+  await ana.p.goto(`${APP}/app/${SLUG}/configuracoes/seguranca`);
+  await ana.p.getByRole("button", { name: "Liberar o acesso de suporte" }).click();
+  await ana.p.getByText(/Suporte liberado até/).waitFor();
+  confere(await ana.p.getByText("O suporte do Handback tem acesso").isVisible(), "o cliente vê no topo que o suporte está aberto");
+  await ana.p.screenshot({ path: `${FOTOS}/35-suporte-liberado.png`, fullPage: true });
+  await dono.p.goto(`${APP}/admin`);
+  await dono.p.locator("li", { hasText: SLUG }).getByRole("link", { name: "Entrar para dar suporte" }).click();
+  await dono.p.getByText(/Modo suporte/).waitFor();
+  confere(await dono.p.getByRole("link", { name: "Entregas" }).isVisible(), "com suporte liberado, dono entra no espaço");
+  await dono.p.getByRole("button", { name: "Sair do suporte" }).click();
+  await dono.p.waitForURL(/\/admin$/);
+  confere((await dono.p.goto(`${APP}/app/${SLUG}/entregas`)).status() === 404, "depois de sair do suporte, dono não entra mais");
+  await ana.p.goto(`${APP}/app/${SLUG}/registro`);
+  confere((await ana.p.locator("main ol").innerText()).includes("Liberou o acesso de suporte do Handback por 3 dias"), "liberar o suporte fica no registro");
 
   // 8) O dono bloqueia a escola; a Ana vê o aviso
   await dono.p.goto(`${APP}/admin`);

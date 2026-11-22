@@ -182,3 +182,55 @@ export function montarMensagem(
   const raw = Buffer.from(linhas.join("\r\n"), "utf8").toString("base64url");
   return { raw, para, copia, assunto };
 }
+
+/**
+ * Aviso simples do Handback (ex.: acesso de emergência ao espaço), no mesmo
+ * visual da devolutiva, em HTML e texto.
+ */
+export function montarAviso(
+  de: string,
+  dados: { para: string[]; assunto: string; titulo: string; paragrafos: string[]; site?: string },
+  fronteira = `hb-${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`,
+): { raw: string; para: string[] } {
+  const para = dados.para.map((x) => x.trim().toLowerCase()).filter((x) => EMAIL.test(x));
+  if (!para.length) throw new Error("Ninguém para avisar.");
+  const fonte = "font-family:Inter,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;";
+  const site = dados.site && /^https?:\/\/[^\s"'<>]+$/.test(dados.site) ? dados.site.replace(/\/$/, "") : "";
+  const marca = site
+    ? `<img src="${esc(site)}/email/handback.png" width="120" height="29" alt="handback" style="display:block;border:0;height:29px;width:120px;">`
+    : `<b style="${fonte}font-size:18px;color:${C.texto};">handback</b>`;
+  const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(dados.titulo)}</title></head>
+<body style="margin:0;padding:0;background:${C.fundo};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${C.fundo};"><tr><td align="center" style="padding:24px 12px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:${C.cartao};border:1px solid ${C.borda};border-radius:18px;overflow:hidden;">
+    <tr><td style="height:6px;line-height:6px;font-size:0;background:${C.limao};">&nbsp;</td></tr>
+    <tr><td style="padding:24px 28px 0;">${marca}</td></tr>
+    <tr><td style="padding:16px 28px 8px;">
+      <h1 style="margin:0 0 12px;${fonte}font-size:22px;line-height:1.3;color:${C.texto};">${esc(dados.titulo)}</h1>
+      ${dados.paragrafos.map((p) => `<p style="margin:0 0 14px;${fonte}font-size:16px;line-height:1.6;color:${C.texto};">${esc(p)}</p>`).join("")}
+    </td></tr>
+    <tr><td style="padding:12px 28px 22px;border-top:1px solid ${C.linha};"><p style="margin:0;${fonte}font-size:12px;color:${C.suave};">Handback · Você recebe, a gente devolve conferido.</p></td></tr>
+  </table>
+</td></tr></table></body></html>`;
+  const linhas = [
+    `From: ${semQuebra(de)}`,
+    `To: ${para.join(", ")}`,
+    `Subject: ${cabecalhoCodificado(semQuebra(dados.assunto))}`,
+    "MIME-Version: 1.0",
+    `Content-Type: multipart/alternative; boundary="${fronteira}"`,
+    "",
+    `--${fronteira}`,
+    'Content-Type: text/plain; charset="UTF-8"',
+    "Content-Transfer-Encoding: base64",
+    "",
+    base64EmLinhas(`${dados.titulo}\n\n${dados.paragrafos.join("\n\n")}\n`),
+    `--${fronteira}`,
+    'Content-Type: text/html; charset="UTF-8"',
+    "Content-Transfer-Encoding: base64",
+    "",
+    base64EmLinhas(html),
+    `--${fronteira}--`,
+    "",
+  ];
+  return { raw: Buffer.from(linhas.join("\r\n"), "utf8").toString("base64url"), para };
+}

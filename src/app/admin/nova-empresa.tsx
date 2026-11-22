@@ -10,7 +10,7 @@ export function NovaEmpresa() {
 
   return (
     <form action={acao} className="flex flex-col gap-4" key={estado?.ok ? estado.mensagem : "form"}>
-      <Campo rotulo="Nome da empresa" name="nome" required placeholder="Ex.: Escola Alfa" />
+      <Campo rotulo="Nome do espaço" name="nome" required placeholder="Ex.: Escola Alfa" />
       <Campo
         rotulo="Endereço no Handback"
         name="slug"
@@ -18,7 +18,7 @@ export function NovaEmpresa() {
         dica="Opcional. Se ficar vazio, é criado a partir do nome."
       />
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium">Tipo de empresa</span>
+        <span className="text-sm font-medium">Tipo de uso</span>
         <select
           name="frente"
           required
@@ -37,16 +37,16 @@ export function NovaEmpresa() {
         <span className="text-xs text-suave">Define as palavras usadas (aula, ciclo, competência…). Dá para mudar depois.</span>
       </label>
       <Campo
-        rotulo="E-mail do administrador da empresa"
+        rotulo="E-mail de quem vai administrar"
         name="email"
         type="email"
         inputMode="email"
-        placeholder="responsavel@empresa.com.br"
+        placeholder="responsavel@exemplo.com.br"
         dica="Opcional. A pessoa vira administradora ao entrar com este e-mail."
       />
       {estado ? <Aviso tipo={estado.ok ? "info" : "erro"}>{estado.mensagem}</Aviso> : null}
       <Botao type="submit" disabled={enviando}>
-        {enviando ? "Criando…" : "Criar empresa"}
+        {enviando ? "Criando…" : "Criar espaço"}
       </Botao>
     </form>
   );

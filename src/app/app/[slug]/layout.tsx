@@ -1,4 +1,9 @@
+import Link from "next/link";
 import { Aviso } from "@/components/ui";
+import { sairDoSuporte } from "@/app/admin/actions";
+import { acessoAtivo } from "@/lib/suporte";
+import { criarClienteServidor } from "@/lib/supabase/server";
+import { dataHoraBR } from "@/lib/textos";
 import { contextoDaEmpresa } from "@/lib/empresa";
 import { AbasEmpresa } from "./abas";
 import { completarVocabulario, o, quemEntrega } from "@/lib/nomes";
@@ -23,6 +28,7 @@ export default async function LayoutEmpresa({
     turmaAtual(empresa.id),
   ]);
   const ativas = turmas.filter((t) => !t.arquivada);
+  const acesso = await acessoAtivo(await criarClienteServidor(), empresa.id);
   const entrega = quemEntrega(v, atual?.modo ?? "grupos");
 
   const abas = [
@@ -41,6 +47,38 @@ export default async function LayoutEmpresa({
         <Aviso tipo="alerta">
           Est{o(v, "organizacao")} {v.organizacao.toLowerCase()} está bloquead{o(v, "organizacao")}. Fale com o suporte do Handback.
         </Aviso>
+      ) : null}
+      {acesso && empresa.papel === null ? (
+        <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-acento px-4 py-3 text-sm text-sobre-acento">
+          <span>
+            <strong>Modo {acesso.tipo === "emergencia" ? "emergência" : "suporte"}</strong> até {dataHoraBR(acesso.fim)}. Tudo o que você abrir fica no registro
+            deste espaço.
+          </span>
+          <form action={sairDoSuporte.bind(null, empresa.id)}>
+            <button type="submit" className="min-h-10 rounded-full bg-sobre-acento px-4 font-semibold text-acento">
+              Sair do suporte
+            </button>
+          </form>
+        </div>
+      ) : acesso ? (
+        <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-acento bg-cartao px-4 py-3 text-sm">
+          <span>
+            {acesso.tipo === "emergencia" ? (
+              <>
+                <strong>Acesso de emergência do Handback</strong> até {dataHoraBR(acesso.fim)}. Motivo: {acesso.motivo}
+              </>
+            ) : (
+              <>
+                <strong>O suporte do Handback tem acesso</strong> a este espaço até {dataHoraBR(acesso.fim)}.
+              </>
+            )}
+          </span>
+          {empresa.papel === "admin" ? (
+            <Link href={`/app/${slug}/configuracoes/seguranca`} className="font-semibold text-marca-forte underline">
+              Ver ou cortar
+            </Link>
+          ) : null}
+        </div>
       ) : null}
       {ativas.length > 1 || podeGerir ? (
         <SoForaDaFolha>
