@@ -842,7 +842,27 @@ try {
     await ana.p.goto(`${APP}/app/${SLUG}/ajustes`);
     await ana.p.getByRole("link", { name: "Ligar ao Moodle" }).click();
     await ana.p.getByRole("heading", { name: "Ligar ao Moodle" }).waitFor();
+    // Moodle com login da instituição: o Handback percebe sozinho e mostra o caminho da chave.
+    await ana.p.getByLabel("Endereço do Moodle").fill("rodrigues@usp.br");
+    await ana.p.getByRole("button", { name: "Continuar" }).click();
+    await ana.p.getByText(/Isso é um e-mail/).waitFor();
+    confere(true, "Moodle: e-mail no lugar do endereço mostra aviso claro");
+    await ana.p.getByLabel("Endereço do Moodle").fill(`${MOODLE}/sso/login/index.php`);
+    await ana.p.getByRole("button", { name: "Continuar" }).click();
+    await ana.p.getByText("Como você entra nesse Moodle?").waitFor();
+    await ana.p.getByRole("radio", { name: "Com Login Institucional" }).check();
+    const guia = ana.p.getByRole("list", { name: "Como pegar a chave de acesso" });
+    confere(await guia.getByText(/Chaves de segurança/).isVisible() && await guia.getByText("127.0.0.1:4558/sso").isVisible(),
+      "Moodle: login da instituição mostra o guia ilustrado da chave, com o endereço certo");
+    confere(await ana.p.getByLabel("Chave de acesso", { exact: true }).isVisible() && !(await ana.p.getByLabel("Senha do Moodle").count()), "Moodle: no caminho da chave não pede senha");
+    await largura(ana.p, "guia da chave do Moodle");
+    await ana.p.screenshot({ path: `${FOTOS}/26-moodle-chave.png`, fullPage: true });
+    await ana.p.getByRole("button", { name: "Trocar" }).click();
+
     await ana.p.getByLabel("Endereço do Moodle").fill(`${MOODLE}/login/index.php`);
+    await ana.p.getByRole("button", { name: "Continuar" }).click();
+    await ana.p.getByText("AVA Teste").waitFor();
+    confere(!(await ana.p.getByText("Como você entra nesse Moodle?").count()), "Moodle: com senha própria vai direto para usuário e senha");
     await ana.p.getByLabel("Usuário do Moodle").fill("prof.moodle");
     await ana.p.getByLabel("Senha do Moodle").fill("senha errada");
     await ana.p.getByRole("button", { name: "Conectar ao Moodle" }).click();

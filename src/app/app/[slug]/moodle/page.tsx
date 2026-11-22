@@ -9,7 +9,8 @@ import { conexaoPorId } from "@/lib/moodle/sincronizar";
 import { completarVocabulario } from "@/lib/nomes";
 import { criarClienteAdmin } from "@/lib/supabase/admin";
 import { criarClienteServidor } from "@/lib/supabase/server";
-import { conectarMoodle, desligarMoodle, ligarDisciplina, salvarNotasMoodle } from "./acoes";
+import { desligarMoodle, ligarDisciplina, salvarNotasMoodle } from "./acoes";
+import { FormConectarMoodle } from "./form-conectar";
 
 export const metadata: Metadata = { title: "Moodle" };
 export const maxDuration = 60;
@@ -98,50 +99,7 @@ export default async function Moodle({ params, searchParams }: PageProps<"/app/[
 
       {!conta ? (
         <Cartao className="flex flex-col gap-4">
-          {expirada ? <Aviso tipo="alerta">A ligação com o Moodle expirou ou foi cortada. Entre de novo.</Aviso> : null}
-          <p className="text-sm">
-            Use o mesmo login que você usa no Moodle da sua instituição. O Handback traz as disciplinas, os alunos e as entregas de lá.
-          </p>
-          <FormAcao acao={conectarMoodle.bind(null, slug)} textoBotao="Conectar ao Moodle" textoEnviando="Conectando…">
-            <Campo
-              rotulo="Endereço do Moodle"
-              name="endereco"
-              required
-              inputMode="url"
-              autoCapitalize="none"
-              autoCorrect="off"
-              placeholder="ava.suafaculdade.edu.br"
-              defaultValue={(contas ?? [])[0]?.site ?? ""}
-              dica="É o endereço que aparece no navegador quando você abre o Moodle."
-            />
-            <Campo rotulo="Usuário do Moodle" name="usuario" autoComplete="off" autoCapitalize="none" autoCorrect="off" />
-            <Campo rotulo="Senha do Moodle" name="senha" type="password" autoComplete="off" />
-            <p className="flex items-start gap-2 rounded-xl bg-marca-clara px-3 py-2.5 text-sm text-marca-forte">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="mt-0.5 shrink-0">
-                <rect x="4" y="11" width="16" height="10" rx="2" />
-                <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-              </svg>
-              A senha é usada uma vez só, para o Moodle liberar o acesso. Ela não fica guardada no Handback. Você pode cortar o acesso quando quiser.
-            </p>
-            <details className="text-sm">
-              <summary className="cursor-pointer font-medium text-marca-forte">Entra no Moodle por outro login (Senha Única, Google, Microsoft)?</summary>
-              <div className="mt-2 flex flex-col gap-2">
-                <p className="text-suave">Então use uma chave de acesso no lugar do usuário e da senha. Para pegar a chave:</p>
-                <ol className="flex list-decimal flex-col gap-1 pl-5 text-suave">
-                  <li>
-                    No celular, instale o aplicativo oficial <strong>Moodle</strong> e entre no Moodle da sua instituição por ele, uma vez.
-                  </li>
-                  <li>
-                    No navegador, abra o Moodle › seu nome (canto de cima) › <strong>Preferências</strong> › <strong>Chaves de segurança</strong>.
-                  </li>
-                  <li>
-                    Copie a chave da linha <strong>“Moodle mobile web service”</strong> e cole aqui. Se não aparecer, peça ao suporte da instituição.
-                  </li>
-                </ol>
-                <Campo rotulo="Chave de acesso (opcional)" name="chave" autoComplete="off" autoCapitalize="none" autoCorrect="off" />
-              </div>
-            </details>
-          </FormAcao>
+          <FormConectarMoodle slug={slug} enderecoInicial={(contas ?? [])[0]?.site?.replace(/^https?:\/\//, "") ?? ""} expirada={expirada} />
         </Cartao>
       ) : (
         <>

@@ -61,7 +61,15 @@ createServer(async (req, res) => {
     res.end(JSON.stringify(j));
   };
   const url = new URL(req.url, BASE);
+  // Endereços começando com /sso imitam um Moodle com login da instituição (Senha Única etc.).
+  const sso = url.pathname.startsWith("/sso/");
+  if (sso) url.pathname = url.pathname.slice(4);
   const p = new URLSearchParams(corpo);
+  if (url.pathname === "/lib/ajax/service-nologin.php") {
+    return json(200, [{ error: false, data: sso
+      ? { sitename: "AVA Institucional", typeoflogin: 1, identityproviders: [{ name: "Login Institucional", url: `${BASE}/sso/auth` }], enablemobilewebservice: 1, maintenanceenabled: 0 }
+      : { sitename: "AVA Teste", typeoflogin: 1, identityproviders: [], enablemobilewebservice: 1, maintenanceenabled: 0 } }]);
+  }
 
   if (req.method === "POST" && url.pathname === "/__envio") {
     const e = JSON.parse(corpo);
@@ -70,7 +78,7 @@ createServer(async (req, res) => {
   }
   if (url.pathname === "/login/token.php") {
     if (p.get("service") !== "moodle_mobile_app") return json(200, { error: "Serviço não disponível", errorcode: "servicenotavailable" });
-    if (p.get("username") === "prof.moodle" && p.get("password") === "senha moodle") return json(200, { token: CHAVE, privatetoken: null });
+    if (!sso && p.get("username") === "prof.moodle" && p.get("password") === "senha moodle") return json(200, { token: CHAVE, privatetoken: null });
     return json(200, { error: "Login inválido, por favor tente novamente", errorcode: "invalidlogin" });
   }
   if (url.pathname.startsWith("/webservice/pluginfile.php/")) {

@@ -144,7 +144,7 @@ export function achatar(dados: Record<string, unknown>, prefixo = "", saida = ne
 }
 
 const ERROS_LOGIN: Record<string, string> = {
-  invalidlogin: "O Moodle não aceitou esse usuário e senha. Se você entra no Moodle por um login da instituição (como a Senha Única USP, Google ou Microsoft), use a chave de acesso: toque em “Entra no Moodle por outro login?” logo acima.",
+  invalidlogin: "O Moodle não aceitou esse usuário e senha. Se você entra no Moodle por um login da instituição (como a Senha Única USP, Google ou Microsoft), escolha a opção do login da instituição e use a chave de acesso.",
   enablewsdescription: "Este Moodle não libera o acesso por aplicativos. Peça ao suporte da instituição para ativar o “serviço para dispositivos móveis”.",
   servicenotavailable: "Este Moodle não libera o acesso por aplicativos. Peça ao suporte da instituição para ativar o “serviço para dispositivos móveis”.",
   sitemaintenance: "O Moodle está em manutenção. Tente de novo mais tarde.",
@@ -152,6 +152,41 @@ const ERROS_LOGIN: Record<string, string> = {
   forcepasswordchangenotice: "O Moodle está pedindo para você trocar a senha. Entre no Moodle, troque a senha e tente de novo.",
   restoredaccountresetpassword: "O Moodle está pedindo para você trocar a senha. Entre no Moodle, troque a senha e tente de novo.",
 };
+
+export type ConfigPublica = {
+  sitename?: string;
+  /** 1 = usuário e senha no app; 2 e 3 = login pelo navegador (instituição). */
+  typeoflogin?: number;
+  identityproviders?: { name: string }[];
+  enablemobilewebservice?: number;
+  maintenanceenabled?: number;
+};
+
+export type TipoDeLogin = "senha" | "instituicao" | "misto" | "desconhecido";
+
+/**
+ * Lê a configuração pública de login do Moodle (a mesma que o app oficial
+ * lê antes de entrar). Não precisa de senha nem de chave. Devolve null se o
+ * Moodle não informar (versões antigas).
+ */
+export async function configPublica(site: string): Promise<ConfigPublica | null> {
+  const r = await pedir(new URL(`${site}/lib/ajax/service-nologin.php?info=tool_mobile_get_public_config`), {
+    method: "POST",
+    headers: { "content-type": "application/json", accept: "application/json" },
+    body: JSON.stringify([{ index: 0, methodname: "tool_mobile_get_public_config", args: {} }]),
+    tempo: 15_000,
+  });
+  const j = (await r.json().catch(() => null)) as { error?: boolean; data?: ConfigPublica }[] | null;
+  if (!Array.isArray(j) || !j[0] || j[0].error || !j[0].data) return null;
+  return j[0].data;
+}
+
+/** Como as pessoas entram nesse Moodle: senha do próprio Moodle, login da instituição, ou os dois. */
+export function tipoDeLogin(c: ConfigPublica | null): TipoDeLogin {
+  if (!c || !c.typeoflogin) return "desconhecido";
+  if (c.typeoflogin !== 1) return "instituicao";
+  return c.identityproviders?.length ? "misto" : "senha";
+}
 
 /** Troca usuário e senha por uma chave de acesso. A senha não é guardada. */
 export async function pedirChave(site: string, usuario: string, senha: string): Promise<string> {

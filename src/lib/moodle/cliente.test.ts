@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   achatar,
+  configPublica,
   baixarArquivo,
   chamar,
   dataDoMoodle,
@@ -12,6 +13,7 @@ import {
   notaDoConceito,
   pedirChave,
   textoParaHtml,
+  tipoDeLogin,
 } from "./cliente";
 
 afterEach(() => {
@@ -123,5 +125,24 @@ describe("textos e notas", () => {
   it("datas no horário de Brasília", () => {
     expect(dataDoMoodle(Date.UTC(2025, 8, 30, 0, 0) / 1000)).toBe("2025-09-29"); // 30/09 00:00 UTC = 29/09 21:00 em Brasília
     expect(dataDoMoodle(0)).toBeNull();
+  });
+});
+
+describe("como as pessoas entram no Moodle", () => {
+  it("lê a configuração pública sem senha", async () => {
+    vi.stubEnv("HANDBACK_MOODLE_LOCAL", "1");
+    const f = vi.fn().mockResolvedValue(respostaJson([{ error: false, data: { sitename: "e-Disciplinas", typeoflogin: 1, identityproviders: [{ name: "Senha Única USP" }] } }]));
+    vi.stubGlobal("fetch", f);
+    const c = await configPublica("http://moodle.test");
+    expect(String(f.mock.calls[0][0])).toBe("http://moodle.test/lib/ajax/service-nologin.php?info=tool_mobile_get_public_config");
+    expect(tipoDeLogin(c)).toBe("misto");
+    f.mockResolvedValueOnce(respostaJson([{ error: true, exception: { message: "x" } }]));
+    expect(await configPublica("http://moodle.test")).toBeNull();
+  });
+  it("classifica o tipo de login", () => {
+    expect(tipoDeLogin({ typeoflogin: 1 })).toBe("senha");
+    expect(tipoDeLogin({ typeoflogin: 2 })).toBe("instituicao");
+    expect(tipoDeLogin({ typeoflogin: 3, identityproviders: [{ name: "Google" }] })).toBe("instituicao");
+    expect(tipoDeLogin(null)).toBe("desconhecido");
   });
 });

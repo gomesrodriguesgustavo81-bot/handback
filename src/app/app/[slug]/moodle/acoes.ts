@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import type { Resultado } from "@/components/form-acao";
 import { cifrarTexto, criptoPronta } from "@/lib/cripto";
 import { contextoDaEmpresa, mensagemDeErro } from "@/lib/empresa";
-import { cursosDaPessoa, ErroMoodle, infoDoSite, normalizarSite, pedirChave } from "@/lib/moodle/cliente";
+import { configPublica, cursosDaPessoa, ErroMoodle, infoDoSite, normalizarSite, pedirChave, tipoDeLogin, type TipoDeLogin } from "@/lib/moodle/cliente";
 import { alunosDoCurso, conexaoPorId, devolverNoMoodle, sincronizarTurma } from "@/lib/moodle/sincronizar";
 import { criarClienteAdmin } from "@/lib/supabase/admin";
 import { criarClienteServidor } from "@/lib/supabase/server";
@@ -16,6 +16,33 @@ function mensagem(e: unknown, padrao: string) {
   if (e instanceof ErroMoodle) return e.message;
   console.error("[moodle]", e);
   return padrao;
+}
+
+export type Exame =
+  | { ok: true; site: string; nome: string; tipo: TipoDeLogin; provedores: string[] }
+  | { ok: false; mensagem: string };
+
+/** Confere o endereço e descobre como as pessoas entram nesse Moodle (sem senha nem chave). */
+export async function examinarMoodle(slug: string, endereco: string): Promise<Exame> {
+  const { podeGerir } = await contextoDaEmpresa(slug);
+  if (!podeGerir) return { ok: false, mensagem: "Só quem administra a conta pode ligar o Moodle." };
+  try {
+    const site = normalizarSite(endereco);
+    const c = await configPublica(site);
+    if (c?.enablemobilewebservice === 0) {
+      return { ok: false, mensagem: "Este Moodle não libera o acesso por aplicativos. Peça ao suporte da instituição para ativar o “serviço para dispositivos móveis”." };
+    }
+    if (c?.maintenanceenabled) return { ok: false, mensagem: "O Moodle está em manutenção. Tente de novo mais tarde." };
+    return {
+      ok: true,
+      site,
+      nome: (c?.sitename ?? "").replace(/<[^>]+>/g, "").trim().slice(0, 120),
+      tipo: tipoDeLogin(c),
+      provedores: (c?.identityproviders ?? []).map((p) => String(p.name).replace(/<[^>]+>/g, "").trim()).filter(Boolean).slice(0, 4),
+    };
+  } catch (e) {
+    return { ok: false, mensagem: mensagem(e, "Não foi possível abrir esse endereço. Confira e tente de novo.") };
+  }
 }
 
 /** Liga o Moodle: troca usuário e senha (ou uma chave de acesso) pela chave, que fica cifrada. A senha não é guardada. */
