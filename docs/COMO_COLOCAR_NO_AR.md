@@ -204,3 +204,54 @@ Texto sugerido para a justificativa (o Google lê em inglês):
 A análise costuma levar de alguns dias a algumas semanas. Se o Google pedir para usar
 um domínio próprio, compre um (cerca de R$ 40/ano), ligue-o à Vercel e repita os passos
 2 e 3 com o domínio novo.
+
+---
+
+## Parte 8 · Acesso seguro (senha + duas etapas + convites)
+
+O Handback agora funciona assim:
+- **Só entra quem foi convidado.** O convite chega por e-mail com um link para criar a senha.
+- **Senha forte** (12+ caracteres, letras e números, recusa senhas vazadas na internet).
+- **Verificação em duas etapas** (código de um app autenticador no celular) obrigatória
+  por padrão em toda empresa e sempre para o dono da plataforma. O próprio banco de
+  dados esconde os dados de quem não passou pelo código.
+- O link de acesso sem senha foi desligado. "Esqueci minha senha" manda um link por e-mail.
+
+### O que configurar no Supabase (uma vez)
+
+1. **Authentication › Sign In / Providers**
+   - Desligue **Allow new users to sign up** (ninguém cria conta sozinho; os convites continuam funcionando).
+   - Em **Email**, deixe ligado. Em **Password** (ou "Password strength"): tamanho mínimo **12** e
+     exigência **Letters and digits**.
+2. **Authentication › Multi-Factor**: confira se **TOTP (App Authenticator)** está ativado.
+3. **Authentication › Emails › Templates**:
+   - **Invite user**: assunto `Você foi convidado para o Handback`; corpo: cole o conteúdo de
+     `supabase/templates/convite.html`.
+   - **Reset password**: assunto `Handback: criar uma senha nova`; corpo: cole
+     `supabase/templates/nova-senha.html`.
+4. **Authentication › Emails › SMTP Settings** (recomendado: o envio padrão do Supabase manda
+   poucos e-mails por hora). Use o Gmail de suporte do Handback:
+   - No Gmail de suporte, ative a **verificação em duas etapas** e crie uma **senha de app**
+     (myaccount.google.com › Segurança › Senhas de app).
+   - No Supabase: Host `smtp.gmail.com`, Port `465`, Username = o Gmail de suporte,
+     Password = a senha de app, Sender name `Handback`, Sender email = o Gmail de suporte.
+
+### Primeiro acesso do dono depois da mudança
+
+Como o link sem senha saiu, entre em **/entrar › Esqueci minha senha** com o seu e-mail,
+crie a senha pelo link e ative as duas etapas no celular (o Handback guia o passo a passo).
+
+### Entrar com Google (opcional)
+
+1. No Google Cloud (projeto Handback) › **Credenciais** › o cliente OAuth "Site Handback" ›
+   adicione o URI de redirecionamento `https://SEU-PROJETO.supabase.co/auth/v1/callback`.
+2. No Supabase › **Authentication › Sign In / Providers › Google**: ative e cole o mesmo
+   Client ID e Client Secret.
+3. Na Vercel, cadastre `HANDBACK_LOGIN_GOOGLE` = `1` e faça Redeploy.
+
+Quem entra com Google também precisa criar a senha e usar o código das duas etapas.
+
+### Se alguém perder o celular
+
+O administrador da plataforma remove o fator da pessoa no Supabase
+(**Authentication › Users** › a pessoa › **Remove MFA factors**). No próximo acesso, ela cadastra o celular novo.

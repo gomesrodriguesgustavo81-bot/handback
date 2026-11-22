@@ -11,6 +11,9 @@ export function TopoApp({ email, dono }: { email: string; dono: boolean }) {
           <Link href="/app" className="rounded-lg px-3 py-2 hover:bg-fundo">
             Minhas empresas
           </Link>
+          <Link href="/conta" className="rounded-lg px-3 py-2 hover:bg-fundo">
+            Minha conta
+          </Link>
           {dono ? (
             <Link href="/admin" className="rounded-lg px-3 py-2 hover:bg-fundo">
               Painel do dono

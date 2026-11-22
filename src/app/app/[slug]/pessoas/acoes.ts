@@ -7,6 +7,7 @@ import { PAPEIS, type Papel } from "@/lib/frentes";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { usuarioAtual } from "@/lib/sessao";
 import { emailValido } from "@/lib/textos";
+import { convidarPorEmail } from "@/lib/acesso";
 
 function ePapel(valor: unknown): valor is Papel {
   return typeof valor === "string" && valor in PAPEIS;
@@ -34,9 +35,15 @@ export async function convidar(slug: string, _a: Resultado, dados: FormData): Pr
   }
 
   revalidatePath(`/app/${slug}/pessoas`);
+  const convite = await convidarPorEmail(email, empresa.nome);
   return {
     ok: true,
-    mensagem: `Convite criado. Peça para ${email} entrar no Handback com esse e-mail: o acesso é liberado na hora.`,
+    mensagem:
+      convite === "enviado"
+        ? `Convite enviado para ${email}. A pessoa recebe um e-mail para criar a senha e entrar.`
+        : convite === "ja-tem-conta"
+          ? `${email} já tem conta no Handback: o acesso a esta empresa aparece no próximo login.`
+          : `Convite criado, mas o e-mail não saiu. Peça para ${email} usar “Esqueci minha senha” na tela de entrar.`,
     vez: Date.now(),
   };
 }

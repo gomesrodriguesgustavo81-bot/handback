@@ -4,7 +4,7 @@ import { lerConfigSupabase } from "@/lib/supabase/config";
 import { urlDoSite } from "@/lib/caminhos";
 
 /** Áreas que exigem login. */
-const AREAS_PROTEGIDAS = ["/app", "/admin"];
+const AREAS_PROTEGIDAS = ["/app", "/admin", "/conta", "/definir-senha", "/entrar/codigo"];
 
 /**
  * Roda antes de cada página: renova a sessão do Supabase e manda para

@@ -12,7 +12,8 @@ import type { Frente, Papel, Vocabulario } from "./frentes";
  * (Row Level Security), então um erro aqui nunca expõe dados de outra empresa.
  */
 
-export const usuarioAtual = cache(async () => {
+/** Só confere o login (usado pelas telas de criar senha e cadastrar as 2 etapas). */
+export const sessaoBasica = cache(async () => {
   await connection(); // sempre na hora do acesso, nunca pré-montada
   if (!supabaseConfigurado()) redirect("/entrar");
   const supabase = await criarClienteServidor();
@@ -20,7 +21,31 @@ export const usuarioAtual = cache(async () => {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/entrar");
-  return { id: user.id, email: user.email ?? "" };
+  const { data: nivel } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  return {
+    id: user.id,
+    email: user.email ?? "",
+    senhaDefinida: user.app_metadata?.senha_definida === true,
+    nivel: nivel?.currentLevel ?? "aal1",
+    temSegundaEtapa: nivel?.nextLevel === "aal2",
+  };
+});
+
+/**
+ * Quem está logado, já com a segurança completa: senha criada e, quando a
+ * empresa exige (ou é o dono da plataforma), o código das duas etapas.
+ * Toda tela protegida passa por aqui. O banco confere de novo.
+ */
+export const usuarioAtual = cache(async () => {
+  const s = await sessaoBasica();
+  if (!s.senhaDefinida) redirect("/definir-senha");
+  if (s.temSegundaEtapa && s.nivel !== "aal2") redirect("/entrar/codigo");
+  if (s.nivel !== "aal2") {
+    const supabase = await criarClienteServidor();
+    const { data: precisa } = await supabase.rpc("preciso_de_duas_etapas");
+    if (precisa) redirect("/conta/duas-etapas");
+  }
+  return { id: s.id, email: s.email, duasEtapas: s.nivel === "aal2" };
 });
 
 export const eDonoDaPlataforma = cache(async () => {

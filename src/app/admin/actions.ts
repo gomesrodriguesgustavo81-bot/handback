@@ -5,6 +5,7 @@ import { criarClienteServidor } from "@/lib/supabase/server";
 import { eDonoDaPlataforma } from "@/lib/sessao";
 import { eFrente } from "@/lib/frentes";
 import { gerarSlug } from "@/lib/caminhos";
+import { convidarPorEmail } from "@/lib/acesso";
 
 export type EstadoForm = { ok: boolean; mensagem: string } | null;
 
@@ -38,11 +39,16 @@ export async function criarEmpresa(_anterior: EstadoForm, dados: FormData): Prom
   }
 
   revalidatePath("/admin");
+  if (!email) return { ok: true, mensagem: `Empresa "${nome}" criada.` };
+  const convite = await convidarPorEmail(email, nome);
   return {
     ok: true,
-    mensagem: email
-      ? `Empresa "${nome}" criada. Quando ${email} entrar no Handback, já será o administrador dela.`
-      : `Empresa "${nome}" criada.`,
+    mensagem:
+      convite === "enviado"
+        ? `Empresa "${nome}" criada. Mandamos um convite para ${email} criar a senha e entrar como administrador.`
+        : convite === "ja-tem-conta"
+          ? `Empresa "${nome}" criada. ${email} já tem conta: a empresa aparece no próximo acesso.`
+          : `Empresa "${nome}" criada, mas o e-mail de convite não saiu. Peça para ${email} usar “Esqueci minha senha” na tela de entrar.`,
   };
 }
 

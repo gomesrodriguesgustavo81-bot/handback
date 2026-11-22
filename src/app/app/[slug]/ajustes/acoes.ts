@@ -52,6 +52,7 @@ export async function salvarAjustes(slug: string, _a: Resultado, dados: FormData
       regra_checklist: regra,
       exemplos_devolutiva: exemplos,
       enviar_conceito: dados.get("enviar_conceito") === "sim",
+      exigir_duas_etapas: dados.get("exigir_duas_etapas") !== "nao",
     })
     .eq("id", empresa.id)
     .select("id");

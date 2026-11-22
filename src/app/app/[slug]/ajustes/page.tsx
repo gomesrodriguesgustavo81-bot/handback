@@ -19,7 +19,7 @@ export default async function Ajustes({ params }: PageProps<"/app/[slug]/ajustes
   const supabase = await criarClienteServidor();
   const { data: config } = await supabase
     .from("organizacoes")
-    .select("caixa_token, etiqueta_assunto, modo_entrega, assuntos_ignorar, conceitos, regra_checklist, exemplos_devolutiva, enviar_conceito")
+    .select("caixa_token, etiqueta_assunto, modo_entrega, assuntos_ignorar, conceitos, regra_checklist, exemplos_devolutiva, enviar_conceito, exigir_duas_etapas")
     .eq("id", empresa.id)
     .single();
   const endereco = config ? enderecoDeRecebimento(config.caixa_token) : null;
@@ -89,6 +89,19 @@ export default async function Ajustes({ params }: PageProps<"/app/[slug]/ajustes
             <Campo rotulo="Quem entrega (um)" name="grupo" required defaultValue={v.grupo} dica="Ex.: Equipe, Time, Cliente" />
             <Campo rotulo="Quem entrega (vários)" name="grupos" required defaultValue={v.grupos} />
           </div>
+        </fieldset>
+        <fieldset className="flex flex-col gap-3">
+          <legend className="mb-1 font-medium">Segurança</legend>
+          <Escolha
+            rotulo="Verificação em duas etapas (senha + código do celular)"
+            name="exigir_duas_etapas"
+            defaultValue={config?.exigir_duas_etapas === false ? "nao" : "sim"}
+            opcoes={[
+              { valor: "sim", nome: "Obrigatória para todos (recomendado)" },
+              { valor: "nao", nome: "Opcional (cada pessoa decide)" },
+            ]}
+            dica="Com ela, mesmo quem descobrir a senha de alguém não consegue ver os documentos da empresa."
+          />
         </fieldset>
         <fieldset className="flex flex-col gap-3">
           <legend className="mb-1 font-medium">Triagem dos e-mails</legend>

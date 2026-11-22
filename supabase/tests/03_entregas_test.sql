@@ -5,7 +5,7 @@
 create or replace function pg_temp.como(uid uuid, email text) returns void language plpgsql as $$
 begin
   perform set_config('request.jwt.claim.sub', uid::text, false);
-  perform set_config('request.jwt.claims', json_build_object('sub', uid, 'email', email)::text, false);
+  perform set_config('request.jwt.claims', json_build_object('sub', uid, 'email', email, 'aal', 'aal2')::text, false);
 end $$;
 
 create or replace function pg_temp.confere(ok boolean, o_que text) returns void language plpgsql as $$

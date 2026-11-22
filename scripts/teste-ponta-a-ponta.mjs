@@ -4,6 +4,7 @@
 // Uso: node scripts/teste-ponta-a-ponta.mjs [endereco-do-app] [pasta-das-fotos]
 // Precisa do Playwright instalado e do Mailpit do Supabase local (porta 54324).
 import { execFileSync } from "node:child_process";
+import { createHmac } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 
@@ -35,23 +36,84 @@ async function linkDoEmail(email) {
     const { messages = [] } = await r.json();
     if (messages.length) {
       const m = await (await fetch(`${MAILPIT}/api/v1/message/${messages[0].ID}`)).json();
-      const link = (m.Text.match(/https?:\/\/\S+/) ?? [])[0];
-      if (link) return link.replace(/[)>\]]+$/, "");
+      const link = (m.HTML ?? "").match(/href="([^"]*\/auth\/confirmar[^"]*)"/)?.[1] ?? (m.Text ?? "").match(/https?:\/\/\S+/)?.[0];
+      if (link) return link.replace(/&amp;/g, "&").replace(/[)>\]]+$/, "");
     }
     await espera(500);
   }
   throw new Error(`Nenhum e-mail chegou para ${email}`);
 }
 
+// --- Acesso: senha + código do app autenticador (TOTP) ---
+const SENHA = "Cafe com leite 2026";
+const SUPABASE = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
+const SEGREDO_SB = process.env.SUPABASE_SECRET_KEY;
+const chavesTotp = new Map();
+
+function totp(chave, quando = Date.now()) {
+  const alfabeto = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let bits = "";
+  for (const c of chave.replace(/=+$/, "").toUpperCase()) bits += alfabeto.indexOf(c).toString(2).padStart(5, "0");
+  const bytes = [];
+  for (let i = 0; i + 8 <= bits.length; i += 8) bytes.push(parseInt(bits.slice(i, i + 8), 2));
+  const contador = Buffer.alloc(8);
+  contador.writeBigUInt64BE(BigInt(Math.floor(quando / 30000)));
+  const h = createHmac("sha1", Buffer.from(bytes)).update(contador).digest();
+  const o = h[19] & 15;
+  const n = (((h[o] & 127) << 24) | (h[o + 1] << 16) | (h[o + 2] << 8) | h[o + 3]) % 1e6;
+  return String(n).padStart(6, "0");
+}
+
+/** Cria uma conta direto (como o dono faria no painel do Supabase), já com senha. */
+async function criarConta(email) {
+  const r = await fetch(`${SUPABASE}/auth/v1/admin/users`, {
+    method: "POST",
+    headers: { apikey: SEGREDO_SB, authorization: `Bearer ${SEGREDO_SB}`, "content-type": "application/json" },
+    body: JSON.stringify({ email, password: SENHA, email_confirm: true, app_metadata: { senha_definida: true } }),
+  });
+  if (!r.ok) throw new Error(`não criou ${email}: ${await r.text()}`);
+}
+
+/** Cadastra o app autenticador na tela "Proteja sua conta" (ou "Minha conta"). */
+async function cadastrarCelular(p, email, botao = "Começar") {
+  await p.getByRole("button", { name: botao }).click();
+  const chave = (await p.getByLabel("Chave para digitar no app").innerText()).trim();
+  chavesTotp.set(email, chave);
+  await p.getByLabel("Código de 6 números").fill(totp(chave));
+  await p.getByRole("button", { name: "Ativar" }).click();
+}
+
+/** Entra com e-mail e senha; se pedir, digita o código do celular. */
 async function entrar(navegador, email, nome) {
   const ctx = await navegador.newContext({ ...devices["Pixel 7"] });
   const p = await ctx.newPage();
   await p.goto(`${APP}/entrar`);
-  await p.getByLabel("Seu e-mail").fill(email);
-  await p.getByRole("button", { name: "Receber link de acesso" }).click();
-  await p.getByText("Enviamos um link de acesso").waitFor();
-  if (nome) await p.screenshot({ path: `${FOTOS}/${nome}-link-enviado.png`, fullPage: true });
+  await p.getByLabel("E-mail").fill(email);
+  await p.getByLabel("Senha").fill(SENHA);
+  await p.getByRole("button", { name: "Entrar", exact: true }).click();
+  await p.waitForURL(/\/(app|entrar\/codigo|conta)/);
+  if (nome) await p.screenshot({ path: `${FOTOS}/${nome}-entrou.png`, fullPage: true });
+  if (p.url().includes("/entrar/codigo")) {
+    await p.getByLabel("Código de 6 números").fill(totp(chavesTotp.get(email)));
+    await p.getByRole("button", { name: "Confirmar" }).click();
+    await p.waitForURL(/\/app/);
+  }
+  return { ctx, p };
+}
+
+/** Primeiro acesso por convite: link do e-mail → cria a senha → cadastra o celular. */
+async function primeiroAcesso(navegador, email, nome) {
+  const ctx = await navegador.newContext({ ...devices["Pixel 7"] });
+  const p = await ctx.newPage();
   await p.goto(await linkDoEmail(email));
+  await p.waitForURL(/\/definir-senha/);
+  if (nome) await p.screenshot({ path: `${FOTOS}/${nome}-criar-senha.png`, fullPage: true });
+  await p.getByLabel("Nova senha").fill(SENHA);
+  await p.getByLabel("Repita a senha").fill(SENHA);
+  await p.getByRole("button", { name: "Salvar senha" }).click();
+  await p.waitForURL(/\/conta\/duas-etapas/);
+  if (nome) await p.screenshot({ path: `${FOTOS}/${nome}-duas-etapas.png`, fullPage: true });
+  await cadastrarCelular(p, email);
   await p.waitForURL(/\/app/);
   return { ctx, p };
 }
@@ -74,7 +136,34 @@ try {
     await ctx.close();
   }
 
-  // 2) O dono entra; ainda não é dono da plataforma
+  // 2) Ninguém cria conta sozinho; senha errada não entra. O dono entra; ainda não é dono da plataforma
+  {
+    const ctx = await navegador.newContext({ ...devices["Pixel 7"] });
+    const p = await ctx.newPage();
+    const resp = await p.goto(`${APP}/entrar`);
+    confere(resp.headers()["x-frame-options"] === "DENY" && /max-age/.test(resp.headers()["strict-transport-security"] ?? ""), "cabeçalhos de segurança no site");
+    await largura(p, "tela de entrar");
+    await p.screenshot({ path: `${FOTOS}/0-entrar.png`, fullPage: true });
+    const cadastro = await fetch(`${SUPABASE}/auth/v1/signup`, {
+      method: "POST",
+      headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY ?? "", "content-type": "application/json" },
+      body: JSON.stringify({ email: `invasor-${sufixo}@x.test`, password: "Senha forte 123456" }),
+    });
+    confere(!cadastro.ok, "ninguém cria conta sozinho (só por convite)");
+    await ctx.close();
+  }
+  await criarConta(DONO);
+  {
+    const ctx = await navegador.newContext({ ...devices["Pixel 7"] });
+    const p = await ctx.newPage();
+    await p.goto(`${APP}/entrar`);
+    await p.getByLabel("E-mail").fill(DONO);
+    await p.getByLabel("Senha").fill("Senha errada 2026");
+    await p.getByRole("button", { name: "Entrar", exact: true }).click();
+    await p.getByText("E-mail ou senha incorretos.").waitFor();
+    confere(true, "senha errada não entra (mensagem não revela se o e-mail existe)");
+    await ctx.close();
+  }
   const dono = await entrar(navegador, DONO, "1-dono");
   confere(await dono.p.getByText("Você ainda não faz parte de nenhuma empresa").isVisible(), "dono novo vê lista vazia");
   const r = await dono.p.goto(`${APP}/admin`);
@@ -84,6 +173,11 @@ try {
   execFileSync("psql", [DB, "-qc",
     `insert into public.administradores_plataforma (user_id) select id from auth.users where email = '${DONO}'`]);
   await dono.p.goto(`${APP}/app`);
+  await dono.p.waitForURL(/\/conta\/duas-etapas/);
+  confere(true, "dono da plataforma é obrigado a ativar as duas etapas");
+  await largura(dono.p, "ativar duas etapas");
+  await cadastrarCelular(dono.p, DONO);
+  await dono.p.waitForURL(/\/app/);
   confere(await dono.p.getByRole("link", { name: "Painel do dono" }).isVisible(), "aparece o Painel do dono");
 
   // 4) Cria a empresa e convida a Ana
@@ -107,7 +201,26 @@ try {
   confere(true, "endereço repetido é recusado");
 
   // 6) Ana entra e já é administradora da escola
-  const ana = await entrar(navegador, ANA, "3-ana");
+  const ana = await primeiroAcesso(navegador, ANA, "3-ana");
+  confere(true, "Ana recebe o convite, cria a senha e ativa as duas etapas");
+  {
+    // Senha fraca e senha diferente são recusadas (outro link de "esqueci a senha" não é preciso: testa na própria tela).
+    const ctx = await navegador.newContext({ ...devices["Pixel 7"] });
+    const p = await ctx.newPage();
+    await p.goto(`${APP}/entrar`);
+    await p.getByLabel("E-mail").fill(ANA);
+    await p.getByLabel("Senha").fill(SENHA);
+    await p.getByRole("button", { name: "Entrar", exact: true }).click();
+    await p.waitForURL(/\/entrar\/codigo/);
+    confere(true, "com a senha certa, ainda pede o código do celular");
+    await p.goto(`${APP}/app/${SLUG}`);
+    confere(new URL(p.url()).pathname === "/entrar/codigo", "sem o código, não abre a empresa");
+    await p.getByLabel("Código de 6 números").fill("000000");
+    await p.getByRole("button", { name: "Confirmar" }).click();
+    await p.getByText("Código incorreto ou vencido").waitFor();
+    confere(true, "código errado é recusado");
+    await ctx.close();
+  }
   confere(await ana.p.getByText("Escola Alfa").isVisible(), "Ana vê a Escola Alfa");
   confere(await ana.p.getByText("Educação · Administrador").isVisible(), "Ana é administradora");
   await largura(ana.p, "minhas empresas");
@@ -121,8 +234,33 @@ try {
   confere((await ana.p.goto(`${APP}/admin`)).status() === 404, "Ana não abre o Painel do dono");
 
   // 7) Um curioso não vê a escola nem pelo endereço direto
+  await criarConta(CURIOSO);
   const curioso = await entrar(navegador, CURIOSO);
   confere(await curioso.p.getByText("Você ainda não faz parte de nenhuma empresa").isVisible(), "curioso não vê empresas");
+  {
+    // "Esqueci minha senha": link por e-mail → senha nova (senha fraca é recusada).
+    const ESQUECIDO = `esquecido-${sufixo}@qualquer.test`;
+    await criarConta(ESQUECIDO);
+    const ctx = await navegador.newContext({ ...devices["Pixel 7"] });
+    const p = await ctx.newPage();
+    await p.goto(`${APP}/entrar/esqueci`);
+    await p.getByLabel("Seu e-mail").fill(ESQUECIDO);
+    await p.getByRole("button", { name: "Mandar link para nova senha" }).click();
+    await p.getByText(/vai receber em instantes um e-mail/).waitFor();
+    await p.goto(await linkDoEmail(ESQUECIDO));
+    await p.waitForURL(/\/definir-senha/);
+    await p.getByLabel("Nova senha").fill("curta123");
+    await p.getByLabel("Repita a senha").fill("curta123");
+    await p.getByRole("button", { name: "Salvar senha" }).click();
+    await p.getByText(/pelo menos 12 caracteres/).waitFor();
+    confere(true, "senha fraca é recusada");
+    await p.getByLabel("Nova senha").fill("Outra senha boa 2027");
+    await p.getByLabel("Repita a senha").fill("Outra senha boa 2027");
+    await p.getByRole("button", { name: "Salvar senha" }).click();
+    await p.waitForURL(/\/app/);
+    confere(true, "esqueci minha senha: cria senha nova pelo link do e-mail");
+    await ctx.close();
+  }
   confere((await curioso.p.goto(`${APP}/app/${SLUG}`)).status() === 404, "curioso não abre a escola pelo endereço");
 
   // ===================== FASE 1: cadastros =====================
@@ -178,13 +316,13 @@ try {
   await ana.p.goto(`${APP}/app/${SLUG}/pessoas`);
   await ana.p.getByLabel("E-mail").fill(PROF);
   await ana.p.getByRole("button", { name: "Convidar" }).click();
-  await ana.p.getByText(`Peça para ${PROF} entrar`).waitFor();
+  await ana.p.getByText(`Convite enviado para ${PROF}`).waitFor();
   confere(await ana.p.getByText("Convites aguardando (1)").isVisible(), "convite aparece na lista");
   await largura(ana.p, "pessoas");
   await ana.p.screenshot({ path: `${FOTOS}/8-pessoas.png`, fullPage: true });
 
   // F5) Professor entra: vê aulas e equipes, sem editar; não vê Pessoas nem Ajustes
-  const prof = await entrar(navegador, PROF);
+  const prof = await primeiroAcesso(navegador, PROF);
   await prof.p.getByText("Escola Alfa").click();
   await prof.p.waitForURL(new RegExp(`/app/${SLUG}$`));
   const abas = await prof.p.getByRole("navigation", { name: "Seções da empresa" }).getByRole("link").allInnerTexts();
