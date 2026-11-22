@@ -124,12 +124,20 @@ export default async function Moodle({ params, searchParams }: PageProps<"/app/[
               A senha é usada uma vez só, para o Moodle liberar o acesso. Ela não fica guardada no Handback. Você pode cortar o acesso quando quiser.
             </p>
             <details className="text-sm">
-              <summary className="cursor-pointer font-medium text-marca-forte">Entra no Moodle pela conta Google ou Microsoft?</summary>
+              <summary className="cursor-pointer font-medium text-marca-forte">Entra no Moodle por outro login (Senha Única, Google, Microsoft)?</summary>
               <div className="mt-2 flex flex-col gap-2">
-                <p className="text-suave">
-                  Então você não tem senha do Moodle. Peça ao suporte da instituição uma <strong>chave de acesso para o serviço de aplicativos</strong>{" "}
-                  (ou veja em Moodle › Perfil › Preferências › Chaves de segurança) e cole aqui, no lugar do usuário e da senha.
-                </p>
+                <p className="text-suave">Então use uma chave de acesso no lugar do usuário e da senha. Para pegar a chave:</p>
+                <ol className="flex list-decimal flex-col gap-1 pl-5 text-suave">
+                  <li>
+                    No celular, instale o aplicativo oficial <strong>Moodle</strong> e entre no Moodle da sua instituição por ele, uma vez.
+                  </li>
+                  <li>
+                    No navegador, abra o Moodle › seu nome (canto de cima) › <strong>Preferências</strong> › <strong>Chaves de segurança</strong>.
+                  </li>
+                  <li>
+                    Copie a chave da linha <strong>“Moodle mobile web service”</strong> e cole aqui. Se não aparecer, peça ao suporte da instituição.
+                  </li>
+                </ol>
                 <Campo rotulo="Chave de acesso (opcional)" name="chave" autoComplete="off" autoCapitalize="none" autoCorrect="off" />
               </div>
             </details>

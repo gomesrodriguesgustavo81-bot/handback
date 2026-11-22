@@ -144,7 +144,7 @@ export function achatar(dados: Record<string, unknown>, prefixo = "", saida = ne
 }
 
 const ERROS_LOGIN: Record<string, string> = {
-  invalidlogin: "Usuário ou senha do Moodle incorretos.",
+  invalidlogin: "O Moodle não aceitou esse usuário e senha. Se você entra no Moodle por um login da instituição (como a Senha Única USP, Google ou Microsoft), use a chave de acesso: toque em “Entra no Moodle por outro login?” logo acima.",
   enablewsdescription: "Este Moodle não libera o acesso por aplicativos. Peça ao suporte da instituição para ativar o “serviço para dispositivos móveis”.",
   servicenotavailable: "Este Moodle não libera o acesso por aplicativos. Peça ao suporte da instituição para ativar o “serviço para dispositivos móveis”.",
   sitemaintenance: "O Moodle está em manutenção. Tente de novo mais tarde.",

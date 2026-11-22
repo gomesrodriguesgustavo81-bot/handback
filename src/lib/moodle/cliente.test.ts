@@ -69,7 +69,7 @@ describe("conversa com o Moodle", () => {
     expect(init.redirect).toBe("manual");
 
     f.mockResolvedValueOnce(respostaJson({ error: "Invalid login", errorcode: "invalidlogin" }));
-    await expect(pedirChave("http://moodle.test", "ana", "x")).rejects.toThrow("Usuário ou senha do Moodle incorretos.");
+    await expect(pedirChave("http://moodle.test", "ana", "x")).rejects.toThrow(/não aceitou esse usuário e senha/);
     f.mockResolvedValueOnce(respostaJson({ error: "x", errorcode: "enablewsdescription" }));
     await expect(pedirChave("http://moodle.test", "ana", "x")).rejects.toThrow(/serviço para dispositivos móveis/);
     f.mockResolvedValueOnce(new Response("<html>oi</html>"));

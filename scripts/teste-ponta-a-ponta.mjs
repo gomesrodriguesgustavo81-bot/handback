@@ -846,7 +846,7 @@ try {
     await ana.p.getByLabel("Usuário do Moodle").fill("prof.moodle");
     await ana.p.getByLabel("Senha do Moodle").fill("senha errada");
     await ana.p.getByRole("button", { name: "Conectar ao Moodle" }).click();
-    await ana.p.getByText("Usuário ou senha do Moodle incorretos.").waitFor();
+    await ana.p.getByText(/não aceitou esse usuário e senha/).waitFor();
     confere(true, "Moodle: senha errada mostra mensagem clara");
     await largura(ana.p, "ligar ao Moodle");
     await ana.p.screenshot({ path: `${FOTOS}/26-moodle-entrar.png`, fullPage: true });
