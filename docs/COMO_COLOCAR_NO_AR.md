@@ -38,6 +38,9 @@ na primeira vez. Todas as contas ficam no **seu nome**, porque o negócio é seu
    | `NEXT_PUBLIC_SUPABASE_URL` | o Project URL da Parte 1 |
    | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | a Publishable key da Parte 1 |
 
+   Se você ligou o Supabase pela própria Vercel (integração), ela já cria variáveis
+   como `SUPABASE_URL` e `SUPABASE_ANON_KEY`, e o Handback também aceita esses nomes.
+   Nunca cadastre a chave **secret** / **service_role** com outro nome.
 4. Toque em **Deploy** e espere terminar. A Vercel mostra o endereço do site,
    por exemplo `https://handback.vercel.app`.
 
@@ -45,12 +48,21 @@ na primeira vez. Todas as contas ficam no **seu nome**, porque o negócio é seu
 
 ## Parte 3 · Ligar o login ao endereço do site
 
-No Supabase, abra **Authentication › URL Configuration**:
+1. No Supabase, abra **Authentication › URL Configuration**:
+   - **Site URL:** o endereço oficial da Vercel, sem nada depois (ex.: `https://handback-six.vercel.app`).
+   - **Redirect URLs:** adicione `https://ENDERECO/**` para **cada** endereço que a Vercel mostra
+     no projeto (ela costuma criar mais de um, como `handback-six` e `handback-handback`).
+2. Ainda no Supabase, abra **Authentication › Emails** e, nas abas **Magic Link** e
+   **Confirm signup**, troque o texto do e-mail por:
 
-- **Site URL:** o endereço da Vercel (ex.: `https://handback.vercel.app`)
-- **Redirect URLs:** adicione `https://handback.vercel.app/**`
+   ```html
+   <h2>Seu acesso ao Handback</h2>
+   <p>Toque no link abaixo para entrar. Ele vale por pouco tempo e só pode ser usado uma vez.</p>
+   <p><a href="{{ .SiteURL }}/auth/confirmar?token_hash={{ .TokenHash }}&type=email">Entrar no Handback</a></p>
+   ```
 
-Sem isso, o link que chega por e-mail não funciona.
+   Assim o link funciona em qualquer aparelho ou navegador (o e-mail padrão só
+   funciona no mesmo navegador em que o link foi pedido).
 
 ---
 
