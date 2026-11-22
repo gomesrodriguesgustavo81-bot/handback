@@ -33,7 +33,8 @@ export function PaginaDeVendas({ idioma }: { idioma: Idioma }) {
   const t = TEXTOS[idioma];
   const info = IDIOMAS.find((i) => i.id === idioma)!;
   const email = contato();
-  const testar = email ? `mailto:${email}?subject=${encodeURIComponent(t.assuntoEmail)}` : "/entrar";
+  // Em português, o cadastro é sozinho; nos outros idiomas (o app ainda é só em português), fala com a gente.
+  const testar = idioma === "pt" ? "/criar-conta" : email ? `mailto:${email}?subject=${encodeURIComponent(t.assuntoEmail)}` : "/entrar";
 
   return (
     <div lang={info.html} className="flex flex-1 flex-col">

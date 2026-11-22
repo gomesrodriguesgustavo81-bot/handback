@@ -52,7 +52,7 @@ export const TEXTOS: Record<Idioma, TextosVendas> = {
       titulo2: "a gente devolve conferido.",
       texto:
         "O Handback recebe as entregas por e-mail, confere com IA o que foi pedido e escreve um rascunho de devolutiva. Você revisa, aprova, e ela sai do seu próprio e-mail. Nada vai sem a sua aprovação.",
-      testar: "Quero testar",
+      testar: "Criar minha conta grátis",
       entrar: "Já tenho conta",
       nota: "Quem entrega não precisa criar conta: só manda um e-mail.",
     },
@@ -139,7 +139,7 @@ export const TEXTOS: Record<Idioma, TextosVendas> = {
         { p: "Funciona no celular?", r: "Sim. O Handback foi pensado primeiro para o celular." },
       ],
     },
-    final: { titulo: "Pronto para devolver mais rápido?", texto: "Conte para a gente como você trabalha. A gente prepara tudo para o seu primeiro ciclo.", botao: "Quero testar" },
+    final: { titulo: "Pronto para devolver mais rápido?", texto: "Crie o seu espaço em 1 minuto. Grátis por enquanto, sem cartão.", botao: "Criar minha conta grátis" },
     rodape: { privacidade: "Política de privacidade", termos: "Termos de uso", aviso: "" },
     assuntoEmail: "Quero testar o Handback",
   },

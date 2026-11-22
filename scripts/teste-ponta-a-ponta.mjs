@@ -138,6 +138,7 @@ async function largura(p, oQue) {
   confere(w <= 412, `${oQue} cabe no celular (${w}px)`);
 }
 
+const sql = (q) => execFileSync("psql", [DB, "-Atc", q]).toString().trim();
 const navegador = await chromium.launch();
 try {
   // 1) Área protegida sem login → vai para /entrar
@@ -882,7 +883,6 @@ try {
   // 7e) Ligação com o Moodle (Moodle de mentira em 4558)
   if (process.env.REGISTRO_MOODLE) {
     const MOODLE = "http://127.0.0.1:4558";
-    const sql = (q) => execFileSync("psql", [DB, "-Atc", q]).toString().trim();
     await ana.p.goto(`${APP}/app/${SLUG}/configuracoes`);
     await ana.p.getByRole("link", { name: /^Moodle/ }).click();
     await ana.p.getByRole("heading", { name: "Ligar ao Moodle" }).waitFor();
@@ -1034,6 +1034,35 @@ try {
   confere((await dono.p.goto(`${APP}/app/${SLUG}/entregas`)).status() === 404, "depois de sair do suporte, dono não entra mais");
   await ana.p.goto(`${APP}/app/${SLUG}/registro`);
   confere((await ana.p.locator("main ol").innerText()).includes("Liberou o acesso de suporte do Handback por 3 dias"), "liberar o suporte fica no registro");
+
+  // 7g) Cadastro sozinho pela página de vendas
+  {
+    const NOVA = `nova-${sufixo}@cadastro.test`;
+    const ctx = await navegador.newContext({ ...devices["Pixel 7"] });
+    const p = await ctx.newPage();
+    await p.goto(`${APP}/`);
+    await p.getByRole("link", { name: "Criar minha conta grátis" }).first().click();
+    await p.waitForURL(/\/criar-conta$/);
+    await p.getByLabel("Seu e-mail").fill(NOVA);
+    await p.getByRole("button", { name: "Outro" }).click();
+    await p.getByLabel("Como você chama o seu espaço?").fill("Mentoria");
+    await p.getByLabel("Nome da mentoria").fill(`Mentoria Alfa ${sufixo}`);
+    await p.getByRole("checkbox").check();
+    await largura(p, "criar minha conta");
+    await p.screenshot({ path: `${FOTOS}/36-criar-conta.png`, fullPage: true });
+    await p.getByRole("button", { name: "Criar e confirmar e-mail" }).click();
+    await p.getByRole("heading", { name: "Confira seu e-mail" }).waitFor();
+    confere(true, "cadastro sozinho pede para confirmar o e-mail");
+    await ctx.close();
+    const nova = await primeiroAcesso(navegador, NOVA);
+    await nova.p.waitForURL(/\/comecar$/);
+    confere(true, "quem se cadastrou cai no primeiro acesso do próprio espaço");
+    await (await menuConta(nova.p)).getByText(/Seu papel: Administrador · Mentoria Alfa/).waitFor();
+    confere(true, "quem se cadastrou é administrador do espaço");
+    await nova.ctx.close();
+    confere(sql(`select vocabulario ->> 'organizacao' || ':' || limite_analises_mes from public.organizacoes where nome = 'Mentoria Alfa ${sufixo}'`) === "Mentoria:200",
+      "espaço do cadastro guarda a palavra escolhida e o limite de IA");
+  }
 
   // 8) O dono bloqueia a escola; a Ana vê o aviso
   await dono.p.goto(`${APP}/admin`);

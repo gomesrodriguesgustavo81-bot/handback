@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>Você foi convidado para o Handback</title></head>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>Handback</title></head>
 <body style="margin:0;padding:0;background:#f4f7f5;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7f5;"><tr><td align="center" style="padding:24px 12px;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border:1px solid #d9e3e0;border-radius:18px;overflow:hidden;">
@@ -10,12 +10,12 @@
       </tr></table>
     </td></tr>
     <tr><td style="padding:20px 28px 0;">
-      <h1 style="margin:0 0 12px;font-family:Inter,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:22px;line-height:1.3;color:#0e2b28;">Você foi convidado para o Handback</h1>
-      <p style="margin:0 0 20px;font-family:Inter,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.6;color:#0e2b28;">Você foi convidado para usar o Handback em <strong>{{ .Data.empresa }}</strong>. Toque no botão para criar sua senha. Depois, por segurança, vamos pedir para você ativar a verificação em duas etapas no celular.</p>
+      <h1 style="margin:0 0 12px;font-family:Inter,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:22px;line-height:1.3;color:#0e2b28;">{{ if .Data.cadastro }}Confirme seu e-mail{{ else }}Você foi convidado para o Handback{{ end }}</h1>
+      <p style="margin:0 0 20px;font-family:Inter,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.6;color:#0e2b28;">{{ if .Data.cadastro }}Seu espaço <strong>{{ .Data.empresa }}</strong> está quase pronto. Toque no botão para confirmar este e-mail e criar sua senha.{{ else }}Você foi convidado para usar o Handback em <strong>{{ .Data.empresa }}</strong>. Toque no botão para criar sua senha.{{ end }} Depois, por segurança, vamos pedir para você ativar a verificação em duas etapas no celular.</p>
       <table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="background:#0e3b37;border-radius:999px;">
         <a href="{{ .SiteURL }}/auth/confirmar?token_hash={{ .TokenHash }}&type=invite&voltar=/definir-senha" style="display:inline-block;padding:14px 22px;font-family:Inter,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;font-weight:600;color:#ffffff;text-decoration:none;">Criar minha senha</a>
       </td></tr></table>
-      <p style="margin:20px 0 0;font-family:Inter,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#4b605d;">O link vale por 24 horas e só pode ser usado uma vez. Se você não esperava este convite, ignore este e-mail.</p>
+      <p style="margin:20px 0 0;font-family:Inter,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#4b605d;">O link vale por 24 horas e só pode ser usado uma vez. Se você não pediu isso, ignore este e-mail: nada é criado sem a confirmação.</p>
     </td></tr>
     <tr><td style="padding:20px 28px 24px;"><p style="margin:0;padding-top:14px;border-top:1px solid #e8eeec;font-family:Inter,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;color:#4b605d;">Handback · Você recebe, a gente devolve conferido.</p></td></tr>
   </table>

@@ -70,7 +70,13 @@ export default async function Entrar({ searchParams }: PageProps<"/entrar">) {
           )}
         </Cartao>
         <div className="flex flex-col gap-1 text-center text-sm text-suave">
-          <p>Primeira vez? Use o link do e-mail de convite para criar sua senha.</p>
+          <p>
+            Ainda não tem conta?{" "}
+            <Link href="/criar-conta" className="font-semibold text-marca-forte hover:underline">
+              Criar minha conta
+            </Link>
+          </p>
+          <p>Foi convidado? Use o link do e-mail de convite para criar sua senha.</p>
           <p>
             Sem convite? Peça a quem administra o seu espaço. ·{" "}
             <Link href="/privacidade" className="hover:text-texto hover:underline">

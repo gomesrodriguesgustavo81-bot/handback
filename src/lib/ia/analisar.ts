@@ -29,7 +29,7 @@ type EntregaCompleta = {
   links: string[];
   etapas: { numero: number; titulo: string; entregaveis: string[]; criterios: string; observacoes_ia: string } | null;
   grupos: { nome: string; tema: string } | null;
-  organizacoes: { vocabulario: Vocabulario; conceitos: Record<Conceito, string>; regra_checklist: RegraChecklist; exemplos_devolutiva: string } | null;
+  organizacoes: { vocabulario: Vocabulario; conceitos: Record<Conceito, string>; regra_checklist: RegraChecklist; exemplos_devolutiva: string; limite_analises_mes: number | null } | null;
   arquivos_entrega: { caminho: string; nome: string; tipo: string }[];
 };
 
@@ -42,7 +42,7 @@ export async function analisarEntrega(supabase: SupabaseClient, entregaId: strin
   const { data, error } = await supabase
     .from("entregas")
     .select(
-      "id, org_id, etapa_id, grupo_id, origem, enviada_em, atrasada, status, comentario, links, etapas(numero, titulo, entregaveis, criterios, observacoes_ia), grupos(nome, tema), organizacoes(vocabulario, conceitos, regra_checklist, exemplos_devolutiva), arquivos_entrega(caminho, nome, tipo)",
+      "id, org_id, etapa_id, grupo_id, origem, enviada_em, atrasada, status, comentario, links, etapas(numero, titulo, entregaveis, criterios, observacoes_ia), grupos(nome, tema), organizacoes(vocabulario, conceitos, regra_checklist, exemplos_devolutiva, limite_analises_mes), arquivos_entrega(caminho, nome, tipo)",
     )
     .eq("id", entregaId)
     .maybeSingle();
@@ -52,6 +52,15 @@ export async function analisarEntrega(supabase: SupabaseClient, entregaId: strin
   const itens = e.etapas.entregaveis;
   if (!itens.length) {
     throw new Error(`Cadastre o checklist (“O que deve ser entregue”) d${/a$/i.test(v.etapa) ? "a" : "o"} ${v.etapa.toLowerCase()} antes de analisar.`);
+  }
+
+  // Espaços do cadastro têm um limite de análises de IA por mês (controle de custo).
+  const limite = e.organizacoes.limite_analises_mes;
+  if (limite !== null && limite !== undefined) {
+    const { data: usadas } = await supabase.rpc("analises_no_mes", { p_org: e.org_id });
+    if (Number(usadas ?? 0) >= limite) {
+      throw new Error(`Este espaço chegou ao limite de ${limite} análises de IA neste mês. Fale com o Handback para aumentar.`);
+    }
   }
 
   const { error: erroInicio } = await supabase.rpc("iniciar_analise", {

@@ -254,7 +254,7 @@ otp_expiry = 3600
 
 # Uncomment to customize email template
 [auth.email.template.invite]
-subject = "Você foi convidado para o Handback"
+subject = "{{ if .Data.cadastro }}Confirme seu e-mail no Handback{{ else }}Você foi convidado para o Handback{{ end }}"
 content_path = "./supabase/templates/convite.html"
 
 [auth.email.template.recovery]

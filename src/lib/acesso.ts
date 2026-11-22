@@ -14,11 +14,11 @@ export async function origemDoSite(): Promise<string> {
  * Manda o e-mail de convite (com o link para criar a senha). Se a pessoa já
  * tem conta, não manda nada: o acesso à empresa nova aparece no próximo login.
  */
-export async function convidarPorEmail(email: string, empresa: string): Promise<"enviado" | "ja-tem-conta" | "erro"> {
+export async function convidarPorEmail(email: string, empresa: string, cadastro = false): Promise<"enviado" | "ja-tem-conta" | "erro"> {
   const admin = criarClienteAdmin();
   if (!admin) return "erro";
   const destino = `${await origemDoSite()}/auth/confirmar?voltar=/definir-senha`;
-  const { error } = await admin.auth.admin.inviteUserByEmail(email, { redirectTo: destino, data: { empresa } });
+  const { error } = await admin.auth.admin.inviteUserByEmail(email, { redirectTo: destino, data: cadastro ? { empresa, cadastro: true } : { empresa } });
   if (!error) return "enviado";
   if (error.status === 422 || /already been registered|already registered|exists/i.test(error.message)) return "ja-tem-conta";
   console.error("[convite]", error.message);
