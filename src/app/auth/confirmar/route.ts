@@ -3,6 +3,7 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { registrarAcesso } from "@/lib/registro";
 import { caminhoSeguro, urlDoSite } from "@/lib/caminhos";
+import { criarClienteAdmin } from "@/lib/supabase/admin";
 
 /**
  * Para onde o link do e-mail leva. Confirma o acesso, aceita convites
@@ -41,14 +42,25 @@ export async function GET(request: NextRequest) {
   await supabase.rpc("aceitar_convites");
 
   // Entrar com Google é só para quem já foi convidado: sem nenhuma empresa, o login é desfeito.
+  // A conferência é feita pelo servidor, porque antes do código do celular o banco ainda esconde as empresas.
   if (url.searchParams.get("origem") === "google") {
-    const [{ count }, { data: dono }] = await Promise.all([
-      supabase.from("membros").select("org_id", { count: "exact", head: true }),
-      supabase.rpc("e_admin_plataforma"),
-    ]);
-    if (!count && dono !== true) {
-      await supabase.auth.signOut();
-      return NextResponse.redirect(urlDoSite(request, "/entrar?erro=google"));
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const admin = criarClienteAdmin();
+    if (user && admin) {
+      const [{ count }, { data: dono }] = await Promise.all([
+        admin.from("membros").select("org_id", { count: "exact", head: true }).eq("user_id", user.id),
+        admin.from("administradores_plataforma").select("user_id").eq("user_id", user.id).maybeSingle(),
+      ]);
+      if (!count && !dono) {
+        await supabase.auth.signOut();
+        // Conta criada agora só pelo Google, sem convite: não fica sobrando.
+        const soGoogle = (user.identities ?? []).every((i) => i.provider === "google");
+        const novinha = Date.now() - new Date(user.created_at).getTime() < 10 * 60 * 1000;
+        if (soGoogle && novinha && user.app_metadata?.senha_definida !== true) await admin.auth.admin.deleteUser(user.id);
+        return NextResponse.redirect(urlDoSite(request, "/entrar?erro=google"));
+      }
     }
   }
 
