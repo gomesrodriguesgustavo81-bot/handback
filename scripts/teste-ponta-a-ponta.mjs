@@ -583,7 +583,7 @@ try {
     const topo = (sel) => document.querySelector(sel)?.getBoundingClientRect().top ?? 9999;
     return { devolutiva: topo("textarea[name=devolutiva]"), checklist: topo("section[aria-label=Checklist]"), alto };
   });
-  confere(dobra.devolutiva < dobra.alto && dobra.checklist < dobra.alto, "conceito, devolutiva e checklist aparecem sem rolar");
+  confere(dobra.devolutiva < dobra.alto && dobra.checklist < dobra.alto, `conceito, devolutiva e checklist aparecem sem rolar (${JSON.stringify(dobra)})`);
   confere(await ana.p.getByRole("button", { name: "Aprovar devolutiva" }).isVisible(), "botão Aprovar sempre visível no rodapé");
   await ana.p.getByText("Detalhes da análise").click();
   confere(await ana.p.getByText(/gemini-flash-latest/).isVisible(), "mostra o modelo usado");
@@ -722,6 +722,19 @@ try {
   confere(await ana.p.getByText("Aprove pelo menos 3 devolutivas").isVisible(), "painel da IA pede mais avaliações antes de calcular");
   await largura(ana.p, "como a IA está indo");
   await ana.p.screenshot({ path: `${FOTOS}/21-calibracao.png`, fullPage: true });
+
+  // 7b3) Evolução das equipes
+  await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
+  await ana.p.getByRole("link", { name: "Evolução →" }).click();
+  await ana.p.getByRole("heading", { name: "Evolução", exact: true }).waitFor();
+  const cartaoEvolucao = ana.p.locator("main li", { hasText: "Equipe Azul" }).first();
+  confere((await cartaoEvolucao.innerText()).includes("BOM") && (await cartaoEvolucao.getByText(/aprovado BOM/).count()) > 0, "evolução mostra o conceito aprovado da equipe no ciclo");
+  confere(await cartaoEvolucao.getByRole("link").first().getAttribute("href").then((h) => /\/entregas\/[0-9a-f-]{36}$/.test(h ?? "")), "tocar no conceito abre a folha da entrega");
+  await largura(ana.p, "evolução das equipes");
+  await ana.p.screenshot({ path: `${FOTOS}/22-evolucao.png`, fullPage: true });
+  await ana.p.getByRole("link", { name: "Precisam de atenção" }).click();
+  await ana.p.waitForURL(/ver=atencao/);
+  confere(true, "filtro “Precisam de atenção”");
 
   // 7c) Registro de atividades
   {

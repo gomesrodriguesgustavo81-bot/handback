@@ -160,6 +160,9 @@ export default async function PainelDaAula({ params, searchParams }: PageProps<"
         <Link href={`${base}/calibracao`} className="text-sm font-semibold text-marca-forte hover:underline">
           Como a IA está indo →
         </Link>
+        <Link href={`${base}/evolucao`} className="text-sm font-semibold text-marca-forte hover:underline">
+          Evolução →
+        </Link>
       </div>
 
       <nav aria-label="Filtrar equipes" className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">

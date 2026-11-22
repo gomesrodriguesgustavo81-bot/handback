@@ -268,11 +268,11 @@ export function FolhaDevolutiva({
             <span className="text-[13px] font-semibold uppercase tracking-wide text-suave">Devolutiva para {destinatario}</span>
             <textarea
               name="devolutiva"
-              rows={7}
+              rows={5}
               defaultValue={devolutiva}
               readOnly={aprovada}
               maxLength={10000}
-              className={`w-full rounded-xl border border-borda px-3 py-2.5 text-base leading-relaxed text-texto ${aprovada ? "bg-fundo" : "bg-cartao"}`}
+              className={`max-h-[60vh] min-h-32 w-full rounded-xl border border-borda px-3 py-2.5 text-base leading-relaxed text-texto [field-sizing:content] sm:min-h-40 ${aprovada ? "bg-fundo" : "bg-cartao"}`}
             />
           </label>
           {aprovada ? (
