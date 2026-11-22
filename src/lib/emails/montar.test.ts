@@ -17,8 +17,13 @@ const base: DadosEnvio = {
 
 function decodificar(raw: string) {
   const texto = Buffer.from(raw, "base64url").toString("utf8");
-  const [cab, corpo] = texto.split("\r\n\r\n");
-  return { cab, corpo: Buffer.from(corpo.replace(/\r\n/g, ""), "base64").toString("utf8") };
+  const cab = texto.split("\r\n\r\n")[0];
+  const fronteira = cab.match(/boundary="([^"]+)"/)![1];
+  const partes = texto.split(`--${fronteira}`).slice(1, -1).map((p) => {
+    const [c, corpo] = p.replace(/^\r\n/, "").split("\r\n\r\n");
+    return { tipo: c.match(/Content-Type: ([^;]+)/)![1], conteudo: Buffer.from(corpo.replace(/\r\n/g, ""), "base64").toString("utf8") };
+  });
+  return { cab, corpo: partes.find((p) => p.tipo === "text/plain")!.conteudo, html: partes.find((p) => p.tipo === "text/html")!.conteudo };
 }
 
 describe("montarMensagem", () => {
@@ -31,6 +36,36 @@ describe("montarMensagem", () => {
     expect(cab).toContain("References: <antes@aluno> <orig@aluno>");
     expect(m.assunto).toBe("Re: [ENTREGA] Encontro 1 - Verde");
     expect(corpo).toBe("Conceito: BOM\n\nPessoal, ótima entrega!\n");
+  });
+
+  it("manda uma versão bonita (HTML) com conceito, checklist e texto escapado", () => {
+    const { html, corpo } = decodificar(
+      montarMensagem("prof@gmail.test", {
+        ...base,
+        empresa: "Escola <Alfa>",
+        devolutiva: "Primeiro parágrafo.\n\nSegundo <b>parágrafo</b>.",
+        checklist: [
+          { item: "Matriz CSD", status: "ENTREGUE" },
+          { item: "Pesquisa", status: "PARCIAL" },
+        ],
+      }).raw,
+    );
+    expect(html).toContain("Devolutiva para Verde");
+    expect(html).toContain("Escola &lt;Alfa&gt; · Encontro 1 · Diagnóstico");
+    expect(html).toContain(">BOM</td>");
+    expect(html).toContain("Segundo &lt;b&gt;parágrafo&lt;/b&gt;.");
+    expect(html).not.toContain("<b>parágrafo");
+    expect(html).toContain("Matriz CSD");
+    expect(corpo).toContain("O que foi pedido:\n✅ Matriz CSD (Entregue)\n🟡 Pesquisa (Parcial)");
+  });
+
+  it("sem conceito na empresa, não manda conceito nem checklist", () => {
+    const { html, corpo } = decodificar(
+      montarMensagem("p@g.test", { ...base, enviar_conceito: false, checklist: [{ item: "Matriz CSD", status: "ENTREGUE" }] }).raw,
+    );
+    expect(html).not.toContain(">BOM</td>");
+    expect(html).not.toContain("O que foi pedido");
+    expect(corpo).toBe("Pessoal, ótima entrega!\n");
   });
 
   it("não deixa quebra de linha entrar nos cabeçalhos", () => {

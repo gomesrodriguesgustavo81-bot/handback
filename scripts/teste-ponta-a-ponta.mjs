@@ -4,7 +4,7 @@
 // Uso: node scripts/teste-ponta-a-ponta.mjs [endereco-do-app] [pasta-das-fotos]
 // Precisa do Playwright instalado e do Mailpit do Supabase local (porta 54324).
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
@@ -461,6 +461,8 @@ try {
   confere(/^To: a1@aluno\.test/m.test(env.cabecalho), "vai para quem mandou a entrega");
   confere(new RegExp(`^In-Reply-To: <e2-${sufixo}@aluno>`, "m").test(env.cabecalho), "responde na mesma conversa do e-mail da entrega");
   confere(env.texto.startsWith("Conceito: BOM\n\nPessoal, ótima entrega!"), "e-mail leva o conceito e a devolutiva aprovada");
+  confere(env.html.includes("Devolutiva para Equipe Azul") && env.html.includes("Protótipo navegável"), "e-mail bonito (HTML) com a equipe e o checklist");
+  writeFileSync(`${FOTOS}/email-devolutiva.html`, env.html);
   confere(await ana.p.getByRole("link", { name: /Seguinte →|Voltar ao painel/ }).isVisible(), "depois de enviar, ir para a próxima");
   await largura(ana.p, "devolutiva enviada");
   await ana.p.screenshot({ path: `${FOTOS}/17-devolutiva-enviada.png`, fullPage: true });

@@ -58,6 +58,8 @@ select public.revisar_devolutiva('33000000-0000-0000-0000-000000000001', 'BOM', 
 -- 3) Reserva, não deixa enviar duas vezes ao mesmo tempo, e registra o envio.
 select pg_temp.confere((select (r ->> 'devolutiva') = 'Pessoal, boa entrega!' and (r ->> 'conceito') = 'BOM'
   and (r -> 'para') = '["bia@azul.test"]'::jsonb and (r ->> 'etapa') like '% 1 · Diagnóstico'
+  and (r ->> 'empresa') = 'Curso Epsilon' and jsonb_typeof(r -> 'checklist') = 'array'
+  and (r -> 'checklist' -> 0) = '{"item": "Matriz CSD", "status": "ENTREGUE"}'::jsonb
   from (select public.reservar_envio('33000000-0000-0000-0000-000000000001') r) x), 'reserva devolve o texto e os destinatários');
 select pg_temp.erro_contem($$select public.reservar_envio('33000000-0000-0000-0000-000000000001')$$,
   'já está sendo enviada', 'não envia duas vezes ao mesmo tempo');

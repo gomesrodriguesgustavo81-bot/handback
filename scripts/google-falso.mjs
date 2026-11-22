@@ -75,12 +75,22 @@ createServer(async (req, res) => {
     if (!acessos.has(acesso)) return json(401, { error: { message: "Invalid Credentials" } });
     const raw = JSON.parse(corpo).raw;
     const texto = Buffer.from(raw, "base64url").toString("utf8");
-    const [cab, corpoB64] = texto.split("\r\n\r\n");
+    const cab = texto.split("\r\n\r\n")[0];
+    const fronteira = cab.match(/boundary="([^"]+)"/)?.[1];
+    const partes = (fronteira ? texto.split(`--${fronteira}`).slice(1, -1) : [texto.slice(cab.length)]).map((p) => {
+      const [c, corpo = ""] = p.replace(/^\r\n/, "").split("\r\n\r\n");
+      return { tipo: c.match(/Content-Type: ([^;\r\n]+)/)?.[1] ?? "text/plain", conteudo: Buffer.from(corpo.replace(/\r\n/g, ""), "base64").toString("utf8") };
+    });
     const id = `msg-${randomBytes(6).toString("hex")}`;
     if (registro) {
       appendFileSync(
         registro,
-        JSON.stringify({ id, cabecalho: cab, texto: Buffer.from(corpoB64.replace(/\r\n/g, ""), "base64").toString("utf8") }) + "\n",
+        JSON.stringify({
+          id,
+          cabecalho: cab,
+          texto: partes.find((x) => x.tipo === "text/plain")?.conteudo ?? "",
+          html: partes.find((x) => x.tipo === "text/html")?.conteudo ?? "",
+        }) + "\n",
       );
     }
     return json(200, { id, threadId: id });

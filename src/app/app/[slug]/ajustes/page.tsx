@@ -142,8 +142,8 @@ export default async function Ajustes({ params }: PageProps<"/app/[slug]/ajustes
             name="enviar_conceito"
             defaultValue={config?.enviar_conceito === false ? "nao" : "sim"}
             opcoes={[
-              { valor: "sim", nome: "Mandar o conceito junto com o texto" },
-              { valor: "nao", nome: "Mandar só o texto (o conceito fica só no Handback)" },
+              { valor: "sim", nome: "Mandar o conceito e o checklist junto com o texto" },
+              { valor: "nao", nome: "Mandar só o texto (conceito e checklist ficam só no Handback)" },
             ]}
           />
         </fieldset>
