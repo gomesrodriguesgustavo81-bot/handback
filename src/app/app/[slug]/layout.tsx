@@ -1,16 +1,15 @@
 import { Aviso, Selo } from "@/components/ui";
-import { FRENTES } from "@/lib/frentes";
+import { FRENTES, PAPEIS } from "@/lib/frentes";
 import { contextoDaEmpresa } from "@/lib/empresa";
 import { AbasEmpresa } from "./abas";
 
 export default async function LayoutEmpresa({ children, params }: LayoutProps<"/app/[slug]">) {
   const { slug } = await params;
-  const { empresa, podeGerir, podeAvaliar, souIntegrante, descricaoDoPapel } = await contextoDaEmpresa(slug);
+  const { empresa, podeGerir, podeAvaliar } = await contextoDaEmpresa(slug);
   const v = empresa.vocabulario;
 
   const abas = [
     { href: `/app/${slug}`, nome: "Visão geral", exato: true },
-    ...(souIntegrante ? [{ href: `/app/${slug}/entregar`, nome: "Entregar" }] : []),
     ...(podeAvaliar ? [{ href: `/app/${slug}/entregas`, nome: "Entregas" }] : []),
     { href: `/app/${slug}/etapas`, nome: v.etapas },
     ...(podeAvaliar ? [{ href: `/app/${slug}/grupos`, nome: v.grupos }] : []),
@@ -30,7 +29,7 @@ export default async function LayoutEmpresa({ children, params }: LayoutProps<"/
           <Selo>{FRENTES[empresa.frente].curto}</Selo>
         </div>
         <p className="text-sm text-suave">
-          Seu papel: {descricaoDoPapel}
+          Seu papel: {empresa.papel ? PAPEIS[empresa.papel] : "Dono da plataforma"}
         </p>
       </div>
       {!empresa.ativa ? (

@@ -13,8 +13,10 @@ type Entrega = {
   etapa_id: string;
   grupo_id: string;
   enviada_em: string;
-  enviada_por_email: string;
-  registrada_pela_equipe: boolean;
+  origem: "email" | "manual";
+  remetente: string;
+  assunto: string;
+  email_id: string | null;
   atrasada: boolean;
   status: "recebida" | "substituida";
   comentario: string;
@@ -27,15 +29,15 @@ type Entrega = {
 export default async function DetalheEntrega({ params }: PageProps<"/app/[slug]/entregas/[id]">) {
   const { slug, id } = await params;
   const { empresa, podeAvaliar } = await contextoDaEmpresa(slug);
-  if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
+  if (!podeAvaliar || !/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const v = empresa.vocabulario;
   const supabase = await criarClienteServidor();
 
-  // O banco só devolve a entrega para quem avalia ou para a própria equipe.
+  // O banco só devolve a entrega para quem avalia nesta empresa.
   const { data } = await supabase
     .from("entregas")
     .select(
-      "id, etapa_id, grupo_id, enviada_em, enviada_por_email, registrada_pela_equipe, atrasada, status, comentario, links, etapas(numero, titulo, recebe_ate), grupos(nome), arquivos_entrega(id, caminho, nome, tamanho)",
+      "id, etapa_id, grupo_id, enviada_em, origem, remetente, assunto, email_id, atrasada, status, comentario, links, etapas(numero, titulo, recebe_ate), grupos(nome), arquivos_entrega(id, caminho, nome, tamanho)",
     )
     .eq("org_id", empresa.id)
     .eq("id", id)
@@ -57,12 +59,12 @@ export default async function DetalheEntrega({ params }: PageProps<"/app/[slug]/
     .eq("grupo_id", entrega.grupo_id)
     .order("enviada_em", { ascending: false });
 
-  const voltar = podeAvaliar ? `/app/${slug}/entregas?etapa=${entrega.etapa_id}` : `/app/${slug}/entregar`;
+  const voltar = `/app/${slug}/entregas?etapa=${entrega.etapa_id}`;
 
   return (
     <section className="flex flex-col gap-4">
       <Link href={voltar} className="text-sm text-suave hover:text-texto">
-        ← {podeAvaliar ? "Entregas" : "Minhas entregas"}
+        ← Entregas
       </Link>
 
       <Cartao className="flex flex-col gap-4">
@@ -74,18 +76,24 @@ export default async function DetalheEntrega({ params }: PageProps<"/app/[slug]/
           <div className="flex flex-wrap gap-2">
             {entrega.status === "substituida" ? <Selo>Substituída por um reenvio</Selo> : <Selo>Valendo</Selo>}
             {entrega.atrasada ? <Selo>Com atraso</Selo> : null}
-            {!entrega.registrada_pela_equipe ? <Selo>Registrada por quem avalia</Selo> : null}
+            {entrega.origem === "manual" ? <Selo>Registrada à mão</Selo> : <Selo>Recebida por e-mail</Selo>}
           </div>
         </div>
 
         <dl className="grid gap-3 text-sm">
           <div>
-            <dt className="text-suave">Enviada</dt>
+            <dt className="text-suave">{entrega.origem === "email" ? "Enviada" : "Registrada"}</dt>
             <dd>
-              {dataHoraBR(entrega.enviada_em)} por <span className="break-all">{entrega.enviada_por_email}</span>
+              {dataHoraBR(entrega.enviada_em)} por <span className="break-all">{entrega.remetente || "—"}</span>
               {entrega.etapas?.recebe_ate ? ` · prazo: ${dataBR(entrega.etapas.recebe_ate)}` : ""}
             </dd>
           </div>
+          {entrega.origem === "email" ? (
+            <div>
+              <dt className="text-suave">Assunto do e-mail</dt>
+              <dd className="break-words">{entrega.assunto || "(sem assunto)"}</dd>
+            </div>
+          ) : null}
           <div>
             <dt className="text-suave">Arquivos</dt>
             <dd>
@@ -130,8 +138,8 @@ export default async function DetalheEntrega({ params }: PageProps<"/app/[slug]/
           </div>
           {entrega.comentario ? (
             <div>
-              <dt className="text-suave">Comentário</dt>
-              <dd className="whitespace-pre-line">{entrega.comentario}</dd>
+              <dt className="text-suave">{entrega.origem === "email" ? "Texto do e-mail" : "Comentário"}</dt>
+              <dd className="max-h-72 overflow-auto whitespace-pre-line break-words">{entrega.comentario}</dd>
             </div>
           ) : null}
         </dl>

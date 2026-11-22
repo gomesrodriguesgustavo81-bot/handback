@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FormEntrega } from "@/components/form-entrega";
-import { Cartao, Selo, Vazio } from "@/components/ui";
+import { Aviso, Cartao, Selo, Vazio } from "@/components/ui";
 import { contextoDaEmpresa } from "@/lib/empresa";
 import { lerConfigSupabase } from "@/lib/supabase/config";
 import { criarClienteServidor } from "@/lib/supabase/server";
@@ -18,27 +18,43 @@ export default async function QuadroEntregas({ params, searchParams }: PageProps
   const config = lerConfigSupabase();
   if (!podeAvaliar || !config) notFound();
   const v = empresa.vocabulario;
+  const supabase = await criarClienteServidor();
 
-  const etapas = await etapasDaEmpresa(empresa.id);
+  const [etapas, { count: paraConfirmar }] = await Promise.all([
+    etapasDaEmpresa(empresa.id),
+    supabase.from("emails_recebidos").select("id", { count: "exact", head: true }).eq("org_id", empresa.id).eq("status", "confirmar"),
+  ]);
+
+  const avisoCaixa = paraConfirmar ? (
+    <Aviso tipo="alerta">
+      <Link href={`/app/${slug}/entregas/caixa`} className="font-medium underline">
+        {paraConfirmar} e-mail(s) para confirmar
+      </Link>{" "}
+      — chegaram fora do padrão e precisam da sua decisão.
+    </Aviso>
+  ) : null;
+
   if (!etapas.length) {
     return (
-      <Vazio>
-        Primeiro cadastre {minusc(v.etapas)} em{" "}
-        <Link href={`/app/${slug}/etapas`} className="text-marca-forte underline">
-          {v.etapas}
-        </Link>
-        .
-      </Vazio>
+      <div className="flex flex-col gap-4">
+        {avisoCaixa}
+        <Vazio>
+          Primeiro cadastre {minusc(v.etapas)} em{" "}
+          <Link href={`/app/${slug}/etapas`} className="text-marca-forte underline">
+            {v.etapas}
+          </Link>
+          .
+        </Vazio>
+      </div>
     );
   }
   const etapa = etapas.find((e) => e.id === etapaEscolhida) ?? etapaDaVez(etapas)!;
 
-  const supabase = await criarClienteServidor();
   const [{ data: grupos }, { data: entregas }] = await Promise.all([
     supabase.from("grupos").select("id, nome").eq("org_id", empresa.id).eq("ativo", true).order("nome"),
     supabase
       .from("entregas")
-      .select("id, grupo_id, enviada_em, atrasada, status, enviada_por_email, registrada_pela_equipe, arquivos_entrega(id), links")
+      .select("id, grupo_id, enviada_em, atrasada, status, origem, remetente, arquivos_entrega(id), links")
       .eq("etapa_id", etapa.id)
       .order("enviada_em", { ascending: false }),
   ]);
@@ -50,23 +66,29 @@ export default async function QuadroEntregas({ params, searchParams }: PageProps
 
   return (
     <div className="flex flex-col gap-6">
-      <nav aria-label={`Escolher ${minusc(v.etapa)}`} className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-        <ul className="flex min-w-max gap-2">
-          {etapas.map((e) => (
-            <li key={e.id}>
-              <Link
-                href={`/app/${slug}/entregas?etapa=${e.id}`}
-                aria-current={e.id === etapa.id ? "true" : undefined}
-                className={`inline-flex min-h-11 items-center rounded-full border px-4 text-sm ${
-                  e.id === etapa.id ? "border-marca bg-marca-clara font-medium text-marca-forte" : "border-borda bg-cartao"
-                }`}
-              >
-                {v.etapa} {e.numero}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      {avisoCaixa}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <nav aria-label={`Escolher ${minusc(v.etapa)}`} className="-mx-4 min-w-0 flex-1 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+          <ul className="flex min-w-max gap-2">
+            {etapas.map((e) => (
+              <li key={e.id}>
+                <Link
+                  href={`/app/${slug}/entregas?etapa=${e.id}`}
+                  aria-current={e.id === etapa.id ? "true" : undefined}
+                  className={`inline-flex min-h-11 items-center rounded-full border px-4 text-sm ${
+                    e.id === etapa.id ? "border-marca bg-marca-clara font-medium text-marca-forte" : "border-borda bg-cartao"
+                  }`}
+                >
+                  {v.etapa} {e.numero}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+        <Link href={`/app/${slug}/entregas/caixa`} className="text-sm font-medium text-marca-forte hover:underline">
+          Caixa de e-mails →
+        </Link>
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
         <section className="flex flex-col gap-3">
@@ -101,10 +123,12 @@ export default async function QuadroEntregas({ params, searchParams }: PageProps
                         <span className="flex flex-wrap items-center gap-2 font-semibold">
                           <span aria-hidden className="text-marca">✓</span> {g.nome}
                           {e.atrasada ? <Selo>Com atraso</Selo> : null}
-                          {!e.registrada_pela_equipe ? <Selo>Registrada por quem avalia</Selo> : null}
+                          {e.origem === "manual" ? <Selo>Registrada à mão</Selo> : null}
                         </span>
-                        <span className="text-sm text-suave">
-                          {dataHoraBR(e.enviada_em)} · {e.arquivos_entrega.length} arquivo(s) · {e.links.length} link(s)
+                        <span className="break-words text-sm text-suave">
+                          {dataHoraBR(e.enviada_em)}
+                          {e.origem === "email" && e.remetente ? ` · ${e.remetente}` : ""} · {e.arquivos_entrega.length} arquivo(s) ·{" "}
+                          {e.links.length} link(s)
                           {n ? ` · reenviada ${n}x` : ""}
                         </span>
                       </Link>
@@ -124,10 +148,8 @@ export default async function QuadroEntregas({ params, searchParams }: PageProps
         {total ? (
           <Cartao className="flex flex-col gap-4 self-start">
             <div>
-              <h2 className="font-semibold">Registrar entrega</h2>
-              <p className="text-sm text-suave">
-                Para quando a entrega chegou por outro meio. Fica marcada como “registrada por quem avalia”.
-              </p>
+              <h2 className="font-semibold">Registrar entrega à mão</h2>
+              <p className="text-sm text-suave">Para quando a entrega chegou por outro meio (em mãos, WhatsApp…).</p>
             </div>
             <FormEntrega
               slug={slug}

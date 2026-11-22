@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
-import { registrarEntrega, type ArquivoEnviado } from "@/app/app/[slug]/entregas/acoes";
+import { registrarEntregaManual, type ArquivoEnviado } from "@/app/app/[slug]/entregas/acoes";
 import { Aviso, Botao } from "./ui";
 import { nomeArquivoSeguro, tamanhoLegivel } from "@/lib/textos";
 
@@ -13,9 +13,9 @@ const MAX_ARQUIVOS = 20;
 export type OpcaoEtapa = { id: string; rotulo: string; detalhe: string };
 
 /**
- * Formulário de entrega: arquivos sobem direto do aparelho para a área
- * privada (sem passar pelo servidor do site) e, no fim, a entrega é
- * registrada de uma vez.
+ * Registro de entrega à mão (por quem avalia): arquivos sobem direto do
+ * aparelho para a área privada (sem passar pelo servidor do site) e, no fim,
+ * a entrega é registrada de uma vez.
  */
 export function FormEntrega({
   slug,
@@ -73,7 +73,7 @@ export function FormEntrega({
     try {
       for (const [i, arquivo] of arquivos.entries()) {
         setProgresso(`Enviando arquivo ${i + 1} de ${arquivos.length}…`);
-        const caminho = `${orgId}/${grupoId}/${id}/${i + 1}-${nomeArquivoSeguro(arquivo.name)}`;
+        const caminho = `${orgId}/manual/${id}/${i + 1}-${nomeArquivoSeguro(arquivo.name)}`;
         const { error } = await supabase.storage.from("entregas").upload(caminho, arquivo, {
           contentType: arquivo.type || "application/octet-stream",
           upsert: false,
@@ -83,7 +83,7 @@ export function FormEntrega({
       }
 
       setProgresso("Registrando a entrega…");
-      const r = await registrarEntrega(slug, {
+      const r = await registrarEntregaManual(slug, {
         id,
         etapaId,
         grupoId,
@@ -212,7 +212,7 @@ export function FormEntrega({
       {progresso ? <Aviso>{progresso}</Aviso> : null}
       {resultado ? <Aviso tipo={resultado.ok ? "info" : "erro"}>{resultado.mensagem}</Aviso> : null}
       <Botao type="submit" disabled={enviando}>
-        {enviando ? "Enviando…" : "Enviar entrega"}
+        {enviando ? "Registrando…" : "Registrar entrega"}
       </Botao>
     </form>
   );

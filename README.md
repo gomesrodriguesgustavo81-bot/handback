@@ -12,8 +12,8 @@ cliente tem o seu espaço, separado das outras.
 |---|---|---|
 | 0 · Fundação | Site, login por e-mail, empresas, membros, convites, painel do dono | Pronta |
 | 1 · Cadastros | Etapas (aulas) com checklist, grupos (equipes) com e-mails, pessoas e convites, vocabulário | Pronta |
-| 2 · Entregas pelo site | Quem está numa equipe envia arquivos, links e comentário; quadro de entregas para quem avalia; atraso e reenvio | Pronta |
-| 3 em diante | IA, devolutivas, entregas por e-mail… | A fazer |
+| 2 · Entregas por e-mail | Recebimento de e-mails encaminhados pelo Gmail de quem avalia, triagem do protótipo, "Para confirmar", quadro de entregas, registro à mão | Pronta (falta ligar o serviço de recebimento: veja [o guia](docs/RECEBIMENTO_DE_EMAILS.md)) |
+| 3 em diante | IA, devolutivas… | A fazer |
 
 ## Pastas
 
@@ -38,6 +38,7 @@ npm install
 cp .env.example .env.local     # preencha com os dados do Supabase
 npm run dev                    # http://localhost:3000
 npm run typecheck && npm run lint && npm run build
+npm test                       # testes da triagem de e-mails
 npm run test:banco             # testa as regras de acesso num Postgres 16 local
 npm run test:e2e               # login, empresas e convites de ponta a ponta (Supabase local + app rodando)
 ```

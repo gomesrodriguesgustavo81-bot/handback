@@ -2,9 +2,10 @@
 -- NÃO rode isto no Supabase de verdade: lá o esquema "auth" já existe.
 create role anon nologin;
 create role authenticated nologin;
+create role service_role nologin bypassrls;
 create schema auth;
-grant usage on schema auth to anon, authenticated;
-grant usage on schema public to anon, authenticated;
+grant usage on schema auth to anon, authenticated, service_role;
+grant usage on schema public to anon, authenticated, service_role;
 
 create table auth.users (
   id uuid primary key,
@@ -20,11 +21,11 @@ create function auth.jwt() returns jsonb language sql stable as $$
 $$;
 
 grant execute on all functions in schema auth to anon, authenticated;
-alter default privileges in schema public grant select, insert, update, delete on tables to authenticated;
+alter default privileges in schema public grant select, insert, update, delete on tables to authenticated, service_role;
 
 -- Imitação mínima do Storage do Supabase (área de arquivos).
 create schema storage;
-grant usage on schema storage to anon, authenticated;
+grant usage on schema storage to anon, authenticated, service_role;
 create table storage.buckets (
   id text primary key,
   name text not null,
@@ -40,5 +41,5 @@ create table storage.objects (
   unique (bucket_id, name)
 );
 alter table storage.objects enable row level security;
-grant select, insert, update, delete on storage.objects to authenticated;
+grant select, insert, update, delete on storage.objects to authenticated, service_role;
 grant select on storage.buckets to authenticated;

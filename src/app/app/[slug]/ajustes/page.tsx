@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { FormAcao } from "@/components/form-acao";
-import { Campo, Cartao } from "@/components/ui";
+import { AreaTexto, Aviso, Campo, Cartao, Escolha } from "@/components/ui";
 import { contextoDaEmpresa } from "@/lib/empresa";
+import { enderecoDeRecebimento } from "@/lib/emails/endereco";
+import { criarClienteServidor } from "@/lib/supabase/server";
 import { salvarAjustes } from "./acoes";
 
 export const metadata: Metadata = { title: "Ajustes" };
@@ -12,9 +14,58 @@ export default async function Ajustes({ params }: PageProps<"/app/[slug]/ajustes
   const { empresa, podeGerir } = await contextoDaEmpresa(slug);
   if (!podeGerir) notFound();
   const v = empresa.vocabulario;
+  const supabase = await criarClienteServidor();
+  const { data: config } = await supabase
+    .from("organizacoes")
+    .select("caixa_token, etiqueta_assunto, modo_entrega, assuntos_ignorar")
+    .eq("id", empresa.id)
+    .single();
+  const endereco = config ? enderecoDeRecebimento(config.caixa_token) : null;
+  const etiqueta = `[${config?.etiqueta_assunto ?? "ENTREGA"}]`;
 
   return (
-    <Cartao className="flex max-w-2xl flex-col gap-4">
+    <div className="flex max-w-2xl flex-col gap-6">
+    <Cartao className="flex flex-col gap-4">
+      <h2 className="text-lg font-semibold">Recebimento por e-mail</h2>
+      <p className="text-sm text-suave">
+        Quem entrega não usa o Handback: manda um e-mail para quem avalia, com o assunto começando por{" "}
+        <strong>{etiqueta}</strong> (ex.: “{etiqueta} {v.etapa} 2 - {v.grupo} Azul”). O Gmail de quem recebe encaminha esses
+        e-mails para o endereço abaixo, e o Handback faz a triagem.
+      </p>
+      {endereco ? (
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-medium">Endereço de recebimento desta empresa</span>
+          <code className="break-all rounded-lg bg-fundo px-3 py-2 text-sm">{endereco}</code>
+        </div>
+      ) : (
+        <Aviso tipo="alerta">
+          O serviço de recebimento de e-mails ainda não foi ligado ao Handback. Quando for, o endereço desta empresa aparece aqui.
+        </Aviso>
+      )}
+      <details className="text-sm">
+        <summary className="cursor-pointer font-medium text-marca-forte">Como ligar o encaminhamento no Gmail (uma vez só)</summary>
+        <ol className="mt-2 flex list-decimal flex-col gap-2 pl-5">
+          <li>
+            No Gmail de quem recebe as entregas, abra <strong>Configurações (engrenagem) › Ver todas as configurações ›
+            Encaminhamento e POP/IMAP</strong> e toque em <strong>Adicionar um endereço de encaminhamento</strong>. Cole o
+            endereço acima.
+          </li>
+          <li>
+            O Gmail manda um código de confirmação para o Handback. Ele aparece em{" "}
+            <strong>Entregas › Caixa de e-mails › Para confirmar</strong>. Copie o código (ou abra o link) e confirme no
+            Gmail. <em>Não</em> ative “encaminhar uma cópia dos e-mails recebidos”.
+          </li>
+          <li>
+            Na busca do Gmail, digite <code>subject:{config?.etiqueta_assunto ?? "ENTREGA"}</code>, abra as opções da busca
+            e toque em <strong>Criar filtro</strong>. Marque <strong>Encaminhar para</strong>, escolha o endereço do Handback
+            e toque em <strong>Criar filtro</strong>.
+          </li>
+          <li>Pronto: os próximos e-mails de entrega chegam sozinhos em Entregas. Nada muda para quem entrega.</li>
+        </ol>
+      </details>
+    </Cartao>
+
+    <Cartao className="flex flex-col gap-4">
       <h2 className="text-lg font-semibold">Ajustes da empresa</h2>
       <FormAcao acao={salvarAjustes.bind(null, slug)} textoBotao="Salvar ajustes">
         <Campo rotulo="Nome da empresa" name="nome" required defaultValue={empresa.nome} />
@@ -32,7 +83,34 @@ export default async function Ajustes({ params }: PageProps<"/app/[slug]/ajustes
             <Campo rotulo="Quem entrega (vários)" name="grupos" required defaultValue={v.grupos} />
           </div>
         </fieldset>
+        <fieldset className="flex flex-col gap-3">
+          <legend className="mb-1 font-medium">Triagem dos e-mails</legend>
+          <Campo
+            rotulo="Etiqueta no começo do assunto"
+            name="etiqueta_assunto"
+            required
+            defaultValue={config?.etiqueta_assunto ?? "ENTREGA"}
+            dica="Sem colchetes. Ex.: ENTREGA → os assuntos começam com [ENTREGA]."
+          />
+          <Escolha
+            rotulo="E-mails fora do padrão, mas com anexo ou link"
+            name="modo_entrega"
+            defaultValue={config?.modo_entrega ?? "confirmar"}
+            opcoes={[
+              { valor: "confirmar", nome: "Vão para “Para confirmar” (recomendado)" },
+              { valor: "automatico", nome: "Viram entrega direto (modo automático)" },
+            ]}
+          />
+          <AreaTexto
+            rotulo="Assuntos que nunca são entrega"
+            name="assuntos_ignorar"
+            rows={2}
+            defaultValue={config?.assuntos_ignorar ?? ""}
+            dica="Palavras separadas por vírgula. E-mails com elas no assunto (e sem a etiqueta) são ignorados e os anexos NÃO são guardados — use para documentos pessoais."
+          />
+        </fieldset>
       </FormAcao>
     </Cartao>
+    </div>
   );
 }

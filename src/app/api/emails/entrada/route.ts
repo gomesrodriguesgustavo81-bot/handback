@@ -1,0 +1,58 @@
+import { timingSafeEqual } from "node:crypto";
+import { NextResponse, type NextRequest } from "next/server";
+import { criarClienteAdmin } from "@/lib/supabase/admin";
+import { lerEmailRecebido } from "@/lib/emails/formatos";
+import { receberEmail } from "@/lib/emails/receber";
+
+/**
+ * Ponto de chegada dos e-mails encaminhados.
+ * O serviço de recebimento chama:  POST /api/emails/entrada?chave=SEGREDO
+ * (ou com o cabeçalho "Authorization: Bearer SEGREDO", ou usuário/senha
+ * "handback:SEGREDO"). O SEGREDO fica na variável HANDBACK_EMAIL_SEGREDO.
+ */
+export async function POST(request: NextRequest) {
+  const segredo = process.env.HANDBACK_EMAIL_SEGREDO;
+  const admin = criarClienteAdmin();
+  if (!segredo || segredo.length < 16 || !admin) {
+    return NextResponse.json({ ok: false, motivo: "recebimento de e-mails não configurado" }, { status: 503 });
+  }
+  if (!autorizado(request, segredo)) {
+    return NextResponse.json({ ok: false, motivo: "não autorizado" }, { status: 401 });
+  }
+
+  let corpo: unknown;
+  try {
+    corpo = await request.json();
+  } catch {
+    return NextResponse.json({ ok: false, motivo: "corpo não é JSON" }, { status: 400 });
+  }
+  const email = lerEmailRecebido(corpo);
+  if (!email) return NextResponse.json({ ok: false, motivo: "formato de e-mail desconhecido" }, { status: 400 });
+
+  try {
+    const r = await receberEmail(admin, email);
+    // 200 mesmo quando a caixa é desconhecida: o serviço não deve ficar reenviando.
+    return NextResponse.json(r, { status: 200 });
+  } catch (erro) {
+    console.error("[emails/entrada]", erro);
+    // 500 faz o serviço tentar de novo mais tarde.
+    return NextResponse.json({ ok: false, motivo: "erro ao gravar" }, { status: 500 });
+  }
+}
+
+function autorizado(request: NextRequest, segredo: string): boolean {
+  const candidatos: string[] = [];
+  const chave = request.nextUrl.searchParams.get("chave");
+  if (chave) candidatos.push(chave);
+  const auth = request.headers.get("authorization") ?? "";
+  if (auth.startsWith("Bearer ")) candidatos.push(auth.slice(7));
+  if (auth.startsWith("Basic ")) {
+    const [, senha] = Buffer.from(auth.slice(6), "base64").toString().split(":");
+    if (senha) candidatos.push(senha);
+  }
+  const esperado = Buffer.from(segredo);
+  return candidatos.some((c) => {
+    const b = Buffer.from(c);
+    return b.length === esperado.length && timingSafeEqual(b, esperado);
+  });
+}

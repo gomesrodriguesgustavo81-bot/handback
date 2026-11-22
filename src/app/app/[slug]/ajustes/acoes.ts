@@ -22,10 +22,16 @@ export async function salvarAjustes(slug: string, _a: Resultado, dados: FormData
     vocabulario[chave] = palavra;
   }
 
+  const etiqueta = String(dados.get("etiqueta_assunto") ?? "").trim().replace(/^\[|\]$/g, "");
+  if (!etiqueta || etiqueta.length > 40) return { ok: false, mensagem: "Escreva a etiqueta do assunto (ex.: ENTREGA)." };
+  const modo = dados.get("modo_entrega") === "automatico" ? "automatico" : "confirmar";
+  const assuntosIgnorar = String(dados.get("assuntos_ignorar") ?? "").trim();
+  if (assuntosIgnorar.length > 2000) return { ok: false, mensagem: "A lista de assuntos a ignorar está grande demais." };
+
   const supabase = await criarClienteServidor();
   const { data, error } = await supabase
     .from("organizacoes")
-    .update({ nome, vocabulario })
+    .update({ nome, vocabulario, etiqueta_assunto: etiqueta, modo_entrega: modo, assuntos_ignorar: assuntosIgnorar })
     .eq("id", empresa.id)
     .select("id");
   if (error) return { ok: false, mensagem: mensagemDeErro(error, "Não foi possível salvar. Tente de novo.") };
