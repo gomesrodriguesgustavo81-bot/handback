@@ -860,8 +860,21 @@ try {
 
   // 11) Páginas públicas que o Google exige para a verificação
   await pe.goto(`${APP}/`);
-  confere(await pe.getByText("só a permissão de enviar e-mails").isVisible(), "página inicial explica o uso do Gmail");
-  await pe.getByRole("link", { name: "Política de privacidade" }).click();
+  confere(await pe.getByText(/só a permissão de enviar e-mails/).isVisible(), "página inicial explica o uso do Gmail");
+  await largura(pe, "página de vendas");
+  await pe.screenshot({ path: `${FOTOS}/25-vendas-pt.png`, fullPage: true });
+  for (const [caminho, frase] of [["/en", "we hand it back checked."], ["/es", "nosotros devolvemos revisado."]]) {
+    await pe.goto(`${APP}${caminho}`);
+    confere(await pe.getByText(frase).isVisible(), `página de vendas em ${caminho}`);
+    confere((await pe.locator("[lang]").first().getAttribute("lang")) !== null, `idioma marcado em ${caminho}`);
+    await largura(pe, `página de vendas ${caminho}`);
+    await pe.screenshot({ path: `${FOTOS}/25-vendas${caminho.replace("/", "-")}.png`, fullPage: true });
+  }
+  await pe.getByRole("link", { name: "Português" }).click();
+  await pe.waitForURL(`${APP}/`);
+  confere(true, "troca de idioma volta para o português");
+  await pe.goto(`${APP}/`);
+  await pe.getByRole("link", { name: "Política de privacidade", exact: true }).click();
   await pe.getByRole("heading", { name: "Política de privacidade", level: 1 }).waitFor();
   confere(await pe.getByText(/including the Limited Use requirements/).isVisible(), "privacidade tem a declaração de Uso Limitado do Google");
   confere(await pe.getByText(/não lê, não apaga, não\s+organiza e não guarda/).isVisible(), "privacidade diz que o Handback não lê o Gmail");
