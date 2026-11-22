@@ -40,6 +40,8 @@ createServer(async (req, res) => {
     download_url: `http://127.0.0.1:${porta}/download/${e.id}/${i}`,
   }));
   if (m[2]) return json(200, { object: "list", data: anexos });
-  const { anexos: _x, ...resto } = e;
-  return json(200, { object: "email", created_at: new Date().toISOString(), html: "", ...resto, attachments: anexos.map(({ download_url: _d, ...a }) => a) });
+  const resto = { ...e };
+  delete resto.anexos;
+  const resumo = anexos.map((a) => ({ id: a.id, filename: a.filename, content_type: a.content_type, size: a.size }));
+  return json(200, { object: "email", created_at: new Date().toISOString(), html: "", ...resto, attachments: resumo });
 }).listen(porta, "127.0.0.1", () => console.log(`Resend de mentira em http://127.0.0.1:${porta}`));

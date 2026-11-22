@@ -15,6 +15,35 @@ Aluno ──e-mail──▶ Gmail do professor ──filtro "encaminhar"──�
                                           └─ não é entrega       → ignorado (anexos NÃO guardados)
 ```
 
+## Opção recomendada: Resend (sem comprar domínio)
+
+O Resend dá um endereço de recebimento próprio (`…@<código>.resend.app`) e avisa o
+Handback a cada e-mail que chega (`POST /api/emails/resend`). O Handback confere a
+assinatura e busca o texto e os anexos na API do Resend.
+
+1. Crie uma conta em **resend.com** (pode entrar com o Gmail do Handback).
+2. No menu **Emails**, abra a aba **Receiving** e toque nos **⋯** › **Inbound address**.
+   Anote o endereço, algo como `qualquercoisa@abc123.resend.app`.
+3. Em **API Keys** › **Create API Key**: nome `Handback`, permissão **Full access**.
+   Copie a chave (começa com `re_`). Ela aparece só uma vez.
+4. Em **Webhooks** › **Add Webhook**:
+   - Endpoint: `https://handback-six.vercel.app/api/emails/resend`
+   - Evento: **email.received**
+   - Depois de criar, abra o webhook e copie o **Signing secret** (começa com `whsec_`).
+5. Na Vercel (**Settings › Environment Variables**), cadastre:
+
+   | Nome | Valor |
+   |---|---|
+   | `RESEND_API_KEY` | a chave `re_…` do passo 3 |
+   | `RESEND_WEBHOOK_SECRET` | o segredo `whsec_…` do passo 4 |
+   | `HANDBACK_EMAIL_RECEBIMENTO` | `entregas@abc123.resend.app` (troque `abc123` pelo seu código do passo 2) |
+
+6. Faça **Redeploy**. Em **Ajustes › Recebimento por e-mail**, cada empresa passa a
+   ver o próprio endereço (`entregas+CODIGO@abc123.resend.app`) e o passo a passo do
+   filtro do Gmail.
+
+As duas chaves ficam só no servidor. Nunca cole nenhuma delas em chat ou no GitHub.
+
 ## O que falta para funcionar de verdade
 
 Um **serviço de recebimento de e-mails** que transforme cada e-mail num `POST` JSON
