@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { montarMensagem, type DadosEnvio } from "./emails/montar";
 import { decifrar, enviarPeloGmail, ErroGmail, tokenDeAcesso } from "./gmail";
 import { criarClienteAdmin } from "./supabase/admin";
+import { origemDoSite } from "./acesso";
 
 /** Gmail conectado de uma pessoa (só o e-mail; o token nunca sai do servidor). */
 export async function meuGmail(supabase: SupabaseClient): Promise<{ email: string; invalida: boolean } | null> {
@@ -24,7 +25,7 @@ export async function enviarDevolutiva(supabase: SupabaseClient, userId: string,
   const { data: reserva, error } = await supabase.rpc("reservar_envio", { p_entrega: entregaId });
   if (error) throw new Error(error.message);
   try {
-    const msg = montarMensagem(conta.email, reserva as DadosEnvio);
+    const msg = montarMensagem(conta.email, { ...(reserva as DadosEnvio), site: await origemDoSite() });
     const id = await enviarPeloGmail(await tokenDeAcesso(decifrar(conta.token_cifrado)), msg.raw);
     const destino = [...msg.para, ...msg.copia];
     await supabase.rpc("concluir_envio", { p_entrega: entregaId, p_ok: true, p_de: conta.email, p_para: destino, p_id: id, p_erro: "" });

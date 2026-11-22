@@ -21,6 +21,8 @@ export type DadosEnvio = {
   etapa: string;
   empresa?: string;
   checklist?: ItemChecklist[];
+  /** Endereço do site (ex.: https://handback.app), para mostrar o logo. Sem ele, o e-mail usa só texto. */
+  site?: string;
 };
 
 /** Assunto: "Re: <assunto original>" ou um assunto novo para entregas à mão. */
@@ -52,8 +54,11 @@ function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+// Cores da identidade "Volta": verde-escuro, verde-limão e fundo verde-acinzentado.
+const C = { fundo: "#f4f7f5", cartao: "#ffffff", texto: "#0e2b28", suave: "#4b605d", borda: "#d9e3e0", linha: "#e8eeec", marca: "#14574f", limao: "#c6f15a" };
+
 const COR_CONCEITO: Record<string, [string, string]> = {
-  EXCELENTE: ["#dff3ec", "#0b5e53"],
+  EXCELENTE: ["#e7fbb8", "#2f4500"],
   BOM: ["#e3edfb", "#1d4f91"],
   REGULAR: ["#fdf0d9", "#8a5300"],
   RUIM: ["#fbe3e1", "#9b2c23"],
@@ -62,17 +67,22 @@ const COR_ITEM = { ENTREGUE: ["#dcf2e6", "#1f6b45", "✓"], PARCIAL: ["#fdf0d9",
 
 /** Versão bonita (HTML em tabelas, que funciona no Gmail, Outlook e celular). */
 export function htmlDoEnvio(d: DadosEnvio): string {
-  const fonte = "font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;";
+  const fonte = "font-family:Inter,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;";
+  const titulo = "font-family:'Bricolage Grotesque',Inter,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;";
+  const site = d.site && /^https?:\/\/[^\s"'<>]+$/.test(d.site) ? d.site.replace(/\/$/, "") : "";
+  const marca = site
+    ? `<img src="${esc(site)}/email/handback.png" width="100" height="24" alt="handback" style="display:block;border:0;height:24px;width:100px;">`
+    : `<span style="${titulo}font-size:15px;font-weight:800;letter-spacing:-0.03em;color:${C.texto};">handback</span>`;
   const paragrafos = d.devolutiva
     .trim()
     .split(/\n\s*\n/)
-    .map((p) => `<p style="margin:0 0 14px;${fonte}font-size:16px;line-height:1.6;color:#15201c;">${esc(p.trim()).replace(/\n/g, "<br>")}</p>`)
+    .map((p) => `<p style="margin:0 0 14px;${fonte}font-size:16px;line-height:1.6;color:${C.texto};">${esc(p.trim()).replace(/\n/g, "<br>")}</p>`)
     .join("");
   const [fundoC, textoC] = COR_CONCEITO[d.conceito ?? ""] ?? ["#eceeed", "#4a5550"];
   const conceito = mostraConceito(d)
     ? `<tr><td style="padding:0 28px 20px;">
         <table role="presentation" cellpadding="0" cellspacing="0"><tr>
-          <td style="${fonte}font-size:12px;color:#5b6862;text-transform:uppercase;letter-spacing:0.06em;padding-right:10px;">Conceito</td>
+          <td style="${fonte}font-size:12px;color:${C.suave};text-transform:uppercase;letter-spacing:0.06em;padding-right:10px;">Conceito</td>
           <td style="background:${fundoC};color:${textoC};${fonte}font-size:14px;font-weight:700;letter-spacing:0.04em;padding:6px 12px;border-radius:8px;">${esc(d.conceito)}</td>
         </tr></table>
       </td></tr>`
@@ -80,13 +90,13 @@ export function htmlDoEnvio(d: DadosEnvio): string {
   const itens =
     d.enviar_conceito && d.checklist?.length
       ? `<tr><td style="padding:4px 28px 8px;">
-          <p style="margin:0 0 10px;${fonte}font-size:12px;font-weight:600;color:#5b6862;text-transform:uppercase;letter-spacing:0.06em;">O que foi pedido</p>
+          <p style="margin:0 0 10px;${fonte}font-size:12px;font-weight:600;color:${C.suave};text-transform:uppercase;letter-spacing:0.06em;">O que foi pedido</p>
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${d.checklist
             .map((c) => {
               const [f, t, s] = COR_ITEM[c.status] ?? COR_ITEM.NAO_ENTREGUE;
               return `<tr>
                 <td width="30" valign="top" style="padding:0 0 10px;"><span style="display:inline-block;width:22px;height:22px;line-height:22px;border-radius:11px;background:${f};color:${t};text-align:center;${fonte}font-size:13px;font-weight:700;">${s}</span></td>
-                <td valign="top" style="padding:1px 0 10px;${fonte}font-size:15px;line-height:1.4;color:#15201c;">${esc(c.item)} <span style="color:#5b6862;font-size:13px;">· ${ROTULO_ITEM[c.status] ?? ""}</span></td>
+                <td valign="top" style="padding:1px 0 10px;${fonte}font-size:15px;line-height:1.4;color:${C.texto};">${esc(c.item)} <span style="color:${C.suave};font-size:13px;">· ${ROTULO_ITEM[c.status] ?? ""}</span></td>
               </tr>`;
             })
             .join("")}</table>
@@ -95,19 +105,24 @@ export function htmlDoEnvio(d: DadosEnvio): string {
   const empresa = d.empresa ? esc(d.empresa) : "";
   return `<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>${esc(d.etapa)}</title></head>
-<body style="margin:0;padding:0;background:#f7f8f6;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f7f8f6;"><tr><td align="center" style="padding:24px 12px;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid #dfe4e1;border-radius:16px;">
-    <tr><td style="padding:24px 28px 8px;">
-      <p style="margin:0;${fonte}font-size:13px;color:#5b6862;">${empresa ? `${empresa} · ` : ""}${esc(d.etapa)}</p>
-      <h1 style="margin:4px 0 0;${fonte}font-size:22px;line-height:1.3;color:#15201c;">Devolutiva para ${esc(d.grupo)}</h1>
+<body style="margin:0;padding:0;background:${C.fundo};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${C.fundo};"><tr><td align="center" style="padding:24px 12px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:${C.cartao};border:1px solid ${C.borda};border-radius:18px;overflow:hidden;">
+    <tr><td style="height:6px;line-height:6px;font-size:0;background:${C.limao};">&nbsp;</td></tr>
+    <tr><td style="padding:22px 28px 8px;">
+      <p style="margin:0;${fonte}font-size:13px;color:${C.suave};">${empresa ? `${empresa} · ` : ""}${esc(d.etapa)}</p>
+      <h1 style="margin:4px 0 0;${titulo}font-size:24px;font-weight:800;letter-spacing:-0.02em;line-height:1.25;color:${C.texto};">Devolutiva para ${esc(d.grupo)}</h1>
     </td></tr>
     <tr><td style="padding:16px 28px 0;"></td></tr>
     ${conceito}
     <tr><td style="padding:0 28px 8px;">${paragrafos}</td></tr>
     ${itens}
-    <tr><td style="padding:12px 28px 22px;border-top:1px solid #eef1ef;">
-      <p style="margin:0;${fonte}font-size:12px;color:#8a958f;">Enviado pelo <span style="color:#0f7b6c;font-weight:600;">handback</span>${empresa ? ` em nome de ${empresa}` : ""}. Para responder, é só responder este e-mail.</p>
+    <tr><td style="padding:14px 28px 22px;border-top:1px solid ${C.linha};">
+      <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+        <td style="${fonte}font-size:12px;color:${C.suave};padding-right:8px;">Enviado pelo</td>
+        <td>${marca}</td>
+      </tr></table>
+      <p style="margin:6px 0 0;${fonte}font-size:12px;line-height:1.5;color:${C.suave};">${empresa ? `Em nome de ${empresa}. ` : ""}Para responder, é só responder este e-mail.</p>
     </td></tr>
   </table>
 </td></tr></table>
