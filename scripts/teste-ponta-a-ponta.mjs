@@ -529,10 +529,22 @@ try {
   confere(new URL(ana.p.url()).pathname === "/entrar", "depois de sair, /app pede login de novo");
 
   // 10) Link de login com destino externo não leva para fora do site
-  const ext = await navegador.newContext();
+  const ext = await navegador.newContext({ ...devices["Pixel 7"] });
   const pe = await ext.newPage();
   await pe.goto(`${APP}/auth/confirmar?voltar=//exemplo.com`);
   confere(new URL(pe.url()).host === new URL(APP).host, "link de login não redireciona para outro site");
+
+  // 11) Páginas públicas que o Google exige para a verificação
+  await pe.goto(`${APP}/`);
+  confere(await pe.getByText("só a permissão de enviar e-mails").isVisible(), "página inicial explica o uso do Gmail");
+  await pe.getByRole("link", { name: "Política de privacidade" }).click();
+  await pe.getByRole("heading", { name: "Política de privacidade", level: 1 }).waitFor();
+  confere(await pe.getByText(/including the Limited Use requirements/).isVisible(), "privacidade tem a declaração de Uso Limitado do Google");
+  confere(await pe.getByText(/não lê, não apaga, não\s+organiza e não guarda/).isVisible(), "privacidade diz que o Handback não lê o Gmail");
+  await largura(pe, "política de privacidade");
+  await pe.screenshot({ path: `${FOTOS}/19-privacidade.png`, fullPage: true });
+  await pe.goto(`${APP}/termos`);
+  confere(await pe.getByRole("heading", { name: "Termos de uso", level: 1 }).isVisible(), "termos de uso abrem sem login");
   await ext.close();
 } finally {
   await navegador.close();

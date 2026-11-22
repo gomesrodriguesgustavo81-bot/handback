@@ -157,3 +157,50 @@ A conexão fica guardada **cifrada** no banco e só o servidor consegue lê-la. 
 chave secreta do Supabase for trocada, cada pessoa precisa conectar o Gmail de novo.
 Para desconectar, use **Desconectar** no painel (o Handback também avisa o Google
 para apagar a permissão).
+
+---
+
+## Parte 7 · Verificação do Google (liberar o Gmail para qualquer pessoa)
+
+Enquanto o app está "Em teste", só os Gmails cadastrados como usuários de teste
+conectam (até 100). Para liberar para todos, o Google precisa verificar o Handback.
+
+**O que o site já tem:** página inicial explicando o uso do Gmail (`/`), política de
+privacidade com a declaração de Uso Limitado (`/privacidade`) e termos (`/termos`).
+
+1. **E-mail de contato público.** Na Vercel, cadastre `HANDBACK_CONTATO` com o e-mail
+   que vai aparecer na política de privacidade. Faça **Redeploy**.
+2. **Comprovar que o site é seu (Google Search Console).**
+   - Acesse **search.google.com/search-console** › **Adicionar propriedade** ›
+     **Prefixo do URL** › `https://handback-six.vercel.app`.
+   - Escolha o método **Tag HTML**. O Google mostra algo como
+     `<meta name="google-site-verification" content="CODIGO" />`.
+   - Copie só o **CODIGO** e cadastre na Vercel como `GOOGLE_SITE_VERIFICATION`.
+     Faça **Redeploy** e depois toque em **Verificar** no Search Console.
+3. **Preencher a marca do app** em **console.cloud.google.com › Google Auth Platform ›
+   Branding (Desenvolvimento da marca)**:
+   - Página inicial: `https://handback-six.vercel.app`
+   - Política de privacidade: `https://handback-six.vercel.app/privacidade`
+   - Termos de serviço: `https://handback-six.vercel.app/termos`
+   - Domínios autorizados: `handback-six.vercel.app`
+   - Logo (opcional; com logo o Google faz uma revisão a mais).
+4. **Gravar um vídeo curto** (pode ser "não listado" no YouTube) mostrando: entrar no
+   Handback, tocar em "Conectar meu Gmail", a tela de permissão do Google com o nome
+   Handback e a permissão de enviar e-mails, e uma devolutiva aprovada sendo enviada e
+   chegando no e-mail.
+5. Em **Google Auth Platform › Público**, toque em **Publicar app** e depois em
+   **Verificação** › **Preparar para verificação**. Explique em poucas linhas por que o
+   `gmail.send` é necessário (texto sugerido abaixo), cole o link do vídeo e envie.
+
+Texto sugerido para a justificativa (o Google lê em inglês):
+
+> Handback lets teachers and managers review student or team deliverables and send an
+> approved written feedback back to the team. With the gmail.send scope, the feedback
+> is sent from the reviewer's own Gmail account as a reply in the same thread the team
+> used to submit the work, so recipients recognize the sender. The app only sends
+> messages that the signed-in user explicitly approved and clicked "Send"; it never
+> reads, modifies or deletes mailbox content, so no broader Gmail scope is needed.
+
+A análise costuma levar de alguns dias a algumas semanas. Se o Google pedir para usar
+um domínio próprio, compre um (cerca de R$ 40/ano), ligue-o à Vercel e repita os passos
+2 e 3 com o domínio novo.

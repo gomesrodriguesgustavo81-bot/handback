@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Marca } from "@/components/marca";
+import { Rodape } from "@/components/rodape";
 
 const PASSOS = [
   { titulo: "Recebe", texto: "A entrega chega por e-mail ou pelo site, já separada por empresa, etapa e equipe." },
@@ -60,6 +61,20 @@ export default function Inicio() {
           </ol>
         </section>
 
+        <section aria-labelledby="gmail" className="flex flex-col gap-3 rounded-2xl border border-borda bg-cartao p-5 sm:p-6">
+          <h2 id="gmail" className="text-xl font-semibold">A devolutiva sai do seu próprio e-mail</h2>
+          <p className="max-w-3xl text-suave">
+            Quem avalia pode conectar a própria conta do Gmail ao Handback. Com ela, a devolutiva aprovada é enviada à equipe em
+            seu nome, respondendo na mesma conversa do e-mail da entrega. O Handback pede ao Google <strong className="text-texto">só a
+            permissão de enviar e-mails</strong>: não lê, não apaga e não guarda nada da sua caixa de entrada, e você pode
+            desconectar quando quiser.{" "}
+            <Link href="/privacidade#google" className="font-medium text-marca-forte underline">
+              Veja como tratamos os dados do Google
+            </Link>
+            .
+          </p>
+        </section>
+
         <section aria-labelledby="para-quem" className="flex flex-col gap-4">
           <h2 id="para-quem" className="text-xl font-semibold">Para quem</h2>
           <ul className="grid gap-3 sm:grid-cols-2">
@@ -73,9 +88,7 @@ export default function Inicio() {
         </section>
       </main>
 
-      <footer className="border-t border-borda py-6 text-center text-sm text-suave">
-        © {new Date().getFullYear()} Handback · Todos os direitos reservados
-      </footer>
+      <Rodape />
     </div>
   );
 }
