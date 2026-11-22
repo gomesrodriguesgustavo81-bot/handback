@@ -44,6 +44,13 @@ export async function conectarMoodle(slug: string, _a: Resultado, dados: FormDat
     });
     if (error) return { ok: false, mensagem: mensagemDeErro(error, "Não foi possível guardar a ligação. Tente de novo.") };
   } catch (e) {
+    if (e instanceof ErroMoodle && e.reconectar && String(dados.get("chave") ?? "").trim()) {
+      return {
+        ok: false,
+        mensagem:
+          "O Moodle não aceitou essa chave. Confira se copiou a da linha “Moodle mobile web service” (e não a chave RSS) e se entrou pelo aplicativo Moodle antes. Se a chave foi trocada, copie a nova.",
+      };
+    }
     return { ok: false, mensagem: mensagem(e, "Não foi possível falar com o Moodle. Tente de novo.") };
   }
   revalidatePath(`/app/${slug}/moodle`);
