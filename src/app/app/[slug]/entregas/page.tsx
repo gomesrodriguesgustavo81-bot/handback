@@ -153,12 +153,14 @@ export default async function PainelDaAula({ params, searchParams }: PageProps<"
         <FaixaGmail slug={slug} email={gmailEmail} invalida={Boolean(gmail?.invalida)} conectarHref={conectarHref} pendentes={paraEnviar.length} />
       ) : null}
 
-      <Link
-        href={`${base}/relatorio?etapa=${etapa.id}`}
-        className="self-start text-sm font-semibold text-marca-forte hover:underline"
-      >
-        Relatório da aula →
-      </Link>
+      <div className="flex flex-wrap gap-x-5 gap-y-1">
+        <Link href={`${base}/relatorio?etapa=${etapa.id}`} className="text-sm font-semibold text-marca-forte hover:underline">
+          Relatório da aula →
+        </Link>
+        <Link href={`${base}/calibracao`} className="text-sm font-semibold text-marca-forte hover:underline">
+          Como a IA está indo →
+        </Link>
+      </div>
 
       <nav aria-label="Filtrar equipes" className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
         <ul className="flex min-w-max gap-1.5">

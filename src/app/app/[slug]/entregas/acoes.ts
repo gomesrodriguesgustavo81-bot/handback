@@ -102,6 +102,7 @@ export async function revisarDevolutiva(slug: string, entregaId: string, _a: Res
     p_conceito: String(dados.get("conceito") ?? ""),
     p_devolutiva: String(dados.get("devolutiva") ?? "").trim(),
     p_aprovar: aprovar,
+    p_motivo: String(dados.get("motivo") ?? "").trim().slice(0, 500),
   });
   if (error) return { ok: false, mensagem: mensagemDeErro(error, "Não foi possível salvar. Tente de novo.") };
   revalidatePath(`/app/${slug}`, "layout");

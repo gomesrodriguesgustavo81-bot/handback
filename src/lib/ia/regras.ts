@@ -158,6 +158,8 @@ export type DadosInstrucao = {
   criterios: string;
   observacoes: string;
   exemplos: string;
+  /** Vezes em que quem avalia mudou o conceito da IA e disse por quê (as mais recentes). */
+  correcoes?: { ia: string; final: string; motivo: string }[];
 };
 
 export function instrucaoSistema(d: DadosInstrucao): string {
@@ -194,6 +196,13 @@ export function instrucaoSistema(d: DadosInstrucao): string {
     "1. Primeiro preencha o checklist; depois tire o conceito dele.",
     ...regraTexto,
     "6. Regras de quem avalia, nas observações, prevalecem sobre estas.",
+    ...(d.correcoes?.length
+      ? [
+          "",
+          "CORREÇÕES ANTERIORES DE QUEM AVALIA (aprenda com elas; o critério de quem avalia vale mais que o seu):",
+          ...d.correcoes.map((c) => `• Você sugeriu ${c.ia}, quem avalia deu ${c.final}. Motivo: ${c.motivo}`),
+        ]
+      : []),
     "",
     "COMO PREENCHER:",
     "• checklist: EXATAMENTE os itens pedidos, na mesma ordem e com o mesmo texto. Para cada um: status e evidência curta (\"onde vi isso\" ou \"o que faltou\").",

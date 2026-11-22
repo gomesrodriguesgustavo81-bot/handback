@@ -593,6 +593,8 @@ try {
   // Revisão: muda o conceito, edita, salva rascunho, aprova, reabre, aprova de novo.
   await ana.p.getByRole("radio", { name: "BOM", exact: true }).click();
   await ana.p.getByLabel(/^Devolutiva para/).fill("Pessoal, ótima entrega! Ajustem o roteiro de teste e seguimos.");
+  confere(await ana.p.getByText("Você mudou de EXCELENTE para BOM. Por quê?").isVisible(), "ao mudar o conceito da IA, pergunta o motivo");
+  await ana.p.getByPlaceholder("Ex.: a pesquisa não tinha dados, só opinião").fill("O roteiro de teste estava incompleto");
   await ana.p.getByRole("button", { name: "Salvar rascunho" }).click();
   await ana.p.getByText("Rascunho salvo.").waitFor();
   await ana.p.reload();
@@ -673,6 +675,11 @@ try {
   await ana.p.waitForURL(/\/entregas\/[0-9a-f-]{36}$/);
   await ana.p.getByRole("button", { name: "Analisar com IA" }).click();
   await ana.p.getByText(/A IA não respondeu/).first().waitFor({ timeout: 90000 });
+  {
+    const ultimos = readFileSync(process.env.REGISTRO_IA, "utf8").trim().split("\n").map((l) => JSON.parse(l));
+    confere(ultimos.at(-1).correcoes.includes("Você sugeriu EXCELENTE, quem avalia deu BOM. Motivo: O roteiro de teste estava incompleto"),
+      "a IA recebe os motivos das mudanças anteriores (calibração)");
+  }
   confere(true, "falha da IA aparece com mensagem clara");
   await ana.p.reload();
   confere(await ana.p.getByRole("button", { name: "Tentar de novo" }).isVisible(), "dá para tentar de novo depois da falha");
@@ -706,6 +713,15 @@ try {
     await ana.p.goto(`${APP}/app/${SLUG}/entregas/caixa`);
     confere(await ana.p.locator("li.rounded-2xl", { hasText: "nova@aluno.test" }).getByText("trabalho-resend.pdf").isVisible(), "Resend: anexo baixado e guardado");
   }
+
+  // 7b2) Como a IA está indo (calibração)
+  await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
+  await ana.p.getByRole("link", { name: "Como a IA está indo →" }).click();
+  await ana.p.getByRole("heading", { name: "Como a IA está indo" }).waitFor();
+  confere(await ana.p.getByText("O roteiro de teste estava incompleto").isVisible(), "painel da IA mostra o motivo da mudança");
+  confere(await ana.p.getByText("Aprove pelo menos 3 devolutivas").isVisible(), "painel da IA pede mais avaliações antes de calcular");
+  await largura(ana.p, "como a IA está indo");
+  await ana.p.screenshot({ path: `${FOTOS}/21-calibracao.png`, fullPage: true });
 
   // 7c) Registro de atividades
   {

@@ -76,7 +76,7 @@ export async function analisarEntrega(supabase: SupabaseClient, entregaId: strin
     for (const l of e.links.slice(0, 10)) await lerLink(conteudo, l);
 
     // 2) Histórico do grupo nas etapas anteriores e exemplos de estilo.
-    const [anteriores, exemplos] = await Promise.all([historico(supabase, e), exemplosDeEstilo(supabase, e)]);
+    const [anteriores, exemplos, correcoes] = await Promise.all([historico(supabase, e), exemplosDeEstilo(supabase, e), correcoesAnteriores(supabase, e)]);
 
     // 3) IA.
     const sistema = instrucaoSistema({
@@ -86,6 +86,7 @@ export async function analisarEntrega(supabase: SupabaseClient, entregaId: strin
       criterios: e.etapas.criterios,
       observacoes: e.etapas.observacoes_ia,
       exemplos,
+      correcoes,
     });
     const cabecalho = cabecalhoEntrega({
       vocabulario: v,
@@ -175,4 +176,19 @@ async function exemplosDeEstilo(supabase: SupabaseClient, e: EntregaCompleta): P
     .order("aprovada_em", { ascending: false })
     .limit(5);
   return (data ?? []).map((d) => d.devolutiva).filter(Boolean).join("\n---\n");
+}
+
+/** Últimas vezes em que quem avalia mudou o conceito da IA e explicou o motivo (calibração). */
+async function correcoesAnteriores(supabase: SupabaseClient, e: EntregaCompleta) {
+  const { data } = await supabase
+    .from("analises")
+    .select("conceito_ia, conceito, motivo_mudanca")
+    .eq("org_id", e.org_id)
+    .neq("motivo_mudanca", "")
+    .in("status", ["pronta", "aprovada"])
+    .order("atualizada_em", { ascending: false })
+    .limit(15);
+  return (data ?? [])
+    .filter((x) => x.conceito_ia && x.conceito && x.conceito_ia !== x.conceito)
+    .map((x) => ({ ia: x.conceito_ia as string, final: x.conceito as string, motivo: String(x.motivo_mudanca).slice(0, 300) }));
 }

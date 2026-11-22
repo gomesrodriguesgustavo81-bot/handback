@@ -43,6 +43,7 @@ type Analise = {
   conceito_ia: string | null;
   justificativa: string;
   analise_interna: string;
+  motivo_mudanca: string;
   envio_status: "enviando" | "enviada" | "erro" | null;
   enviada_em: string | null;
   enviada_para: string[];
@@ -334,6 +335,7 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
           }}
           gmail={{ configurado: gmailConfigurado(), email: gmail && !gmail.invalida ? gmail.email : null }}
           destinos={destinos ?? { para: [], copia: [] }}
+          motivo={a.motivo_mudanca ?? ""}
           conectarHref={`/api/gmail/conectar?voltar=${encodeURIComponent(`${base}/${entrega.id}`)}`}
         >
           {checklist}

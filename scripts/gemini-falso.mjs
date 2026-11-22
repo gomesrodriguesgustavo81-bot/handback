@@ -30,6 +30,7 @@ createServer(async (req, res) => {
         modelo,
         temRegras: /NUNCA use notas/.test(j.systemInstruction?.parts?.[0]?.text ?? ""),
         temEsquema: Boolean(j.generationConfig?.responseSchema),
+        correcoes: (j.systemInstruction?.parts?.[0]?.text ?? "").split("CORREÇÕES ANTERIORES")[1]?.split("\n\n")[0] ?? "",
         anexos: partes.filter((p) => p.inlineData).map((p) => p.inlineData.mimeType),
         texto: texto.slice(0, 4000),
       }) + "\n",

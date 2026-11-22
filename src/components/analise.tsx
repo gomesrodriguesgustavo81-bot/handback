@@ -152,6 +152,7 @@ export function FolhaDevolutiva({
   gmail,
   destinos,
   conectarHref,
+  motivo,
   children,
 }: {
   slug: string;
@@ -169,6 +170,8 @@ export function FolhaDevolutiva({
   gmail: { configurado: boolean; email: string | null };
   destinos: { para: string[]; copia: string[] };
   conectarHref: string;
+  /** Motivo já salvo de ter mudado o conceito da IA. */
+  motivo: string;
   children: ReactNode;
 }) {
   const router = useRouter();
@@ -231,6 +234,22 @@ export function FolhaDevolutiva({
             >
               {escolhido === "PENDENTE" ? "Marcado como PENDENTE (toque para desfazer)" : "Ou deixar PENDENTE"}
             </button>
+          ) : null}
+
+          {!aprovada && conceitoIa && escolhido !== conceitoIa ? (
+            <label className="flex flex-col gap-1.5 rounded-xl border border-alerta/30 bg-alerta-fundo p-3">
+              <span className="text-sm font-medium text-texto">
+                Você mudou de {conceitoIa} para {escolhido}. Por quê? <span className="font-normal text-suave">(opcional)</span>
+              </span>
+              <input
+                name="motivo"
+                defaultValue={motivo}
+                maxLength={500}
+                placeholder="Ex.: a pesquisa não tinha dados, só opinião"
+                className="min-h-11 w-full rounded-lg border border-borda bg-cartao px-3 text-base text-texto"
+              />
+              <span className="text-xs text-suave">A IA lê esses motivos nas próximas análises e aprende o seu critério.</span>
+            </label>
           ) : null}
 
           {aprovada ? (
