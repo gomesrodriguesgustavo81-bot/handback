@@ -12,7 +12,8 @@ cliente tem o seu espaço, separado das outras.
 |---|---|---|
 | 0 · Fundação | Site, login por e-mail, empresas, membros, convites, painel do dono | Pronta |
 | 1 · Cadastros | Etapas (aulas) com checklist, grupos (equipes) com e-mails, pessoas e convites, vocabulário | Pronta |
-| 2 em diante | Entregas, IA, devolutivas… | A fazer |
+| 2 · Entregas pelo site | Quem está numa equipe envia arquivos, links e comentário; quadro de entregas para quem avalia; atraso e reenvio | Pronta |
+| 3 em diante | IA, devolutivas, entregas por e-mail… | A fazer |
 
 ## Pastas
 

@@ -115,7 +115,7 @@ try {
   await ana.p.getByText("Escola Alfa").click();
   await ana.p.waitForURL(new RegExp(`/app/${SLUG}$`));
   const abasAna = await ana.p.getByRole("navigation", { name: "Seções da empresa" }).getByRole("link").allInnerTexts();
-  confere(abasAna.join("|") === "Visão geral|Aulas|Equipes|Pessoas|Ajustes", `vocabulário de escola nas abas (${abasAna.join(", ")})`);
+  confere(abasAna.join("|") === "Visão geral|Entregas|Aulas|Equipes|Pessoas|Ajustes", `vocabulário de escola nas abas (${abasAna.join(", ")})`);
   await largura(ana.p, "painel da empresa");
   await ana.p.screenshot({ path: `${FOTOS}/5-painel-da-empresa.png`, fullPage: true });
   confere((await ana.p.goto(`${APP}/admin`)).status() === 404, "Ana não abre o Painel do dono");
@@ -188,7 +188,7 @@ try {
   await prof.p.getByText("Escola Alfa").click();
   await prof.p.waitForURL(new RegExp(`/app/${SLUG}$`));
   const abas = await prof.p.getByRole("navigation", { name: "Seções da empresa" }).getByRole("link").allInnerTexts();
-  confere(abas.join("|") === "Visão geral|Aulas|Equipes", `professor vê as abas certas (${abas.join(", ")})`);
+  confere(abas.join("|") === "Visão geral|Entregas|Aulas|Equipes", `professor vê as abas certas (${abas.join(", ")})`);
   confere(await prof.p.getByText("Seu papel: Avaliador").isVisible(), "papel de avaliador");
   await prof.p.getByRole("link", { name: "Aulas", exact: true }).click();
   await prof.p.waitForURL(/\/etapas$/);
@@ -241,6 +241,93 @@ try {
   // F9) Curioso continua sem ver nada dos cadastros
   confere((await curioso.p.goto(`${APP}/app/${SLUG}/grupos`)).status() === 404, "curioso não abre as equipes");
 
+  // ===================== FASE 2: entregas pelo site =====================
+  // E1) Ana cadastra o encontro 2 (prazo futuro) e uma equipe sem e-mails
+  await ana.p.goto(`${APP}/app/${SLUG}/etapas/nova`);
+  await ana.p.getByLabel("Nº").fill("2");
+  await ana.p.getByLabel("Título").fill("Protótipo");
+  await ana.p.getByLabel("Recebe entregas até").fill("2099-12-31");
+  await ana.p.getByLabel("O que deve ser entregue (checklist)").fill("Protótipo navegável\nRoteiro de teste");
+  await ana.p.getByRole("button", { name: "Salvar" }).click();
+  await ana.p.getByText("Cadastro salvo.").waitFor();
+  await ana.p.goto(`${APP}/app/${SLUG}/grupos`);
+  await ana.p.getByLabel("Nome", { exact: true }).fill("Equipe Roxa");
+  await ana.p.getByRole("button", { name: "Adicionar" }).click();
+  await ana.p.getByText("“Equipe Roxa” cadastrado").waitFor();
+
+  // E2) A aluna (só o e-mail dela está na Equipe Azul) entra e envia arquivos, link e comentário
+  const aluna = await entrar(navegador, "a1@aluno.test");
+  aluna.p.on("dialog", (d) => d.accept());
+  await aluna.p.goto(`${APP}/app/${SLUG}`);
+  const abasAluna = await aluna.p.getByRole("navigation", { name: "Seções da empresa" }).getByRole("link").allInnerTexts();
+  confere(abasAluna.join("|") === "Visão geral|Entregar|Encontros", `aluna vê as abas certas (${abasAluna.join(", ")})`);
+  confere(await aluna.p.getByText("Seu papel: Entrega por equipe · Equipe Azul").isVisible(), "aluna aparece como da Equipe Azul");
+  await aluna.p.getByRole("link", { name: "Entregar", exact: true }).click();
+  await aluna.p.waitForURL(/\/entregar$/);
+  await aluna.p.getByLabel("Escolher arquivos").setInputFiles([
+    { name: "relatório final.pdf", mimeType: "application/pdf", buffer: Buffer.from("conteudo do relatorio") },
+    { name: "slides.txt", mimeType: "text/plain", buffer: Buffer.from("slides") },
+  ]);
+  confere(await aluna.p.getByText("relatório final.pdf").isVisible(), "arquivo aparece na lista antes de enviar");
+  await aluna.p.getByLabel("Tirar slides.txt").click();
+  await aluna.p.getByLabel("Links (opcional)").fill("nao-e-link");
+  await aluna.p.getByRole("button", { name: "Enviar entrega" }).click();
+  await aluna.p.getByText("Estes links não parecem válidos").waitFor();
+  confere(true, "link inválido é apontado antes de registrar");
+  await aluna.p.getByLabel("Links (opcional)").fill("https://exemplo.com/deck");
+  await aluna.p.getByLabel("Comentário (opcional)").fill("Primeira versão");
+  await largura(aluna.p, "tela de entregar");
+  await aluna.p.screenshot({ path: `${FOTOS}/11-entregar.png`, fullPage: true });
+  await aluna.p.getByRole("button", { name: "Enviar entrega" }).click();
+  await aluna.p.getByText("Entrega recebida!").waitFor();
+  confere(true, "aluna envia a entrega com arquivo e link");
+  await aluna.p.getByRole("link", { name: /Entregue em/ }).first().waitFor();
+  confere(await aluna.p.getByText("Ainda não entregue").count() === 0, "minhas entregas mostra o encontro como entregue");
+
+  // E3) Ela abre a entrega e baixa o arquivo da área privada
+  await aluna.p.getByRole("link", { name: /Entregue em/ }).first().click();
+  await aluna.p.waitForURL(/\/entregas\/[0-9a-f-]{36}$/);
+  const href = await aluna.p.getByRole("link", { name: "relatório final.pdf" }).getAttribute("href");
+  const baixado = await aluna.p.request.get(href);
+  confere(baixado.status() === 200 && (await baixado.text()) === "conteudo do relatorio", "aluna baixa o próprio arquivo");
+  const urlPrimeira = aluna.p.url();
+
+  // E4) Reenvio: a primeira vira "substituída"
+  await aluna.p.goto(`${APP}/app/${SLUG}/entregar`);
+  await aluna.p.getByLabel("Comentário (opcional)").fill("Versão final");
+  await aluna.p.getByRole("button", { name: "Enviar entrega" }).click();
+  await aluna.p.getByText("Entrega recebida!").waitFor();
+  await aluna.p.goto(urlPrimeira);
+  confere(await aluna.p.getByText("Substituída por um reenvio").isVisible(), "reenvio deixa a primeira entrega substituída");
+  confere((await aluna.p.goto(`${APP}/app/${SLUG}/entregas`)).status() === 404, "aluna não abre o quadro de entregas");
+
+  // E5) Ana vê o quadro e registra a entrega da Equipe Roxa
+  await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
+  await ana.p.getByText("1 de 2 entregaram").waitFor();
+  confere(await ana.p.getByText("reenviada 1x").isVisible(), "quadro mostra o reenvio");
+  await ana.p.getByLabel("Equipe", { exact: true }).selectOption({ label: "Equipe Roxa" });
+  await ana.p.getByLabel("Comentário (opcional)").fill("Recebido em mãos na aula");
+  await ana.p.getByRole("button", { name: "Enviar entrega" }).click();
+  await ana.p.getByText("Entrega recebida!").waitFor();
+  await ana.p.getByText("2 de 2 entregaram").waitFor();
+  confere(await ana.p.getByRole("link", { name: /Equipe Roxa/ }).getByText("Registrada por quem avalia", { exact: true }).isVisible(), "registro de quem avalia fica marcado");
+  await largura(ana.p, "quadro de entregas");
+  await ana.p.screenshot({ path: `${FOTOS}/12-quadro-entregas.png`, fullPage: true });
+  const linkRoxa = await ana.p.getByRole("link", { name: /Equipe Roxa/ }).getAttribute("href");
+
+  // E6) Professor vê o quadro e baixa o arquivo da Azul
+  await prof.p.goto(`${APP}/app/${SLUG}/entregas`);
+  await prof.p.getByText("2 de 2 entregaram").waitFor();
+  await prof.p.goto(urlPrimeira);
+  const hrefProf = await prof.p.getByRole("link", { name: "relatório final.pdf" }).getAttribute("href");
+  confere((await prof.p.request.get(hrefProf)).status() === 200, "professor baixa o arquivo da equipe");
+  await prof.p.screenshot({ path: `${FOTOS}/13-detalhe-entrega.png`, fullPage: true });
+
+  // E7) A aluna não abre a entrega da outra equipe; o curioso não vê nada
+  confere((await aluna.p.goto(`${APP}${linkRoxa}`)).status() === 404, "aluna não abre a entrega de outra equipe");
+  confere((await curioso.p.goto(`${APP}/app/${SLUG}/entregas`)).status() === 404, "curioso não abre o quadro");
+  confere((await curioso.p.goto(urlPrimeira)).status() === 404, "curioso não abre a entrega pelo endereço");
+
   // 8) O dono bloqueia a escola; a Ana vê o aviso
   await dono.p.goto(`${APP}/admin`);
   const linha = dono.p.locator("li", { hasText: SLUG });
@@ -248,6 +335,11 @@ try {
   await linha.getByRole("button", { name: "Liberar" }).waitFor();
   await ana.p.goto(`${APP}/app/${SLUG}`);
   confere(await ana.p.getByText("Esta empresa está bloqueada").isVisible(), "Ana vê que a empresa foi bloqueada");
+  await aluna.p.goto(`${APP}/app/${SLUG}/entregar`);
+  await aluna.p.getByLabel("Comentário (opcional)").fill("Depois do bloqueio");
+  await aluna.p.getByRole("button", { name: "Enviar entrega" }).click();
+  await aluna.p.getByText("Esta empresa está bloqueada.").waitFor();
+  confere(true, "empresa bloqueada não recebe entregas");
 
   // 9) Sair encerra a sessão
   await ana.p.goto(`${APP}/app`);

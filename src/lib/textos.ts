@@ -46,3 +46,54 @@ export function lerData(valor: FormDataEntryValue | null): string | null {
 export function minusc(palavra: string): string {
   return palavra.charAt(0).toLowerCase() + palavra.slice(1);
 }
+
+/** Data e hora em Brasília: "05/12/2026 às 14:30". */
+export function dataHoraBR(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const f = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).formatToParts(new Date(iso));
+  const p = (t: string) => f.find((x) => x.type === t)?.value ?? "";
+  return `${p("day")}/${p("month")}/${p("year")} às ${p("hour")}:${p("minute")}`;
+}
+
+/** 1536 → "1,5 MB" */
+export function tamanhoLegivel(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${kb.toFixed(0)} KB`;
+  return `${(kb / 1024).toFixed(1).replace(".", ",")} MB`;
+}
+
+/** Nome de arquivo seguro para guardar: sem acentos, espaços ou barras. */
+export function nomeArquivoSeguro(nome: string): string {
+  const limpo = nome
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^A-Za-z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(-120);
+  return limpo || "arquivo";
+}
+
+/** Links, um por linha (ou separados por espaço): só http(s). */
+export function lerLinks(texto: string): { validos: string[]; invalidos: string[] } {
+  const partes = texto.split(/\s+/).map((l) => l.trim()).filter(Boolean);
+  const validos: string[] = [];
+  const invalidos: string[] = [];
+  for (const p of partes) {
+    try {
+      const u = new URL(p);
+      if (u.protocol === "http:" || u.protocol === "https:") validos.push(u.toString());
+      else invalidos.push(p);
+    } catch {
+      invalidos.push(p);
+    }
+  }
+  return { validos: [...new Set(validos)], invalidos };
+}

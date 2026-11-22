@@ -39,22 +39,33 @@ export type MinhaEmpresa = {
   ativa: boolean;
   papel: Papel | null;
   vocabulario: Vocabulario;
+  /** Grupo pelo qual a pessoa entrega nesta empresa (pelo e-mail), se houver. */
+  meuGrupo: { id: string; nome: string } | null;
 };
 
-type LinhaEmpresa = Omit<MinhaEmpresa, "papel"> & { membros: { papel: Papel; user_id: string }[] };
+type LinhaEmpresa = Omit<MinhaEmpresa, "papel" | "meuGrupo"> & { membros: { papel: Papel; user_id: string }[] };
 
-/** Empresas que a pessoa vê (as dela; o dono da plataforma vê todas). */
+/**
+ * Empresas que a pessoa vê: as que ela faz parte, as em que entrega por um
+ * grupo (pelo e-mail) e, para o dono da plataforma, todas.
+ */
 export const minhasEmpresas = cache(async (): Promise<MinhaEmpresa[]> => {
   const eu = await usuarioAtual();
   const supabase = await criarClienteServidor();
-  const { data, error } = await supabase
-    .from("organizacoes")
-    .select("id, nome, slug, frente, ativa, vocabulario, membros(papel, user_id)")
-    .order("nome");
-  if (error) throw new Error("Não foi possível carregar as empresas.");
-  return (data as LinhaEmpresa[]).map(({ membros, ...org }) => ({
+  const [empresas, grupos] = await Promise.all([
+    supabase.from("organizacoes").select("id, nome, slug, frente, ativa, vocabulario, membros(papel, user_id)").order("nome"),
+    supabase.from("integrantes").select("org_id, grupos(id, nome, ativo)").eq("email", eu.email.toLowerCase()),
+  ]);
+  if (empresas.error) throw new Error("Não foi possível carregar as empresas.");
+  const meusGrupos = new Map<string, { id: string; nome: string }>();
+  for (const i of grupos.data ?? []) {
+    const g = i.grupos as unknown as { id: string; nome: string; ativo: boolean } | null;
+    if (g?.ativo) meusGrupos.set(i.org_id, { id: g.id, nome: g.nome });
+  }
+  return (empresas.data as LinhaEmpresa[]).map(({ membros, ...org }) => ({
     ...org,
     papel: membros.find((m) => m.user_id === eu.id)?.papel ?? null,
+    meuGrupo: meusGrupos.get(org.id) ?? null,
   }));
 });
 

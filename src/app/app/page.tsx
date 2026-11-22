@@ -14,7 +14,7 @@ export default async function MinhasEmpresas() {
   await supabase.rpc("aceitar_convites");
 
   const [empresas, dono] = await Promise.all([minhasEmpresas(), eDonoDaPlataforma()]);
-  const minhas = empresas.filter((e) => e.papel !== null);
+  const minhas = empresas.filter((e) => e.papel !== null || e.meuGrupo !== null);
 
   return (
     <>
@@ -42,7 +42,8 @@ export default async function MinhasEmpresas() {
                   {!e.ativa ? <Selo>Bloqueada</Selo> : null}
                 </div>
                 <p className="mt-1 text-sm text-suave">
-                  {FRENTES[e.frente].curto} · {e.papel ? PAPEIS[e.papel] : ""}
+                  {FRENTES[e.frente].curto} ·{" "}
+                  {e.papel ? PAPEIS[e.papel] : `Entrega por ${e.vocabulario.grupo.toLowerCase()} · ${e.meuGrupo?.nome}`}
                 </p>
               </Link>
             </li>
