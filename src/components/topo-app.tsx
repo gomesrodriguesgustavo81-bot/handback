@@ -70,7 +70,7 @@ export function TopoApp({ email, dono, empresas }: { email: string; dono: boolea
                 ) : null}
                 {dono ? (
                   <Link role="menuitem" href="/admin" onClick={() => setAberto(false)} className={item}>
-                    Painel do dono
+                    Administração do Handback
                   </Link>
                 ) : null}
                 <form action="/sair" method="post">

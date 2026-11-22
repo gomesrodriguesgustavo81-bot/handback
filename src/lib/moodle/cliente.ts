@@ -218,7 +218,7 @@ export async function chamar<T>(site: string, chave: string, funcao: string, par
   const erro = j as { exception?: string; errorcode?: string; message?: string } | null;
   if (erro && typeof erro === "object" && !Array.isArray(erro) && erro.exception) {
     if (erro.errorcode === "invalidtoken" || erro.errorcode === "accessexception" && /token/i.test(erro.message ?? "")) {
-      throw new ErroMoodle("A ligação com o Moodle expirou ou foi cortada. Ligue de novo em Ajustes › Moodle.", true);
+      throw new ErroMoodle("A ligação com o Moodle expirou ou foi cortada. Ligue de novo em Configurações › Moodle.", true);
     }
     if (erro.errorcode === "servicenotavailable" || /not available|não está disponível/i.test(erro.message ?? "")) {
       throw new ErroMoodle(`Este Moodle não libera “${funcao}” para aplicativos.`);

@@ -9,6 +9,7 @@ import { conexaoPorId } from "@/lib/moodle/sincronizar";
 import { completarVocabulario } from "@/lib/nomes";
 import { criarClienteAdmin } from "@/lib/supabase/admin";
 import { criarClienteServidor } from "@/lib/supabase/server";
+import { dataHoraBR } from "@/lib/textos";
 import { desligarMoodle, ligarDisciplina, salvarNotasMoodle } from "./acoes";
 import { FormConectarMoodle } from "./form-conectar";
 
@@ -34,12 +35,15 @@ export default async function Moodle({ params, searchParams }: PageProps<"/app/[
   const vc = completarVocabulario(empresa.vocabulario);
   const supabase = await criarClienteServidor();
   const [{ data: contas }, { data: turmas }, { data: config }] = await Promise.all([
-    supabase.from("contas_moodle").select("id, site, site_nome, nome, invalida").eq("org_id", empresa.id).order("conectada_em", { ascending: false }),
+    supabase.from("contas_moodle").select("id, site, site_nome, nome, invalida, erro, erro_em").eq("org_id", empresa.id).order("conectada_em", { ascending: false }),
     supabase.from("turmas").select("id, nome, moodle_conta, moodle_curso").eq("org_id", empresa.id).not("moodle_conta", "is", null),
     supabase.from("organizacoes").select("notas_moodle").eq("id", empresa.id).single(),
   ]);
   const conta = (contas ?? []).find((c) => !c.invalida) ?? null;
-  const expirada = !conta && (contas ?? []).some((c) => c.invalida);
+  const cortada = !conta ? (contas ?? []).find((c) => c.invalida) : undefined;
+  const expirada = cortada
+    ? `A ligação com o Moodle foi cortada${cortada.erro_em ? ` em ${dataHoraBR(cortada.erro_em)}` : ""}${cortada.erro ? `. O Moodle disse: “${cortada.erro}”` : ""}. Entre de novo: as turmas que já vieram voltam a ficar ligadas.`
+    : "";
 
   let cursos: Curso[] = [];
   let erroCursos = "";

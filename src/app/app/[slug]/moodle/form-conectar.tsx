@@ -73,7 +73,7 @@ function GuiaChave({ host }: { host: string }) {
   );
 }
 
-export function FormConectarMoodle({ slug, enderecoInicial, expirada }: { slug: string; enderecoInicial: string; expirada: boolean }) {
+export function FormConectarMoodle({ slug, enderecoInicial, expirada }: { slug: string; enderecoInicial: string; expirada: string }) {
   const [endereco, setEndereco] = useState(enderecoInicial);
   const [exame, setExame] = useState<Pronto | null>(null);
   const [erroExame, setErroExame] = useState("");
@@ -103,7 +103,7 @@ export function FormConectarMoodle({ slug, enderecoInicial, expirada }: { slug: 
           examinar();
         }}
       >
-        {expirada ? <Aviso tipo="alerta">A ligação com o Moodle expirou ou foi cortada. Entre de novo.</Aviso> : null}
+        {expirada ? <Aviso tipo="alerta">{expirada}</Aviso> : null}
         <p className="text-sm">Use o mesmo login que você usa no Moodle da sua instituição. O Handback traz as disciplinas, os alunos e as entregas de lá.</p>
         <Campo
           rotulo="Endereço do Moodle"

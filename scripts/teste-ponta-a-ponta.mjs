@@ -193,7 +193,7 @@ try {
   await largura(dono.p, "ativar duas etapas");
   await cadastrarCelular(dono.p, DONO);
   await dono.p.waitForURL(/\/app/);
-  confere(await (await menuConta(dono.p)).getByRole("menuitem", { name: "Painel do dono" }).isVisible(), "aparece o Painel do dono (no menu da conta)");
+  confere(await (await menuConta(dono.p)).getByRole("menuitem", { name: "Administração do Handback" }).isVisible(), "aparece a Administração do Handback (no menu da conta)");
 
   // 4) Cria a empresa e convida a Ana
   await dono.p.goto(`${APP}/admin`);
@@ -870,8 +870,8 @@ try {
   if (process.env.REGISTRO_MOODLE) {
     const MOODLE = "http://127.0.0.1:4558";
     const sql = (q) => execFileSync("psql", [DB, "-Atc", q]).toString().trim();
-    await ana.p.goto(`${APP}/app/${SLUG}/ajustes`);
-    await ana.p.getByRole("link", { name: "Ligar ao Moodle" }).click();
+    await ana.p.goto(`${APP}/app/${SLUG}/configuracoes`);
+    await ana.p.getByRole("link", { name: /^Moodle/ }).click();
     await ana.p.getByRole("heading", { name: "Ligar ao Moodle" }).waitFor();
     // Moodle com login da instituição: o Handback percebe sozinho e mostra o caminho da chave.
     await ana.p.getByLabel("Endereço do Moodle").fill("rodrigues@usp.br");
@@ -974,6 +974,20 @@ try {
     confere(true, "Moodle: “Buscar entregas agora” traz o envio novo");
     await ana.p.goto(`${APP}/app/${SLUG}/registro?ver=avaliacoes`);
     confere((await ana.p.locator("main ol").innerText()).includes("Devolveu no Moodle a devolutiva de"), "Moodle: devolução aparece no registro de atividades");
+    // Desligar e ligar de novo: a turma volta a ficar ligada sozinha.
+    await ana.p.goto(`${APP}/app/${SLUG}/moodle`);
+    await ana.p.getByRole("button", { name: "Desligar" }).click();
+    await ana.p.getByRole("button", { name: "Sim, confirmar" }).click();
+    await ana.p.getByRole("button", { name: "Continuar" }).waitFor();
+    const turmaMoodle = `select coalesce(moodle_conta::text, 'sem') from public.turmas where nome = 'Design de Interação' and org_id = (select id from public.organizacoes where slug = '${SLUG}')`;
+    confere(sql(turmaMoodle) === "sem", "Moodle: desligar tira a ligação da turma");
+    await ana.p.getByLabel("Endereço do Moodle").fill(MOODLE);
+    await ana.p.getByRole("button", { name: "Continuar" }).click();
+    await ana.p.getByLabel("Usuário do Moodle").fill("prof.moodle");
+    await ana.p.getByLabel("Senha do Moodle").fill("senha moodle");
+    await ana.p.getByRole("button", { name: "Conectar ao Moodle" }).click();
+    await ana.p.getByText("Conectado como Marina Teixeira").waitFor();
+    confere(sql(turmaMoodle) !== "sem", "Moodle: ligar de novo religa a turma que já existia");
     await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
     await trocarTurma(ana.p, "Turma A");
   }

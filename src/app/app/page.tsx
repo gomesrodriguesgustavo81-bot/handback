@@ -16,7 +16,8 @@ export default async function MinhasEmpresas({ searchParams }: PageProps<"/app">
   await supabase.rpc("aceitar_convites");
 
   const [empresas, dono] = await Promise.all([minhasEmpresas(), eDonoDaPlataforma()]);
-  const minhas = empresas.filter((e) => e.papel !== null);
+  // O dono do Handback vê todas as contas; as outras pessoas, só as suas.
+  const minhas = dono ? empresas : empresas.filter((e) => e.papel !== null);
   // Quem faz parte de uma empresa só vai direto para ela.
   if (minhas.length === 1 && !dono && todas !== "1") redirect(`/app/${minhas[0].slug}`);
 
@@ -32,7 +33,7 @@ export default async function MinhasEmpresas({ searchParams }: PageProps<"/app">
           <p className="font-medium">Você ainda não faz parte de nenhuma empresa.</p>
           <p className="mt-1 text-suave">
             {dono
-              ? "Crie a primeira empresa no Painel do dono."
+              ? "Crie a primeira conta de cliente em Administração do Handback (no menu do seu círculo, no topo)."
               : "Peça ao administrador da sua empresa um convite para este e-mail."}
           </p>
         </Cartao>
@@ -46,7 +47,7 @@ export default async function MinhasEmpresas({ searchParams }: PageProps<"/app">
                   {!e.ativa ? <Selo>Bloqueada</Selo> : null}
                 </div>
                 <p className="mt-1 text-sm text-suave">
-                  {FRENTES[e.frente].curto} · {e.papel ? PAPEIS[e.papel] : ""}
+                  {FRENTES[e.frente].curto} · {e.papel ? PAPEIS[e.papel] : "você é o dono do Handback"}
                 </p>
               </Link>
             </li>

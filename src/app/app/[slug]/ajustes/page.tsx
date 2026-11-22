@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { FormAcao } from "@/components/form-acao";
-import { AreaTexto, Aviso, Campo, Cartao, Escolha, LinkBotao } from "@/components/ui";
+import { AreaTexto, Aviso, Campo, Cartao, Escolha } from "@/components/ui";
 import { contextoDaEmpresa } from "@/lib/empresa";
 import { EnderecoDaTurma } from "@/components/endereco-turma";
 import { enderecoDeRecebimento } from "@/lib/emails/endereco";
@@ -74,20 +74,6 @@ export default async function Ajustes({ params }: PageProps<"/app/[slug]/ajustes
           </ol>
         </details>
       ) : null}
-    </Cartao>
-
-    <Cartao id="moodle" className="flex scroll-mt-6 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex flex-col gap-1">
-        <h2 className="text-lg font-semibold">Moodle</h2>
-        <p className="text-sm text-suave">
-          {turmas.some((t) => t.moodle_conta)
-            ? `Ligado: ${turmas.filter((t) => t.moodle_conta).map((t) => t.nome).join(", ")}.`
-            : "Traga alunos, grupos, tarefas e entregas do Moodle da sua instituição, e devolva por lá."}
-        </p>
-      </div>
-      <LinkBotao href={`/app/${slug}/moodle`} variante="secundario" className="shrink-0">
-        {turmas.some((t) => t.moodle_conta) ? "Abrir o Moodle" : "Ligar ao Moodle"}
-      </LinkBotao>
     </Cartao>
 
     <Cartao id="turmas" className="flex scroll-mt-6 flex-col gap-4">

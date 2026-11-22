@@ -5,6 +5,7 @@ import { decifrarTexto } from "../cripto";
 import { emailValido, nomeArquivoSeguro } from "../textos";
 import {
   baixarArquivo,
+  chamar,
   dataDoMoodle,
   enviosDaTarefa,
   ErroMoodle,
@@ -28,10 +29,34 @@ type TurmaMoodle = { id: string; org_id: string; modo: "grupos" | "individual"; 
 /** Abre a conexão (chave decifrada) que uma turma usa. Só no servidor. */
 export async function conexaoPorId(admin: SupabaseClient, contaId: string): Promise<Conexao> {
   const { data } = await admin.from("contas_moodle").select("id, site, token_cifrado, invalida, moodle_usuario").eq("id", contaId).maybeSingle();
-  if (!data || data.invalida) throw new ErroMoodle("A ligação com o Moodle expirou ou foi cortada. Ligue de novo em Ajustes › Moodle.", true);
+  if (!data || data.invalida) throw new ErroMoodle("A ligação com o Moodle expirou ou foi cortada. Ligue de novo em Configurações › Moodle.", true);
   const chave = decifrarTexto(data.token_cifrado);
-  if (!chave) throw new ErroMoodle("A ligação com o Moodle precisa ser refeita. Ligue de novo em Ajustes › Moodle.", true);
+  if (!chave) throw new ErroMoodle("A ligação com o Moodle precisa ser refeita. Ligue de novo em Configurações › Moodle.", true);
   return { id: data.id, site: data.site, chave, usuario: Number(data.moodle_usuario) };
+}
+
+/**
+ * Só marca a ligação como cortada se o próprio Moodle confirmar que a chave
+ * não vale mais. Um erro passageiro (Moodle lento, fora do ar, uma função
+ * recusada) não desliga nada. O motivo fica guardado para mostrar na tela.
+ */
+async function cortarSeAChaveMorreu(admin: SupabaseClient, contaId: string, e: unknown) {
+  if (!(e instanceof ErroMoodle && e.reconectar)) return;
+  const { data } = await admin.from("contas_moodle").select("site, token_cifrado, invalida").eq("id", contaId).maybeSingle();
+  if (!data || data.invalida) return;
+  const chave = decifrarTexto(data.token_cifrado);
+  if (chave) {
+    try {
+      await chamar(data.site, chave, "core_webservice_get_site_info");
+      return; // a chave ainda vale
+    } catch (x) {
+      if (!(x instanceof ErroMoodle && x.reconectar)) return; // não deu para confirmar: não corta
+    }
+  }
+  await admin
+    .from("contas_moodle")
+    .update({ invalida: true, erro: e.message.slice(0, 500), erro_em: new Date().toISOString() })
+    .eq("id", contaId);
 }
 
 function ehAluno(p: Participante, professor: number) {
@@ -242,7 +267,7 @@ export async function sincronizarTurma(admin: SupabaseClient, turmaId: string, s
   } catch (e) {
     const mensagem = e instanceof Error ? e.message : String(e);
     await admin.from("turmas").update({ moodle_erro: mensagem.slice(0, 500) }).eq("id", t.id);
-    if (e instanceof ErroMoodle && e.reconectar) await admin.from("contas_moodle").update({ invalida: true }).eq("id", t.moodle_conta);
+    await cortarSeAChaveMorreu(admin, t.moodle_conta, e);
     throw e;
   }
 }
@@ -292,7 +317,7 @@ export async function devolverNoMoodle(
   } catch (e) {
     const mensagem = e instanceof Error ? e.message : String(e);
     await supabase.rpc("concluir_envio_moodle", { p_entrega: entregaId, p_ok: false, p_nota: null, p_erro: mensagem });
-    if (e instanceof ErroMoodle && e.reconectar) await admin.from("contas_moodle").update({ invalida: true }).eq("id", r.conta);
+    await cortarSeAChaveMorreu(admin, r.conta, e);
     throw e;
   }
 }

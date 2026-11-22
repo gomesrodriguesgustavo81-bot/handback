@@ -123,7 +123,7 @@ export async function ligarDisciplina(slug: string, contaId: string, _a: Resulta
 
     const { data: turma, error } = await supabase
       .from("turmas")
-      .insert({ org_id: empresa.id, nome, modo, moodle_conta: contaId, moodle_curso: cursoId, moodle_curso_nome: curso.fullname.slice(0, 300) })
+      .insert({ org_id: empresa.id, nome, modo, moodle_conta: contaId, moodle_curso: cursoId, moodle_curso_nome: curso.fullname.slice(0, 300), moodle_site: c.site })
       .select("id")
       .single();
     if (error) {

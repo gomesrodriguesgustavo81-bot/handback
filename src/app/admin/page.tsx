@@ -6,7 +6,7 @@ import { minhasEmpresas } from "@/lib/sessao";
 import { mudarStatus } from "./actions";
 import { NovaEmpresa } from "./nova-empresa";
 
-export const metadata: Metadata = { title: "Painel do dono" };
+export const metadata: Metadata = { title: "Administração do Handback" };
 
 export default async function PainelDono() {
   const empresas = await minhasEmpresas();
@@ -14,7 +14,7 @@ export default async function PainelDono() {
   return (
     <>
       <div>
-        <h1 className="text-2xl font-semibold">Painel do dono</h1>
+        <h1 className="text-2xl font-semibold">Administração do Handback</h1>
         <p className="text-suave">Todas as empresas que usam o Handback.</p>
       </div>
 
