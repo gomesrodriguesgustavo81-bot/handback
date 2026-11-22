@@ -8,7 +8,7 @@ import { criarClienteServidor } from "@/lib/supabase/server";
 import { usuarioAtual } from "@/lib/sessao";
 import { cancelarConvite, convidar, mudarPapel, removerPessoa } from "./acoes";
 
-export const metadata: Metadata = { title: "Pessoas" };
+export const metadata: Metadata = { title: "Quem usa o Handback" };
 
 type Pessoa = { user_id: string; email: string; papel: Papel };
 

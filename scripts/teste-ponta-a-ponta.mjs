@@ -118,6 +118,21 @@ async function primeiroAcesso(navegador, email, nome) {
   return { ctx, p };
 }
 
+/** Troca a turma na caixa do topo e espera a tela mostrar a escolhida. */
+async function trocarTurma(p, nome) {
+  await p.locator('select[name="turma"]').selectOption({ label: nome });
+  await p.waitForFunction((n) => {
+    const s = document.querySelector('select[name="turma"]');
+    return s && !s.disabled && s.selectedOptions[0]?.textContent === n;
+  }, nome);
+}
+
+/** Abre o menu da conta (círculo com as iniciais, no topo). */
+async function menuConta(p) {
+  await p.getByRole("button", { name: "Sua conta" }).click();
+  return p.getByRole("menu", { name: "Sua conta" });
+}
+
 async function largura(p, oQue) {
   const w = await p.evaluate(() => document.documentElement.scrollWidth);
   confere(w <= 412, `${oQue} cabe no celular (${w}px)`);
@@ -178,7 +193,7 @@ try {
   await largura(dono.p, "ativar duas etapas");
   await cadastrarCelular(dono.p, DONO);
   await dono.p.waitForURL(/\/app/);
-  confere(await dono.p.getByRole("link", { name: "Painel do dono" }).isVisible(), "aparece o Painel do dono");
+  confere(await (await menuConta(dono.p)).getByRole("menuitem", { name: "Painel do dono" }).isVisible(), "aparece o Painel do dono (no menu da conta)");
 
   // 4) Cria a empresa e convida a Ana
   await dono.p.goto(`${APP}/admin`);
@@ -222,7 +237,8 @@ try {
     await ctx.close();
   }
   confere(await ana.p.getByText("Escola Alfa").isVisible(), "Ana vê a Escola Alfa");
-  confere(await ana.p.getByText("Educação · Administrador").isVisible(), "Ana é administradora");
+  confere(await (await menuConta(ana.p)).getByText("Seu papel: Administrador").isVisible(), "Ana é administradora (no menu da conta)");
+  await ana.p.getByRole("button", { name: "Fechar o menu" }).click();
   await largura(ana.p, "minhas empresas");
   await ana.p.screenshot({ path: `${FOTOS}/4-minhas-empresas.png`, fullPage: true });
   await ana.p.getByText("Escola Alfa").click();
@@ -247,10 +263,24 @@ try {
   await ana.p.getByRole("button", { name: "Concluir" }).click();
   await ana.p.getByText("Tudo pronto!").waitFor();
   confere(await ana.p.getByRole("link", { name: /Cadastrar equipes/ }).isVisible(), "próximos passos com os nomes escolhidos");
-  await ana.p.goto(`${APP}/app/${SLUG}`);
-  await ana.p.waitForURL(new RegExp(`/app/${SLUG}$`));
-  const abasAna = await ana.p.getByRole("navigation", { name: "Seções da empresa" }).getByRole("link").allInnerTexts();
-  confere(abasAna.join("|") === "Visão geral|Entregas|Aulas|Equipes|Usuários|Ajustes|Registro", `vocabulário de escola nas abas (${abasAna.join(", ")})`);
+  await ana.p.goto(`${APP}/app`);
+  await ana.p.waitForURL(new RegExp(`/app/${SLUG}/entregas$`));
+  confere(true, "quem tem uma empresa só entra direto nas Entregas");
+  const abasAna = (await ana.p.getByRole("navigation", { name: "Seções da empresa" }).getByRole("link").allInnerTexts()).filter(Boolean);
+  confere(abasAna.join("|") === "Entregas|Aulas|Equipes", `só 3 abas, com o vocabulário de escola (${abasAna.join(", ")})`);
+  confere(await ana.p.getByRole("link", { name: "Configurações" }).isVisible(), "administrador vê a engrenagem das Configurações");
+  await ana.p.getByRole("link", { name: "Configurações" }).click();
+  await ana.p.getByRole("heading", { name: "Configurações" }).waitFor();
+  confere(await ana.p.getByRole("link", { name: /Quem usa o Handback/ }).isVisible() && await ana.p.getByRole("link", { name: /Registro de atividades/ }).isVisible(), "Configurações reúnem o que é da conta inteira");
+  await largura(ana.p, "configurações");
+  await ana.p.screenshot({ path: `${FOTOS}/31-configuracoes.png`, fullPage: true });
+  await ana.p.getByRole("link", { name: /Quem usa o Handback/ }).click();
+  await ana.p.getByRole("link", { name: "← Configurações" }).waitFor();
+  confere(true, "páginas de configuração têm o caminho de volta");
+  await menuConta(ana.p);
+  confere(!(await ana.p.getByRole("menuitem", { name: "Trocar de empresa" }).count()), "“Trocar de empresa” não aparece para quem tem uma empresa só");
+  await ana.p.screenshot({ path: `${FOTOS}/32-menu-conta.png` });
+  await ana.p.getByRole("button", { name: "Fechar o menu" }).click();
   await largura(ana.p, "painel da empresa");
   await ana.p.screenshot({ path: `${FOTOS}/5-painel-da-empresa.png`, fullPage: true });
   confere((await ana.p.goto(`${APP}/admin`)).status() === 404, "Ana não abre o Painel do dono");
@@ -365,11 +395,12 @@ try {
 
   // F5) Professor entra: vê aulas e equipes, sem editar; não vê Pessoas nem Ajustes
   const prof = await primeiroAcesso(navegador, PROF);
-  await prof.p.getByText("Escola Alfa").click();
-  await prof.p.waitForURL(new RegExp(`/app/${SLUG}$`));
-  const abas = await prof.p.getByRole("navigation", { name: "Seções da empresa" }).getByRole("link").allInnerTexts();
-  confere(abas.join("|") === "Visão geral|Entregas|Aulas|Equipes", `professor vê as abas certas (${abas.join(", ")})`);
-  confere(await prof.p.getByText("Seu papel: Avaliador").isVisible(), "papel de avaliador");
+  await prof.p.goto(`${APP}/app`);
+  await prof.p.waitForURL(new RegExp(`/app/${SLUG}/entregas$`));
+  const abas = (await prof.p.getByRole("navigation", { name: "Seções da empresa" }).getByRole("link").allInnerTexts()).filter(Boolean);
+  confere(abas.join("|") === "Entregas|Aulas|Equipes" && !(await prof.p.getByRole("link", { name: "Configurações" }).count()), `professor vê as abas certas, sem a engrenagem (${abas.join(", ")})`);
+  confere(await (await menuConta(prof.p)).getByText("Seu papel: Avaliador").isVisible(), "papel de avaliador (no menu da conta)");
+  await prof.p.getByRole("button", { name: "Fechar o menu" }).click();
   await prof.p.getByRole("link", { name: "Aulas", exact: true }).click();
   await prof.p.waitForURL(/\/etapas$/);
   confere(!(await prof.p.getByRole("link", { name: "Adicionar aula" }).count()), "professor não vê o botão de adicionar aula");
@@ -391,7 +422,7 @@ try {
   await ana.p.getByText("Ajustes salvos.").waitFor();
   await ana.p.goto(`${APP}/app/${SLUG}`);
   confere(await ana.p.getByRole("link", { name: "Encontros" }).first().isVisible(), "aba passa a se chamar Encontros");
-  confere(await ana.p.getByText("Encontro 1 · Diagnóstico").isVisible(), "visão geral mostra o próximo prazo com a palavra nova");
+  confere((await ana.p.locator("option", { hasText: "Encontro 1 · Diagnóstico" }).count()) > 0, "painel usa a palavra nova");
   await ana.p.screenshot({ path: `${FOTOS}/10-visao-geral.png`, fullPage: true });
 
   // F7) Ana tira um e-mail da equipe e apaga a aula
@@ -795,15 +826,14 @@ try {
 
   // 7d) Turmas dentro da conta + modo individual
   await ana.p.goto(`${APP}/app/${SLUG}/ajustes`);
-  await ana.p.getByText("+ Criar turma").click();
+  await ana.p.locator("summary", { hasText: "+ Criar turma" }).click();
   const formTurma = ana.p.locator("details", { hasText: "+ Criar turma" });
   await formTurma.getByLabel("Nome").fill("Cálculo II");
   await formTurma.getByLabel("Quem entrega").selectOption("individual");
   await formTurma.getByRole("button", { name: "Criar" }).click();
   await ana.p.getByText("“Cálculo II” criada").waitFor();
   confere(true, "administrador cria outra turma");
-  await ana.p.getByRole("navigation", { name: "Turma" }).getByRole("button", { name: "Cálculo II" }).click();
-  await ana.p.getByRole("navigation", { name: "Turma" }).getByRole("button", { name: "Cálculo II" }).and(ana.p.locator("[aria-current]")).waitFor();
+  await trocarTurma(ana.p, "Cálculo II");
   const ENDERECO2 = (await ana.p.locator("code", { hasText: "@caixa.handback.test" }).innerText()).trim();
   confere(ENDERECO2 !== ENDERECO && /^entregas\+[a-z0-9]{12}@/.test(ENDERECO2), "cada turma tem o próprio endereço de e-mail");
   const abasT2 = await ana.p.getByRole("navigation", { name: "Seções da empresa" }).getByRole("link").allInnerTexts();
@@ -833,8 +863,7 @@ try {
   confere(await listaInd.getByText("Bia Souza").isVisible() && !(await listaInd.getByText("Carlos Lima").count()), "painel individual em lista compacta, com busca pelo nome");
   await largura(ana.p, "painel individual");
   await ana.p.screenshot({ path: `${FOTOS}/24-painel-individual.png`, fullPage: true });
-  await ana.p.getByRole("navigation", { name: "Turma" }).getByRole("button", { name: "Turma A" }).click();
-  await ana.p.getByRole("navigation", { name: "Turma" }).getByRole("button", { name: "Turma A" }).and(ana.p.locator("[aria-current]")).waitFor();
+  await trocarTurma(ana.p, "Turma A");
   confere(await ana.p.getByRole("link", { name: /Equipe Azul/ }).first().isVisible(), "voltando para a Turma A, as equipes dela voltam");
 
   // 7e) Ligação com o Moodle (Moodle de mentira em 4558)
@@ -946,8 +975,7 @@ try {
     await ana.p.goto(`${APP}/app/${SLUG}/registro?ver=avaliacoes`);
     confere((await ana.p.locator("main ol").innerText()).includes("Devolveu no Moodle a devolutiva de"), "Moodle: devolução aparece no registro de atividades");
     await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
-    await ana.p.getByRole("navigation", { name: "Turma" }).getByRole("button", { name: "Turma A" }).click();
-    await ana.p.getByRole("navigation", { name: "Turma" }).getByRole("button", { name: "Turma A" }).and(ana.p.locator("[aria-current]")).waitFor();
+    await trocarTurma(ana.p, "Turma A");
   }
 
   // 8) O dono bloqueia a escola; a Ana vê o aviso
@@ -962,7 +990,7 @@ try {
 
   // 9) Sair encerra a sessão
   await ana.p.goto(`${APP}/app`);
-  await ana.p.getByRole("button", { name: "Sair" }).click();
+  await (await menuConta(ana.p)).getByRole("menuitem", { name: "Sair" }).click();
   await ana.p.waitForURL(`${APP}/`);
   await ana.p.goto(`${APP}/app`);
   confere(new URL(ana.p.url()).pathname === "/entrar", "depois de sair, /app pede login de novo");

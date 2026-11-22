@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Cartao, Selo } from "@/components/ui";
 import { FRENTES, PAPEIS } from "@/lib/frentes";
@@ -7,7 +8,8 @@ import { eDonoDaPlataforma, minhasEmpresas, usuarioAtual } from "@/lib/sessao";
 
 export const metadata: Metadata = { title: "Minhas empresas" };
 
-export default async function MinhasEmpresas() {
+export default async function MinhasEmpresas({ searchParams }: PageProps<"/app">) {
+  const { todas } = await searchParams;
   const eu = await usuarioAtual();
   // Se alguém foi convidado depois que a pessoa já tinha entrado, aceita agora.
   const supabase = await criarClienteServidor();
@@ -15,6 +17,8 @@ export default async function MinhasEmpresas() {
 
   const [empresas, dono] = await Promise.all([minhasEmpresas(), eDonoDaPlataforma()]);
   const minhas = empresas.filter((e) => e.papel !== null);
+  // Quem faz parte de uma empresa só vai direto para ela.
+  if (minhas.length === 1 && !dono && todas !== "1") redirect(`/app/${minhas[0].slug}`);
 
   return (
     <>

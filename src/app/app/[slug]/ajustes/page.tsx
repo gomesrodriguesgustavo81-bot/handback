@@ -32,7 +32,7 @@ export default async function Ajustes({ params }: PageProps<"/app/[slug]/ajustes
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
-    <Cartao className="flex flex-col gap-4">
+    <Cartao id="recebimento" className="flex scroll-mt-6 flex-col gap-4">
       <div className="flex flex-col gap-1">
         <h2 className="text-lg font-semibold">Recebimento por e-mail{turmas.length > 1 && turma ? ` · ${turma.nome}` : ""}</h2>
         <p className="text-sm text-suave">
@@ -147,7 +147,7 @@ export default async function Ajustes({ params }: PageProps<"/app/[slug]/ajustes
       <h2 className="text-lg font-semibold">Ajustes da empresa</h2>
       <FormAcao acao={salvarAjustes.bind(null, slug)} textoBotao="Salvar ajustes">
         <Campo rotulo="Nome da empresa" name="nome" required defaultValue={empresa.nome} />
-        <fieldset className="flex flex-col gap-3">
+        <fieldset id="nomes" className="flex scroll-mt-6 flex-col gap-3">
           <legend className="mb-1 font-medium">Palavras usadas no dia a dia</legend>
           <p className="text-sm text-suave">
             Troque pelas palavras que as pessoas daqui usam. Elas aparecem nos menus, nas telas e, depois, nos e-mails.
@@ -161,7 +161,7 @@ export default async function Ajustes({ params }: PageProps<"/app/[slug]/ajustes
           </div>
           <p className="text-xs text-suave">Escreva só no singular: o plural é feito sozinho.</p>
         </fieldset>
-        <fieldset className="flex flex-col gap-3">
+        <fieldset id="seguranca" className="flex scroll-mt-6 flex-col gap-3">
           <legend className="mb-1 font-medium">Segurança</legend>
           <Escolha
             rotulo="Verificação em duas etapas (senha + código do celular)"
@@ -174,7 +174,7 @@ export default async function Ajustes({ params }: PageProps<"/app/[slug]/ajustes
             dica="Com ela, mesmo quem descobrir a senha de alguém não consegue ver os documentos da empresa."
           />
         </fieldset>
-        <fieldset className="flex flex-col gap-3">
+        <fieldset id="triagem" className="flex scroll-mt-6 flex-col gap-3">
           <legend className="mb-1 font-medium">Triagem dos e-mails</legend>
           <Campo
             rotulo="Etiqueta no começo do assunto"
@@ -200,7 +200,7 @@ export default async function Ajustes({ params }: PageProps<"/app/[slug]/ajustes
             dica="Palavras separadas por vírgula. E-mails com elas no assunto (e sem a etiqueta) são ignorados e os anexos NÃO são guardados — use para documentos pessoais."
           />
         </fieldset>
-        <fieldset className="flex flex-col gap-3">
+        <fieldset id="avaliacao" className="flex scroll-mt-6 flex-col gap-3">
           <legend className="mb-1 font-medium">Avaliação com IA</legend>
           <p className="text-sm text-suave">Sem notas: só os quatro conceitos. Descreva o que cada um significa aqui.</p>
           {(["EXCELENTE", "BOM", "REGULAR", "RUIM"] as const).map((c) => (

@@ -1,8 +1,9 @@
+import { PAPEIS } from "@/lib/frentes";
 import { notFound } from "next/navigation";
 import { TopoApp } from "@/components/topo-app";
 import { SemConfiguracao } from "@/components/sem-configuracao";
 import { supabaseConfigurado } from "@/lib/supabase/config";
-import { eDonoDaPlataforma, usuarioAtual } from "@/lib/sessao";
+import { eDonoDaPlataforma, usuarioAtual, minhasEmpresas } from "@/lib/sessao";
 
 export default async function LayoutAdmin({ children }: LayoutProps<"/admin">) {
   if (!supabaseConfigurado()) {
@@ -16,7 +17,7 @@ export default async function LayoutAdmin({ children }: LayoutProps<"/admin">) {
   if (!dono) notFound();
   return (
     <>
-      <TopoApp email={eu.email} dono />
+      <TopoApp email={eu.email} dono empresas={(await minhasEmpresas()).map((e) => ({ slug: e.slug, nome: e.nome, papel: e.papel ? PAPEIS[e.papel] : "Dono da plataforma" }))} />
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">{children}</main>
     </>
   );
