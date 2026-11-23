@@ -45,6 +45,7 @@ export default async function DetalheGrupo({ params }: PageProps<"/app/[slug]/gr
       </Link>
       <Cartao className="flex flex-col gap-4">
         <h2 className="text-lg font-semibold">{grupo.nome}</h2>
+        {podeGerir ? <p className="-mt-2 text-sm text-suave">Nome e detalhes. As pessoas ficam logo abaixo.</p> : null}
         {podeGerir ? (
           <FormAcao acao={salvarGrupo.bind(null, slug, id)} textoBotao="Salvar alterações">
             <CamposGrupo v={v} inicial={{ ...grupo, emails }} editando />
@@ -57,10 +58,6 @@ export default async function DetalheGrupo({ params }: PageProps<"/app/[slug]/gr
                 <dd>{grupo.tema}</dd>
               </div>
             ) : null}
-            <div>
-              <dt className="text-suave">E-mails de quem entrega</dt>
-              <dd className="break-words">{emails.length ? emails.join(", ") : "Nenhum e-mail cadastrado"}</dd>
-            </div>
             {grupo.observacoes ? (
               <div>
                 <dt className="text-suave">Observações</dt>
@@ -70,20 +67,19 @@ export default async function DetalheGrupo({ params }: PageProps<"/app/[slug]/gr
           </dl>
         )}
       </Cartao>
-      {grupo.integrantes.length ? (
-        <Integrantes
+      <Integrantes
           slug={slug}
+          grupoId={grupo.id}
           lista={[...grupo.integrantes].sort((a, b) => (a.nome || a.email).localeCompare(b.nome || b.email, "pt-BR"))}
           rotuloMatricula={completarVocabulario(v).matricula}
           podeEditar={podeGerir}
           doMoodle={Boolean(grupo.moodle_id)}
         />
-      ) : null}
       {podeGerir ? (
         <div className="flex justify-end">
           <BotaoConfirmar
             acao={apagarGrupo.bind(null, slug, id)}
-            pergunta={`Apagar “${grupo.nome}”? Isso não pode ser desfeito.`}
+            pergunta={grupo.moodle_id ? `Apagar “${grupo.nome}”? Some da lista e o Moodle não traz de volta. Dá para desfazer em “Apagadas”.` : `Apagar “${grupo.nome}”? Isso não pode ser desfeito.`}
           >
             Apagar {minusc(v.grupo)}
           </BotaoConfirmar>

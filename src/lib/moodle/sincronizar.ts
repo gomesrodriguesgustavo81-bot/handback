@@ -79,7 +79,10 @@ async function atualizarPessoas(admin: SupabaseClient, t: TurmaMoodle, alunos: P
   // "T-MAT2453-2026126" que o Moodle da USP cria, não é equipe: fica de fora.
   const tamanho = new Map<number, number>();
   for (const a of alunos) for (const g of a.groups ?? []) tamanho.set(g.id, (tamanho.get(g.id) ?? 0) + 1);
-  const turmaToda = (id: number) => (tamanho.get(id) ?? 0) >= Math.max(3, alunos.length * 0.8);
+  const turmaToda = (id: number) => {
+    const n = tamanho.get(id) ?? 0;
+    return n > 20 || n >= Math.max(3, alunos.length * 0.8);
+  };
   // Em mais de um grupo? Vale o menor (a equipe de verdade).
   const equipeDe = (a: Participante) =>
     (a.groups ?? []).filter((g) => !turmaToda(g.id)).sort((x, y) => (tamanho.get(x.id) ?? 0) - (tamanho.get(y.id) ?? 0))[0];

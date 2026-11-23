@@ -109,7 +109,8 @@ export async function salvarGrupo(slug: string, id: string, _a: Resultado, dados
   const supabase = await criarClienteServidor();
   const { data: atual } = await supabase.from("grupos").select("turma_id").eq("id", id).eq("org_id", empresa.id).maybeSingle();
   if (!atual) return { ok: false, mensagem: "Não foi possível salvar (sem permissão ou item apagado)." };
-  const repetidos = await emailsEmOutroGrupo(supabase, atual.turma_id, g.emails.validos, id);
+  const comEmails = dados.has("emails");
+  const repetidos = comEmails ? await emailsEmOutroGrupo(supabase, atual.turma_id, g.emails.validos, id) : null;
   if (repetidos) return { ok: false, mensagem: `Cada e-mail só pode estar em um cadastro: ${repetidos}.` };
 
   const { data, error } = await supabase
@@ -121,8 +122,10 @@ export async function salvarGrupo(slug: string, id: string, _a: Resultado, dados
   if (error) return { ok: false, mensagem: erroDoBanco(error, g.nome) };
   if (!data?.length) return { ok: false, mensagem: "Não foi possível salvar (sem permissão ou item apagado)." };
 
-  const erroEmails = await sincronizarEmails(supabase, empresa.id, id, g.emails.validos);
-  if (erroEmails) return { ok: false, mensagem: erroDoBanco(erroEmails, g.nome) };
+  if (comEmails) {
+    const erroEmails = await sincronizarEmails(supabase, empresa.id, id, g.emails.validos);
+    if (erroEmails) return { ok: false, mensagem: erroDoBanco(erroEmails, g.nome) };
+  }
 
   revalidatePath(`/app/${slug}`, "layout");
   return { ok: true, mensagem: "Alterações salvas.", vez: Date.now() };
@@ -228,5 +231,32 @@ export async function restaurarGrupo(slug: string, id: string): Promise<void> {
   if (!podeGerir) return;
   const supabase = await criarClienteServidor();
   await supabase.from("grupos").update({ escondido: false, ativo: true }).eq("id", id).eq("org_id", empresa.id);
+  revalidatePath(`/app/${slug}`, "layout");
+}
+
+/** Coloca uma pessoa (nome e e-mail) num cadastro. */
+export async function adicionarIntegrante(slug: string, grupoId: string, _a: Resultado, dados: FormData): Promise<Resultado> {
+  const { empresa, podeGerir } = await contextoDaEmpresa(slug);
+  if (!podeGerir) return { ok: false, mensagem: "Só quem administra pode mudar isso." };
+  const email = String(dados.get("email") ?? "").trim().toLowerCase();
+  const nome = String(dados.get("nome") ?? "").trim().replace(/\s+/g, " ").slice(0, 200);
+  if (!emailValido(email)) return { ok: false, mensagem: "Digite um e-mail válido." };
+  const supabase = await criarClienteServidor();
+  const { data: g } = await supabase.from("grupos").select("turma_id").eq("id", grupoId).eq("org_id", empresa.id).maybeSingle();
+  if (!g) return { ok: false, mensagem: "Não foi possível salvar (sem permissão ou item apagado)." };
+  const repetidos = await emailsEmOutroGrupo(supabase, g.turma_id, [email]);
+  if (repetidos) return { ok: false, mensagem: `Esse e-mail já está num cadastro: ${repetidos}.` };
+  const { error } = await supabase.from("integrantes").insert({ org_id: empresa.id, turma_id: g.turma_id, grupo_id: grupoId, email, nome });
+  if (error) return { ok: false, mensagem: mensagemDeErro(error, "Não foi possível salvar. Tente de novo.") };
+  revalidatePath(`/app/${slug}`, "layout");
+  return { ok: true, mensagem: `${nome || email} entrou.`, vez: Date.now() };
+}
+
+/** Tira uma pessoa do cadastro (ela para de receber a devolutiva). */
+export async function removerIntegrante(slug: string, id: string): Promise<void> {
+  const { empresa, podeGerir } = await contextoDaEmpresa(slug);
+  if (!podeGerir) return;
+  const supabase = await criarClienteServidor();
+  await supabase.from("integrantes").delete().eq("id", id).eq("org_id", empresa.id);
   revalidatePath(`/app/${slug}`, "layout");
 }

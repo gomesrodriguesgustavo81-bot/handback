@@ -5,6 +5,7 @@ import { useState } from "react";
 import { SinalSalvo, useSalvar } from "@/components/campo-auto";
 import { BotaoConfirmar } from "@/components/form-acao";
 import { Selo } from "@/components/ui";
+import { generoDe } from "@/lib/nomes";
 import { apagarGrupo, renomearGrupo } from "./acoes";
 
 export type Pessoa = { nome: string; email: string };
@@ -76,13 +77,14 @@ export function CartaoGrupo({
       {estado === "erro" && !renomeando ? <SinalSalvo estado={estado} erro={erro} /> : null}
       {n > GRANDE ? (
         <p role="note" className="rounded-xl bg-alerta-fundo px-3 py-2 text-sm text-alerta">
-          {n} pessoas num cadastro só: a devolutiva iria para todas elas. Parece a turma inteira, não {palavra.toLowerCase() === "equipe" ? "uma equipe" : `um(a) ${palavra.toLowerCase()}`}.
+          {n} pessoas num cadastro só: a devolutiva iria para todas elas. Parece a turma inteira, não {generoDe(palavra) === "f" ? "uma" : "um"} {palavra.toLowerCase()}.
           {doMoodle ? " Toque em “Buscar entregas agora” no Moodle para trazer as equipes de verdade." : " Separe as pessoas em cadastros menores."}
         </p>
       ) : null}
       {n ? (
         <details className="group text-sm">
-          <summary className="flex min-h-10 cursor-pointer items-center font-medium text-marca-forte">
+          <summary className="inline-flex min-h-10 cursor-pointer list-none items-center gap-1.5 rounded-xl px-1 font-medium text-marca-forte hover:underline [&::-webkit-details-marker]:hidden">
+            <span aria-hidden className="transition-transform group-open:rotate-90">›</span>
             Ver {n === 1 ? "a pessoa e o e-mail" : `as ${n} pessoas e os e-mails`}
           </summary>
           <ul className="mt-1 flex max-h-80 flex-col divide-y divide-borda overflow-y-auto rounded-xl border border-borda">

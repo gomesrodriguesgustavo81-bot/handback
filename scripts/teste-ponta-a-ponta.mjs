@@ -448,9 +448,24 @@ try {
   await ana.p.goto(`${APP}/app/${SLUG}/grupos`);
   await ana.p.getByText("Equipe Azul").click();
   await ana.p.waitForURL(/\/grupos\/[0-9a-f-]{36}$/);
-  await ana.p.getByLabel("E-mails de quem entrega").fill("a1@aluno.test");
-  await ana.p.getByRole("button", { name: "Salvar alterações" }).click();
-  await ana.p.getByText("Alterações salvas.").waitFor();
+  confere(!(await ana.p.getByLabel("E-mails de quem entrega").count()), "editar: as pessoas ficam numa lista, não numa caixa de texto");
+  {
+    const pessoas = ana.p.getByRole("region", { name: "Pessoas" });
+    await pessoas.getByText("+ Adicionar pessoa").click();
+    await pessoas.getByLabel("Nome").fill("Ana Três");
+    await pessoas.getByLabel("E-mail").fill("A3@Aluno.test");
+    await pessoas.getByRole("button", { name: "Adicionar pessoa" }).click();
+    await pessoas.getByText("Ana Três entrou.").waitFor();
+    confere(await pessoas.getByText("a3@aluno.test").isVisible() && await pessoas.getByText("Pessoas (3)").isVisible(), "editar: adicionar pessoa com nome e e-mail");
+    await largura(ana.p, "editar pessoas");
+    await ana.p.screenshot({ path: `${FOTOS}/8b-editar-pessoas.png`, fullPage: true });
+    for (const quem of ["a2@aluno.test", "Ana Três"]) {
+      await pessoas.getByRole("button", { name: `Editar ${quem}` }).click();
+      await pessoas.getByRole("button", { name: "Tirar desta lista" }).click();
+      await pessoas.getByRole("button", { name: "Sim, confirmar" }).click();
+      await ana.p.waitForFunction((q) => !document.querySelector('[aria-label="Pessoas"]').innerText.includes(q), quem === "Ana Três" ? "a3@aluno.test" : "a2@aluno.test");
+    }
+  }
   await ana.p.goto(`${APP}/app/${SLUG}/grupos`);
   confere(!(await ana.p.getByText("a2@aluno.test").count()), "e-mail removido da equipe");
   await ana.p.goto(`${APP}/app/${SLUG}/etapas`);
@@ -947,7 +962,7 @@ try {
       const urlTurma = ana.p.url();
       const azul = sql(`select g.id from public.grupos g join public.turmas t on t.id = g.turma_id where g.nome = 'Grupo Azul' and t.nome = 'Design de Interação' and t.org_id = (select id from public.organizacoes where slug = '${SLUG}')`);
       await ana.p.goto(`${APP}/app/${SLUG}/grupos/${azul}`);
-      const lista = ana.p.getByRole("region", { name: "Integrantes" });
+      const lista = ana.p.getByRole("region", { name: "Pessoas" });
       await lista.getByText("Os nomes vieram do Moodle").waitFor();
       confere(await lista.getByText("Ana Souza").isVisible() && await lista.getByText("2026-0312").isVisible(), "Moodle: o cadastro mostra nome e matrícula de cada aluno");
       await lista.getByRole("button", { name: "Editar Bruno Lima" }).click();
