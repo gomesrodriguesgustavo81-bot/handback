@@ -354,6 +354,12 @@ export default async function PainelDaAula({
         >
           Evolução →
         </Link>
+        <Link
+          href={`/app/${slug}/relatorios`}
+          className="text-sm font-semibold text-marca-forte hover:underline"
+        >
+          Relatórios (PDF e planilha) →
+        </Link>
       </div>
 
       {individual ? (

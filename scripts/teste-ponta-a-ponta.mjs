@@ -1228,6 +1228,75 @@ try {
     sql(`update public.turmas set lembrete_dois_dias = false, lembrete_no_dia = false where id = '${turmaA}'`);
   }
 
+  // 7j) Relatórios: PDF da equipe, PDF da turma, planilha e notas para o Moodle
+  {
+    await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
+    await ana.p.getByRole("link", { name: "Relatórios (PDF e planilha) →" }).click();
+    await ana.p.getByRole("heading", { name: "Relatórios" }).waitFor();
+    const media = ana.p.getByRole("region", { name: "Média final (opcional)" });
+    confere(!(await media.getByRole("checkbox").isChecked()), "média final começa desligada (é opcional)");
+    // Sem média: o PDF não fala em média
+    const hrefSem = await ana.p.getByRole("link", { name: "Abrir o PDF" }).getAttribute("href");
+    await ana.p.goto(`${APP}${hrefSem}`);
+    await ana.p.getByRole("heading", { name: "Equipe Azul" }).waitFor();
+    confere(!(await ana.p.getByText("Média final").count()), "sem média ligada, o relatório não mostra média");
+    await ana.p.goBack();
+    await media.getByLabel("Calcular média final nesta turma").check();
+    await media.getByText("Salvo ✓").waitFor();
+    await media.getByRole("spinbutton").first().waitFor();
+    await media.getByRole("spinbutton").first().fill("2");
+    await media.getByRole("spinbutton").first().blur();
+    await media.getByText("Salvo ✓").first().waitFor();
+    confere(sql(`select media_ativa from public.turmas where nome = 'Turma A' and org_id = (select id from public.organizacoes where slug = '${SLUG}')`) === "t", "ligar a média salva sozinho");
+    await largura(ana.p, "relatórios");
+    await ana.p.screenshot({ path: `${FOTOS}/46-relatorios.png`, fullPage: true });
+
+    const href = await ana.p.getByRole("link", { name: "Abrir o PDF" }).getAttribute("href");
+    confere(href.includes("dev=1") && href.includes("check=1"), "PDF da equipe com devolutivas e checklist por padrão");
+    await ana.p.goto(`${APP}${href}`);
+    await ana.p.getByRole("heading", { name: "Equipe Azul" }).waitFor();
+    confere(await ana.p.getByText("Conceito mais recente").isVisible() && await ana.p.getByText("Média final").isVisible(), "PDF da equipe com o resumo e a média");
+    confere(await ana.p.getByText(/Pessoal, ótima entrega!/).first().isVisible(), "PDF da equipe traz a devolutiva aprovada");
+    confere(await ana.p.getByRole("img", { name: /Conceito encontro a encontro/i }).isVisible(), "PDF da equipe com o gráfico de evolução");
+    confere(await ana.p.getByText(/Contém dados pessoais dos alunos/).isVisible(), "relatório avisa que tem dados pessoais");
+    confere(!(await ana.p.getByText(/Pontos fortes|Análise interna/).count()), "análise interna da IA nunca vai para o relatório");
+    await ana.p.emulateMedia({ media: "print" });
+    confere(!(await ana.p.getByRole("button", { name: "Imprimir ou salvar PDF" }).isVisible()) && !(await ana.p.locator('select[name="turma"]').isVisible()), "na impressão só sai a folha");
+    await ana.p.screenshot({ path: `${FOTOS}/47-pdf-equipe.png`, fullPage: true });
+    await ana.p.emulateMedia({ media: "screen" });
+
+    await ana.p.goto(`${APP}/app/${SLUG}/relatorios/turma?aulas=todas`);
+    await ana.p.getByRole("heading", { name: "Turma A" }).waitFor();
+    confere(await ana.p.getByRole("img", { name: /Conceitos em cada encontro/i }).isVisible() && await ana.p.getByText("Precisam de atenção").isVisible(), "PDF da turma com as barras e quem precisa de atenção");
+    await largura(ana.p, "PDF da turma");
+    await ana.p.screenshot({ path: `${FOTOS}/48-pdf-turma.png`, fullPage: true });
+
+    const xlsx = await ana.p.request.get(`${APP}/app/${SLUG}/relatorios/planilha?formato=xlsx&aulas=todas`);
+    const corpo = await xlsx.body();
+    confere(xlsx.status() === 200 && /spreadsheetml/.test(xlsx.headers()["content-type"]) && corpo.subarray(0, 2).toString() === "PK", "planilha em Excel");
+    const csv = await (await ana.p.request.get(`${APP}/app/${SLUG}/relatorios/planilha?formato=csv&mat=1`)).text();
+    const [cabCsv, ...linhasCsv] = csv.replace(/^\uFEFF/, "").trim().split("\r\n");
+    confere(cabCsv.startsWith("Equipe;") && cabCsv.includes("Matrícula") && cabCsv.includes("Média (0 a 10)") && linhasCsv.some((l) => l.startsWith("Equipe Azul;") && l.includes("BOM")), "planilha CSV: uma linha por aluno, com equipe, matrícula, conceitos e média");
+    {
+      const anonimo = await navegador.newContext();
+      const r = await anonimo.request.get(`${APP}/app/${SLUG}/relatorios/planilha?formato=csv`, { maxRedirects: 0 });
+      confere(r.status() >= 300 && r.status() < 400 && /\/entrar/.test(r.headers().location ?? ""), "planilha exige login");
+      await anonimo.close();
+    }
+
+    if (process.env.REGISTRO_MOODLE) {
+      await trocarTurma(ana.p, "Design de Interação (Moodle)");
+      await ana.p.goto(`${APP}/app/${SLUG}/relatorios`);
+      await ana.p.getByText("Notas para o Moodle").click();
+      const hrefMoodle = await ana.p.getByRole("link", { name: "Baixar arquivo para o Moodle" }).getAttribute("href");
+      const moodle = await (await ana.p.request.get(`${APP}${hrefMoodle}`)).text();
+      const [cabM, ...linhasM] = moodle.trim().split("\r\n");
+      confere(cabM === "Endereço de email,Protótipo navegável" && linhasM.some((l) => /^ana\.souza@aluno\.test,\d+(\.\d)?$/.test(l)), `arquivo de notas para importar no Moodle (${linhasM.find((l) => l.startsWith("ana")) ?? "?"})`);
+      await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
+      await trocarTurma(ana.p, "Turma A");
+    }
+  }
+
   // 7f) Privacidade: o dono não vê o conteúdo; o cliente libera o suporte
   await dono.p.goto(`${APP}/admin`);
   const painelUso = dono.p.getByRole("region", { name: "Uso dos planos" });

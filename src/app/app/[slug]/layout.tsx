@@ -80,6 +80,7 @@ export default async function LayoutEmpresa({
           ) : null}
         </div>
       ) : null}
+      <div className="contents print:hidden">
       {ativas.length > 1 || podeGerir ? (
         <SoForaDaFolha>
           <SeletorTurma
@@ -100,6 +101,7 @@ export default async function LayoutEmpresa({
             : []
         }
       />
+      </div>
       {children}
     </div>
   );
