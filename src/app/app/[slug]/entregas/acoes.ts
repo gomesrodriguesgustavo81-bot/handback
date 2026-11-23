@@ -1,4 +1,7 @@
 "use server";
+import { origemDoSite } from "@/lib/acesso";
+import { chamarFila } from "@/lib/fila";
+import { after } from "next/server";
 
 import { revalidatePath } from "next/cache";
 import type { Resultado } from "@/components/form-acao";
@@ -206,4 +209,29 @@ export async function desconectarGmail(slug: string): Promise<void> {
     await registrarAcesso(supabase, "desconectou_gmail");
   }
   revalidatePath(`/app/${slug}`, "layout");
+}
+
+/**
+ * Põe várias entregas na fila de análise. O servidor analisa em segundo
+ * plano: a pessoa pode fechar a página e o sininho avisa quando acabar.
+ */
+export async function analisarEmSegundoPlano(slug: string, entregaIds: string[]): Promise<{ ok: boolean; mensagem: string }> {
+  const { empresa, podeAvaliar } = await contextoDaEmpresa(slug);
+  if (!podeAvaliar) return { ok: false, mensagem: "Você não tem permissão para fazer isso." };
+  if (!iaConfigurada()) return { ok: false, mensagem: "A IA ainda não foi configurada no servidor (falta a chave GEMINI_API_KEY)." };
+  const ids = entregaIds.filter((x) => /^[0-9a-f-]{36}$/i.test(x)).slice(0, 500);
+  if (!ids.length) return { ok: false, mensagem: "Nenhuma entrega para analisar." };
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.rpc("enfileirar_analises", { p_org: empresa.id, p_entregas: ids });
+  if (error) return { ok: false, mensagem: mensagemDeErro(error, "Não foi possível começar. Tente de novo.") };
+  const origem = await origemDoSite();
+  after(() => chamarFila(origem));
+  revalidatePath(`/app/${slug}`, "layout");
+  const n = Number(data ?? 0);
+  return {
+    ok: true,
+    mensagem: n
+      ? `${n} ${n === 1 ? "entrega entrou" : "entregas entraram"} na fila. Pode fechar a página: o sininho avisa quando ficar pronto.`
+      : "Essas entregas já estão na fila.",
+  };
 }

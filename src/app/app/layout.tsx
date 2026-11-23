@@ -9,6 +9,8 @@ import { meusAvisos } from "@/lib/avisos";
 import { despacharPush } from "@/lib/push";
 import { criarClienteAdmin } from "@/lib/supabase/admin";
 import { hojeISO } from "@/lib/textos";
+import { origemDoSite } from "@/lib/acesso";
+import { chamarFila, filaParada } from "@/lib/fila";
 
 export default async function LayoutApp({ children }: LayoutProps<"/app">) {
   if (!supabaseConfigurado()) {
@@ -20,7 +22,13 @@ export default async function LayoutApp({ children }: LayoutProps<"/app">) {
   }
   const [eu, dono, avisos] = await Promise.all([usuarioAtual(), eDonoDaPlataforma(), meusAvisos()]);
   // Manda para os celulares os avisos que surgiram (entregas, análises…).
-  after(() => despacharPush(criarClienteAdmin()).catch(() => 0));
+  // E acorda a fila de análises se ela parou (ex.: a IA pediu uma pausa).
+  const origem = await origemDoSite();
+  after(async () => {
+    const admin = criarClienteAdmin();
+    await despacharPush(admin).catch(() => 0);
+    if (admin && (await filaParada(admin).catch(() => false))) await chamarFila(origem);
+  });
   return (
     <>
       <TopoApp email={eu.email} dono={dono} avisos={{ ...avisos, hoje: hojeISO() }} empresas={(await minhasEmpresas()).map((e) => ({ slug: e.slug, nome: e.nome, papel: e.papel ? PAPEIS[e.papel] : "Dono do Handback", palavra: completarVocabulario(e.vocabulario).organizacao, avalia: !e.papel || e.papel === "admin" || e.papel === "avaliador" }))} />

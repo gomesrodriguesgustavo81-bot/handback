@@ -22,7 +22,9 @@ import {
 } from "./cliente";
 
 /** Quantas entregas novas, no máximo, cada busca traz (o resto vem na próxima). */
-const POR_BUSCA = 12;
+const POR_BUSCA = 50;
+/** Tempo máximo baixando arquivos numa busca (o resto vem na próxima). */
+const TEMPO_BUSCA_MS = 40_000;
 const MAX_ARQUIVOS = 20;
 
 type Conexao = { id: string; site: string; chave: string; usuario: number };
@@ -207,6 +209,7 @@ async function trazerEntregas(admin: SupabaseClient, t: TurmaMoodle, c: Conexao,
   let novas = 0;
   let faltam = 0;
   const avisos: string[] = [];
+  const ate = Date.now() + TEMPO_BUSCA_MS;
   for (const etapa of etapas ?? []) {
     const envios = (await enviosDaTarefa(c.site, c.chave, Number(etapa.moodle_tarefa)))
       .filter((s) => s.status === "submitted")
@@ -224,7 +227,7 @@ async function trazerEntregas(admin: SupabaseClient, t: TurmaMoodle, c: Conexao,
           ? porMoodle.get(`g:${s.groupid}`)
           : undefined;
       if (!grupoId) continue; // quem não é aluno (ou grupo vazio do Moodle)
-      if (novas >= POR_BUSCA) {
+      if (novas >= POR_BUSCA || Date.now() > ate) {
         faltam++;
         continue;
       }

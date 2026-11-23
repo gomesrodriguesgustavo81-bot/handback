@@ -90,7 +90,7 @@ export function CartaoGrupo({
           <ul className="mt-1 flex max-h-80 flex-col divide-y divide-borda overflow-y-auto rounded-xl border border-borda">
             {pessoas.map((p) => (
               <li key={p.email} className="flex flex-col px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                <span className="font-medium">{p.nome || "Sem nome"}</span>
+                <span className="font-medium">{p.nome || p.email.split("@")[0]}</span>
                 <span className="break-all text-xs text-suave sm:text-sm">{p.email}</span>
               </li>
             ))}

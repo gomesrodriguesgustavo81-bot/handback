@@ -365,12 +365,18 @@ try {
   await ana.p.getByText("Já existe aula com o número 1").waitFor();
   confere((await ana.p.getByLabel("Título").inputValue()) === "Outra aula", "erro não apaga o que foi digitado");
 
-  // F3) Equipes com e-mails; e-mail repetido em outra equipe é recusado
+  // F3) Equipes com pessoas; e-mail repetido em outra equipe é recusado
+  const pessoasNovas = async (lista) => {
+    for (const [i, email] of lista.entries()) {
+      if (!(await ana.p.getByLabel(`E-mail da pessoa ${i + 1}`).count())) await ana.p.getByRole("button", { name: "+ Outra pessoa" }).click();
+      await ana.p.getByLabel(`E-mail da pessoa ${i + 1}`).fill(email);
+    }
+  };
   await ana.p.goto(`${APP}/app/${SLUG}/grupos`);
   await ana.p.getByLabel("Nome", { exact: true }).fill("Equipe Azul");
-  await ana.p.getByLabel("E-mails de quem entrega").fill("a1@aluno.test, A2@Aluno.test; a1@aluno.test");
-  await ana.p.getByRole("button", { name: "Adicionar" }).click();
-  await ana.p.getByText("“Equipe Azul” cadastrado com 2 e-mail(s).").waitFor();
+  await pessoasNovas(["a1@aluno.test", "A2@Aluno.test", "a1@aluno.test"]);
+  await ana.p.getByRole("button", { name: "Adicionar", exact: true }).click();
+  await ana.p.getByText("“Equipe Azul” cadastrado com 2 pessoas.").waitFor();
   {
     const azul = ana.p.getByRole("listitem").filter({ hasText: "Equipe Azul" });
     confere(await azul.getByText("2 pessoas", { exact: true }).isVisible() && await azul.getByText("a1, a2").isVisible(), "lista mostra quantas pessoas e a prévia dos nomes");
@@ -379,12 +385,12 @@ try {
   }
   confere((await ana.p.getByLabel("Nome", { exact: true }).inputValue()) === "", "formulário de equipe limpa depois de salvar");
   await ana.p.getByLabel("Nome", { exact: true }).fill("Equipe Verde");
-  await ana.p.getByLabel("E-mails de quem entrega").fill("a1@aluno.test");
-  await ana.p.getByRole("button", { name: "Adicionar" }).click();
+  await pessoasNovas(["a1@aluno.test"]);
+  await ana.p.getByRole("button", { name: "Adicionar", exact: true }).click();
   await ana.p.getByText(/a1@aluno.test \(já está em “Equipe Azul”\)/).waitFor();
   confere(true, "o mesmo e-mail não entra em duas equipes");
-  await ana.p.getByLabel("E-mails de quem entrega").fill("v1@aluno.test, nao-e-email");
-  await ana.p.getByRole("button", { name: "Adicionar" }).click();
+  await pessoasNovas(["v1@aluno.test", "nao-e-email"]);
+  await ana.p.getByRole("button", { name: "Adicionar", exact: true }).click();
   await ana.p.getByText("Estes e-mails não parecem válidos: nao-e-email.").waitFor();
   confere(true, "e-mail inválido é apontado");
   await largura(ana.p, "equipes");
@@ -642,9 +648,16 @@ try {
   //  simula cota esgotada, então o Handback precisa trocar para o modelo reserva.)
   await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
   await ana.p.getByRole("button", { name: /Analisar com IA as 2 sem análise/ }).click();
-  await ana.p.getByText("Para revisar", { exact: true }).first().waitFor({ timeout: 60000 });
-  await ana.p.waitForFunction(() => document.querySelectorAll("li").length && ![...document.querySelectorAll("button")].some((b) => /Analisando/.test(b.textContent)), null, { timeout: 60000 });
-  await ana.p.reload();
+  await ana.p.getByText("2 entregas entraram na fila. Pode fechar a página").waitFor();
+  confere(true, "analisar todas põe na fila (pode fechar a página)");
+  // Fecha a página de verdade: a análise continua no servidor.
+  const urlPainel = ana.p.url();
+  await ana.p.goto("about:blank");
+  for (let i = 0; i < 40 && sql(`select count(*) from public.fila_analises f join public.organizacoes o on o.id = f.org_id where o.slug = '${SLUG}'`) !== "0"; i++) await espera(1500);
+  confere(sql(`select count(*) from public.fila_analises f join public.organizacoes o on o.id = f.org_id where o.slug = '${SLUG}'`) === "0", "a fila termina sozinha com a página fechada");
+  confere(sql(`select count(*) from public.avisos a join auth.users u on u.id = a.user_id where u.email = '${ANA}' and a.titulo = '2 análises prontas'`) === "1"
+    && sql(`select count(*) from public.avisos a join auth.users u on u.id = a.user_id where u.email = '${ANA}' and a.titulo like 'Análise pronta:%'`) === "0", "no fim, um aviso só no sininho (não um por entrega)");
+  await ana.p.goto(urlPainel);
   confere((await ana.p.locator("li a", { hasText: "Para revisar" }).filter({ hasText: "EXCELENTE" }).count()) === 2, "análise em lote das 2 entregas");
   confere((await ana.p.locator("dl div", { hasText: "Para revisar" }).innerText()).includes("2"), "painel conta 2 para revisar");
   await largura(ana.p, "painel da aula");
@@ -1263,6 +1276,8 @@ try {
     await p.getByRole("checkbox").check();
     await largura(p, "criar minha conta");
     await p.screenshot({ path: `${FOTOS}/36-criar-conta.png`, fullPage: true });
+    // Só no teste: zera o limite de cadastros por hora (as rodadas seguidas do teste esbarram nele).
+    sql("delete from public.cadastros where criado_em > now() - interval '1 hour' and email like '%@cadastro.test'");
     await p.getByRole("button", { name: "Criar e confirmar e-mail" }).click();
     await p.getByRole("heading", { name: "Confira seu e-mail" }).waitFor();
     confere(true, "cadastro sozinho pede para confirmar o e-mail");

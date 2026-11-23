@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { urlDoSite } from "@/lib/caminhos";
 import { rodarDiario } from "@/lib/diario";
+import { chamarFila, filaParada } from "@/lib/fila";
 import { criarClienteAdmin } from "@/lib/supabase/admin";
 import { hojeISO } from "@/lib/textos";
 
@@ -24,5 +25,6 @@ export async function GET(request: NextRequest) {
   const hoje = request.nextUrl.searchParams.get("dia") && process.env.HANDBACK_TESTE_DIA === "1" ? request.nextUrl.searchParams.get("dia")! : hojeISO();
   const site = (process.env.HANDBACK_SITE ?? urlDoSite(request, "/").origin).replace(/\/$/, "");
   const r = await rodarDiario(admin, hoje, site);
+  if (await filaParada(admin).catch(() => false)) await chamarFila(site);
   return NextResponse.json({ ok: true, ...r });
 }

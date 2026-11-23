@@ -12,11 +12,20 @@ import { lerListaDePessoas } from "@/lib/nomes";
 type Supabase = Awaited<ReturnType<typeof criarClienteServidor>>;
 
 function lerGrupo(dados: FormData) {
+  // Formulário novo: uma linha por pessoa (pessoa_nome + pessoa_email).
+  const emailsLinha = dados.getAll("pessoa_email").map((x) => String(x));
+  const nomesLinha = dados.getAll("pessoa_nome").map((x) => String(x).trim().replace(/\s+/g, " ").slice(0, 200));
+  const nomes = new Map<string, string>();
+  emailsLinha.forEach((e, i) => {
+    const k = e.trim().toLowerCase();
+    if (k && nomesLinha[i] && !nomes.has(k)) nomes.set(k, nomesLinha[i]);
+  });
   return {
     nome: String(dados.get("nome") ?? "").trim(),
     tema: String(dados.get("tema") ?? "").trim(),
     observacoes: String(dados.get("observacoes") ?? "").trim(),
-    emails: lerEmails(String(dados.get("emails") ?? "")),
+    emails: lerEmails(emailsLinha.length ? emailsLinha.join("\n") : String(dados.get("emails") ?? "")),
+    nomes,
   };
 }
 
@@ -43,7 +52,7 @@ async function emailsEmOutroGrupo(supabase: Supabase, turmaId: string, emails: s
 }
 
 /** Deixa os integrantes do grupo exatamente iguais à lista de e-mails. */
-async function sincronizarEmails(supabase: Supabase, orgId: string, grupoId: string, emails: string[]) {
+async function sincronizarEmails(supabase: Supabase, orgId: string, grupoId: string, emails: string[], nomes = new Map<string, string>()) {
   const { data: atuais } = await supabase.from("integrantes").select("id, email").eq("grupo_id", grupoId);
   const sair = (atuais ?? []).filter((i) => !emails.includes(i.email)).map((i) => i.id);
   const entrar = emails.filter((e) => !(atuais ?? []).some((i) => i.email === e));
@@ -54,7 +63,7 @@ async function sincronizarEmails(supabase: Supabase, orgId: string, grupoId: str
   if (entrar.length) {
     const { error } = await supabase
       .from("integrantes")
-      .insert(entrar.map((email) => ({ org_id: orgId, grupo_id: grupoId, email })));
+      .insert(entrar.map((email) => ({ org_id: orgId, grupo_id: grupoId, email, nome: nomes.get(email) ?? "" })));
     if (error) return error;
   }
   return null;
@@ -85,7 +94,7 @@ export async function criarGrupo(slug: string, _a: Resultado, dados: FormData): 
     .single();
   if (error) return { ok: false, mensagem: erroDoBanco(error, g.nome) };
 
-  const erroEmails = await sincronizarEmails(supabase, empresa.id, data.id, g.emails.validos);
+  const erroEmails = await sincronizarEmails(supabase, empresa.id, data.id, g.emails.validos, g.nomes);
   if (erroEmails) {
     await supabase.from("grupos").delete().eq("id", data.id);
     return { ok: false, mensagem: erroDoBanco(erroEmails, g.nome) };
@@ -94,7 +103,7 @@ export async function criarGrupo(slug: string, _a: Resultado, dados: FormData): 
   revalidatePath(`/app/${slug}`, "layout");
   return {
     ok: true,
-    mensagem: `“${g.nome}” cadastrado com ${g.emails.validos.length} e-mail(s).`,
+    mensagem: `“${g.nome}” cadastrado com ${g.emails.validos.length} ${g.emails.validos.length === 1 ? "pessoa" : "pessoas"}.`,
     vez: Date.now(),
   };
 }

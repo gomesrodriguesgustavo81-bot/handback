@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState, useTransition, startTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { analisarComIA, aprovarProntas, reabrirDevolutiva, revisarDevolutiva } from "@/app/app/[slug]/entregas/acoes";
+import { analisarComIA, analisarEmSegundoPlano, aprovarProntas, reabrirDevolutiva, revisarDevolutiva } from "@/app/app/[slug]/entregas/acoes";
 import { CONCEITOS_REVISAO, ESTILO_CONCEITO } from "./conceito";
 import { BotaoEnviar, DevolverMoodle, type InfoMoodle } from "./envio";
 import type { Resultado } from "./form-acao";
@@ -64,41 +64,47 @@ export function BotaoAnalisar({
 /** Analisa várias entregas, uma de cada vez, mostrando o andamento. */
 export function AnalisarVarias({ slug, entregas, rotulo }: { slug: string; entregas: { id: string; nome: string }[]; rotulo: string }) {
   const router = useRouter();
-  const [andando, setAndando] = useState(false);
-  const [feitas, setFeitas] = useState(0);
-  const [erros, setErros] = useState<string[]>([]);
-  if (!entregas.length) return null;
+  const [pendente, iniciar] = useTransition();
+  const [msg, setMsg] = useState<{ ok: boolean; mensagem: string } | null>(null);
+  if (!entregas.length && !msg) return null;
   return (
     <div className="flex flex-col gap-2">
-      <Botao
-        type="button"
-        variante="secundario"
-        disabled={andando}
-        onClick={async () => {
-          setAndando(true);
-          setErros([]);
-          setFeitas(0);
-          for (const e of entregas) {
-            const r = await analisarComIA(slug, e.id);
-            if (!r.ok) setErros((x) => [...x, `${e.nome}: ${r.mensagem}`]);
-            setFeitas((n) => n + 1);
-            router.refresh();
+      {entregas.length ? (
+        <Botao
+          type="button"
+          variante="secundario"
+          disabled={pendente}
+          onClick={() =>
+            iniciar(async () => {
+              const r = await analisarEmSegundoPlano(slug, entregas.map((e) => e.id));
+              setMsg(r);
+              router.refresh();
+            })
           }
-          setAndando(false);
-        }}
-      >
-        {andando ? `Analisando ${Math.min(feitas + 1, entregas.length)} de ${entregas.length}…` : rotulo}
-      </Botao>
-      {erros.length ? (
-        <Aviso tipo="erro">
-          <ul className="list-disc pl-4">
-            {erros.map((e) => (
-              <li key={e}>{e}</li>
-            ))}
-          </ul>
-        </Aviso>
+        >
+          {pendente ? "Colocando na fila…" : rotulo}
+        </Botao>
       ) : null}
+      {msg ? <Aviso tipo={msg.ok ? "info" : "erro"}>{msg.mensagem}</Aviso> : null}
     </div>
+  );
+}
+
+/** Mostra que a IA está trabalhando em segundo plano e atualiza a tela sozinha. */
+export function FilaAndando({ quantas }: { quantas: number }) {
+  const router = useRouter();
+  useEffect(() => {
+    const t = setInterval(() => router.refresh(), 10_000);
+    return () => clearInterval(t);
+  }, [router]);
+  return (
+    <p role="status" className="flex items-center gap-2.5 rounded-2xl border border-marca/30 bg-marca-clara px-4 py-3 text-sm sm:max-w-2xl">
+      <span aria-hidden className="size-4 shrink-0 animate-spin rounded-full border-2 border-borda border-t-marca" />
+      <span>
+        <strong>A IA está analisando {quantas === 1 ? "1 entrega" : `${quantas} entregas`}</strong> em segundo plano. Pode fechar a página: o sininho avisa
+        quando terminar.
+      </span>
+    </p>
   );
 }
 

@@ -26,6 +26,7 @@ import {
 } from "./dados";
 import { NavEntregas } from "./navegacao";
 import { FaixaGmail } from "./faixa-gmail";
+import { FilaAndando } from "@/components/analise";
 import { AvisoGmail } from "@/components/aviso-gmail";
 import { EnviarVarias } from "@/components/envio";
 import { meuGmail } from "@/lib/envio";
@@ -186,6 +187,12 @@ export default async function PainelDaAula({
   const valendo = new Map(
     ((data ?? []) as unknown as EntregaLinha[]).map((e) => [e.grupo_id, e]),
   );
+  // Entregas na fila de análise em segundo plano (desta aula).
+  const idsDaAula = [...valendo.values()].map((e) => e.id);
+  const { data: fila } = idsDaAula.length
+    ? await supabase.from("fila_analises").select("entrega_id").in("entrega_id", idsDaAula).is("feita_em", null)
+    : { data: [] as { entrega_id: string }[] };
+  const naFila = new Set((fila ?? []).map((f) => f.entrega_id as string));
 
   const situacaoDe = (e: EntregaLinha | undefined): Situacao => {
     if (!e) return prazoPassou ? "nao-entregou" : "aguardando";
@@ -227,7 +234,7 @@ export default async function PainelDaAula({
   const gmailEmail = gmail && !gmail.invalida ? gmail.email : null;
   const semAnalise = equipes
     .filter(
-      (x) => x.e && (x.situacao === "sem-analise" || x.situacao === "falhou"),
+      (x) => x.e && !naFila.has(x.e.id) && (x.situacao === "sem-analise" || x.situacao === "falhou"),
     )
     .map((x) => ({ id: x.e!.id, nome: x.g.nome }));
 
@@ -293,6 +300,8 @@ export default async function PainelDaAula({
       </dl>
 
       <AvisoGmail aviso={avisoGmail} />
+
+      {naFila.size ? <FilaAndando quantas={naFila.size} /> : null}
 
       {semAnalise.length || paraRevisar || (paraEnviar.length && gmailEmail) ? (
         <div className="grid gap-2 sm:max-w-2xl sm:grid-cols-2">
