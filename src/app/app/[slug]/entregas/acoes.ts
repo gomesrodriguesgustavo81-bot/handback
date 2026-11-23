@@ -1,6 +1,7 @@
 "use server";
 import { origemDoSite } from "@/lib/acesso";
 import { chamarFila } from "@/lib/fila";
+import { levarParaODrive } from "@/lib/drive";
 import { after } from "next/server";
 
 import { revalidatePath } from "next/cache";
@@ -48,6 +49,13 @@ export async function registrarEntregaManual(
     .single<{ atrasada: boolean }>();
   if (error) return { ok: false, mensagem: mensagemDeErro(error, "Não foi possível registrar a entrega. Tente de novo.") };
 
+  // Turma com o Drive ligado: os arquivos vão para lá logo depois.
+  if (dados.arquivos.length) {
+    after(async () => {
+      const admin = criarClienteAdmin();
+      if (admin) await levarParaODrive(admin, Date.now() + 40_000).catch(() => undefined);
+    });
+  }
   revalidatePath(`/app/${slug}`, "layout");
   return {
     ok: true,

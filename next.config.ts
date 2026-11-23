@@ -15,7 +15,14 @@ const SEGURANCA = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   async headers() {
-    return [{ source: "/:caminho*", headers: SEGURANCA }];
+    return [
+      { source: "/:caminho*", headers: SEGURANCA },
+      // Arquivos das entregas (enviados por alunos): abrem isolados, sem poder rodar nada no site.
+      {
+        source: "/app/:slug/entregas/:id/arquivo/:arquivo",
+        headers: [{ key: "Content-Security-Policy", value: "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; frame-ancestors 'none'; sandbox" }],
+      },
+    ];
   },
   turbopack: {
     rules: {

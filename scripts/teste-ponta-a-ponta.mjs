@@ -1387,6 +1387,59 @@ try {
     confere(pediuConfirmacao("Conectar seu Google Agenda?") && pediuConfirmacao("Criar a agenda da turma") && pediuConfirmacao("Convidar os alunos") && pediuConfirmacao("Desligar a agenda") && pediuConfirmacao("Desconectar o Google Agenda?"), "agenda: conectar, criar, convidar, desligar e desconectar pedem confirmação");
   }
 
+  // 7l) Google Drive: os arquivos da turma vão para o Drive de quem ligou
+  {
+    const GOOGLE = process.env.HANDBACK_GOOGLE_BASE.replace(/\/$/, "");
+    const driveFalso = async () => (await fetch(`${GOOGLE}/__drive`)).json();
+    const anaId = sql(`select id from auth.users where email = '${ANA}'`);
+    const daTurmaA = `from public.arquivos_entrega a join public.entregas e on e.id = a.entrega_id join public.grupos g on g.id = e.grupo_id join public.turmas t on t.id = g.turma_id
+      where t.nome = 'Turma A' and t.org_id = (select id from public.organizacoes where slug = '${SLUG}')`;
+    const totalA = Number(sql(`select count(*) ${daTurmaA}`));
+    await ana.p.goto(`${APP}/app/${SLUG}/configuracoes`);
+    await ana.p.getByRole("link", { name: /^Google Drive/ }).click();
+    await ana.p.getByRole("heading", { name: "Google Drive", exact: true }).waitFor();
+    confere(await ana.p.getByLabel(/Guardar os arquivos no meu Drive/).isDisabled(), "drive: só liga depois de conectar a própria conta");
+    const [janelaD] = await Promise.all([ana.p.waitForEvent("popup"), ana.p.getByRole("link", { name: "Conectar Google Drive" }).click()]);
+    await ana.p.getByRole("region", { name: "Sua conta Google" }).getByText("professora@gmail.test").waitFor();
+    await janelaD.waitForEvent("close", { timeout: 10000 }).catch(() => {});
+    confere(sql(`select servico from public.conexoes_google where user_id = '${anaId}'`) === "drive", "drive: conexão própria, só do Drive");
+    await ana.p.getByLabel(/Guardar os arquivos no meu Drive/).click();
+    await ana.p.getByText(/Ligado\. Os arquivos das entregas vão para a pasta Handback/).waitFor();
+    await ana.p.getByLabel(/Levar para o Drive também/).click();
+    await ana.p.waitForTimeout(500);
+    let noDrive = 0;
+    for (let i = 0; i < 60 && noDrive < totalA; i++) {
+      noDrive = Number(sql(`select count(*) ${daTurmaA} and a.drive_id is not null`));
+      if (noDrive < totalA) await espera(1000);
+    }
+    confere(totalA > 0 && noDrive === totalA, `drive: os arquivos antigos foram para o Drive (${noDrive} de ${totalA})`);
+    confere(sql(`select count(*) ${daTurmaA} and a.caminho is not null`) === "0", "drive: a cópia do Handback é apagada (libera espaço)");
+    const arvore = Object.values(await driveFalso());
+    const raiz = arvore.find((f) => f.name === "Handback");
+    const pastaTurma = arvore.find((f) => f.name === "Turma A");
+    const pastaEquipe = arvore.find((f) => f.name === "Equipe Azul");
+    confere(Boolean(raiz && pastaTurma && pastaEquipe) && arvore.some((f) => /^\d+ - .+/.test(f.name) && f.tamanho > 0), "drive: pastas Handback › Turma A › Equipe Azul criadas sozinhas, com os arquivos");
+    await ana.p.reload();
+    confere(await ana.p.getByRole("region", { name: "Arquivos da turma" }).getByText(new RegExp(`${totalA} arquivos? no Drive`)).isVisible(), "drive: a tela mostra quantos estão no Drive");
+    await largura(ana.p, "google drive");
+    await ana.p.screenshot({ path: `${FOTOS}/51-drive.png`, fullPage: true });
+
+    // Abrir pelo Handback continua funcionando (o Handback busca no Drive)
+    const [entregaArq, arqId] = sql(`select e.id || '|' || a.id ${daTurmaA} and a.tipo = 'application/pdf' limit 1`).split("|");
+    const abrir = () => ana.p.request.get(`${APP}/app/${SLUG}/entregas/${entregaArq}/arquivo/${arqId}`, { maxRedirects: 0 });
+    const resp = await abrir();
+    confere(resp.status() === 200 && resp.headers()["content-type"] === "application/pdf" && /sandbox/.test(resp.headers()["content-security-policy"] ?? ""), "drive: o arquivo abre pelo Handback, protegido");
+    confere(sql(`select count(*) from public.atividades where acao = 'baixou_arquivo' and descricao like '%(Google Drive)%' and org_id = (select id from public.organizacoes where slug = '${SLUG}')`) !== "0", "drive: abrir do Drive fica no registro");
+    const curiosoArq = await curioso.p.request.get(`${APP}/app/${SLUG}/entregas/${entregaArq}/arquivo/${arqId}`, { maxRedirects: 0 });
+    confere(curiosoArq.status() === 404, "drive: quem é de fora não abre o arquivo");
+
+    await ana.p.getByRole("button", { name: "Desconectar Google Drive" }).click();
+    await ana.p.getByRole("link", { name: "Conectar Google Drive" }).waitFor();
+    const depois = await abrir();
+    confere(depois.status() === 404 && /conexão foi desfeita/.test(await depois.text()), "drive: depois de desconectar, o Handback avisa que perdeu o acesso");
+    confere(pediuConfirmacao("Conectar seu Google Drive?") && pediuConfirmacao("Guardar os arquivos no seu Drive?") && pediuConfirmacao("Levar também os arquivos antigos?") && pediuConfirmacao("Desconectar o Google Drive?"), "drive: conectar, ligar, levar e desconectar pedem confirmação");
+  }
+
   // 7f) Privacidade: o dono não vê o conteúdo; o cliente libera o suporte
   await dono.p.goto(`${APP}/admin`);
   const painelUso = dono.p.getByRole("region", { name: "Uso dos planos" });

@@ -4,6 +4,7 @@ import { urlDoSite } from "@/lib/caminhos";
 import { rodarDiario } from "@/lib/diario";
 import { chamarFila, filaParada } from "@/lib/fila";
 import { sincronizarTodasAsAgendas } from "@/lib/agenda";
+import { levarParaODrive } from "@/lib/drive";
 import { criarClienteAdmin } from "@/lib/supabase/admin";
 import { hojeISO } from "@/lib/textos";
 
@@ -28,5 +29,6 @@ export async function GET(request: NextRequest) {
   const r = await rodarDiario(admin, hoje, site);
   if (await filaParada(admin).catch(() => false)) await chamarFila(site);
   const agendas = await sincronizarTodasAsAgendas(admin, site).catch(() => 0);
-  return NextResponse.json({ ok: true, ...r, agendas });
+  const drive = await levarParaODrive(admin, Date.now() + 25_000).catch(() => null);
+  return NextResponse.json({ ok: true, ...r, agendas, drive: drive?.levados ?? 0 });
 }

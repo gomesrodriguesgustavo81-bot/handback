@@ -11,6 +11,7 @@ import { criarClienteAdmin } from "@/lib/supabase/admin";
 import { hojeISO } from "@/lib/textos";
 import { origemDoSite } from "@/lib/acesso";
 import { chamarFila, filaParada } from "@/lib/fila";
+import { levarParaODrivePor } from "@/lib/drive";
 
 export default async function LayoutApp({ children }: LayoutProps<"/app">) {
   if (!supabaseConfigurado()) {
@@ -28,6 +29,8 @@ export default async function LayoutApp({ children }: LayoutProps<"/app">) {
     const admin = criarClienteAdmin();
     await despacharPush(admin).catch(() => 0);
     if (admin && (await filaParada(admin).catch(() => false))) await chamarFila(origem);
+    // Arquivos esperando para ir ao Google Drive (das turmas que ligaram o Drive).
+    if (admin) await levarParaODrivePor(admin, 20_000).catch(() => undefined);
   });
   return (
     <>

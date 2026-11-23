@@ -4,6 +4,7 @@ import type { Vocabulario } from "../frentes";
 import { dataHoraBR } from "../textos";
 import { despacharPush } from "../push";
 import { criarClienteAdmin } from "../supabase/admin";
+import { baixarDoDrive } from "../drive";
 import { chamarGemini } from "./gemini";
 import { addTexto, lerArquivo, lerLink, limparCorpo, novoConteudo } from "./leitura";
 import {
@@ -32,7 +33,7 @@ type EntregaCompleta = {
   etapas: { numero: number; titulo: string; entregaveis: string[]; criterios: string; observacoes_ia: string } | null;
   grupos: { nome: string; tema: string } | null;
   organizacoes: { vocabulario: Vocabulario; conceitos: Record<Conceito, string>; regra_checklist: RegraChecklist; exemplos_devolutiva: string; limite_analises_mes: number | null } | null;
-  arquivos_entrega: { caminho: string; nome: string; tipo: string }[];
+  arquivos_entrega: { caminho: string | null; nome: string; tipo: string; drive_id: string | null; drive_por: string | null }[];
 };
 
 /**
@@ -44,7 +45,7 @@ export async function analisarEntrega(supabase: SupabaseClient, entregaId: strin
   const { data, error } = await supabase
     .from("entregas")
     .select(
-      "id, org_id, etapa_id, grupo_id, origem, enviada_em, atrasada, status, comentario, links, etapas(numero, titulo, entregaveis, criterios, observacoes_ia), grupos(nome, tema), organizacoes(vocabulario, conceitos, regra_checklist, exemplos_devolutiva, limite_analises_mes), arquivos_entrega(caminho, nome, tipo)",
+      "id, org_id, etapa_id, grupo_id, origem, enviada_em, atrasada, status, comentario, links, etapas(numero, titulo, entregaveis, criterios, observacoes_ia), grupos(nome, tema), organizacoes(vocabulario, conceitos, regra_checklist, exemplos_devolutiva, limite_analises_mes), arquivos_entrega(caminho, nome, tipo, drive_id, drive_por)",
     )
     .eq("id", entregaId)
     .maybeSingle();
@@ -77,7 +78,18 @@ export async function analisarEntrega(supabase: SupabaseClient, entregaId: strin
     const conteudo = novoConteudo();
     addTexto(conteudo, e.origem === "email" ? "CORPO DO E-MAIL" : "COMENTÁRIO", limparCorpo(e.comentario));
     for (const a of e.arquivos_entrega) {
-      const { data: blob, error: erroArq } = await supabase.storage.from("entregas").download(a.caminho);
+      // Arquivo no Google Drive de quem ligou o Drive na turma: busca de lá.
+      if (a.drive_id && a.drive_por) {
+        const admin = criarClienteAdmin();
+        try {
+          if (!admin) throw new Error("sem servidor");
+          lerArquivo(conteudo, await baixarDoDrive(admin, a.drive_por, a.drive_id), a.nome, a.tipo);
+        } catch (e) {
+          conteudo.avisos.push(`Não foi possível abrir o arquivo "${a.nome}" no Google Drive${e instanceof Error ? `: ${e.message}` : "."}`);
+        }
+        continue;
+      }
+      const { data: blob, error: erroArq } = a.caminho ? await supabase.storage.from("entregas").download(a.caminho) : { data: null, error: true };
       if (erroArq || !blob) {
         conteudo.avisos.push(`Não foi possível abrir o arquivo "${a.nome}".`);
         continue;

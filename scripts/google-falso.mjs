@@ -16,6 +16,7 @@ const ESCOPO = "https://www.googleapis.com/auth/gmail.send";
 const ESCOPOS = [ESCOPO, "https://www.googleapis.com/auth/calendar.app.created", "https://www.googleapis.com/auth/drive.file"];
 const codigos = new Map(); // código → { redirect_uri, escopo }
 const agendas = new Map(); // id → { summary, eventos: Map(id → evento), envios: [] }
+const drive = new Map(); // id → { name, parents, mimeType, dados: Buffer }
 const renovacoes = new Set();
 const acessos = new Set();
 
@@ -23,8 +24,11 @@ const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
 const idToken = (email) => `${b64({ alg: "none" })}.${b64({ email, email_verified: true })}.x`;
 
 createServer(async (req, res) => {
-  let corpo = "";
-  for await (const parte of req) corpo += parte;
+  const pedacos = [];
+  for await (const parte of req) pedacos.push(parte);
+  const bruto = Buffer.concat(pedacos);
+  // Upload do Drive vem em bytes; o resto é texto.
+  const corpo = String(req.url).startsWith("/upload/") ? bruto.toString("latin1") : bruto.toString("utf8");
   const url = new URL(req.url, `http://127.0.0.1:${porta}`);
   const json = (status, j) => {
     res.writeHead(status, { "content-type": "application/json" });
@@ -99,6 +103,41 @@ createServer(async (req, res) => {
       );
     }
     return json(200, { id, threadId: id });
+  }
+  if (url.pathname === "/__drive") {
+    if (url.searchParams.get("apagar")) drive.delete(url.searchParams.get("apagar"));
+    return json(200, Object.fromEntries([...drive].map(([id, f]) => [id, { name: f.name, parents: f.parents, mimeType: f.mimeType, tamanho: f.dados?.length ?? 0 }])));
+  }
+  if (url.pathname.startsWith("/drive/v3/files") || url.pathname.startsWith("/upload/drive/v3/files")) {
+    const acesso = (req.headers.authorization ?? "").replace(/^Bearer /, "");
+    if (!acessos.has(acesso)) return json(401, { error: { message: "Invalid Credentials" } });
+    const id = decodeURIComponent(url.pathname.split("/files/")[1] ?? "");
+    if (req.method === "POST" && url.pathname.startsWith("/upload/")) {
+      const fronteira = String(req.headers["content-type"]).match(/boundary=([^;]+)/)?.[1];
+      const bruto = Buffer.from(corpo, "latin1");
+      const partes = bruto.toString("latin1").split(`--${fronteira}`).slice(1, -1);
+      const meta = JSON.parse(Buffer.from(partes[0].split("\r\n\r\n")[1].trim(), "latin1").toString("utf8"));
+      const conteudo = partes[1].slice(partes[1].indexOf("\r\n\r\n") + 4).replace(/\r\n$/, "");
+      const pai = meta.parents?.[0];
+      if (!drive.has(pai)) return json(404, { error: { message: "File not found: parent" } });
+      const novo = `arq${randomBytes(4).toString("hex")}`;
+      drive.set(novo, { name: meta.name, parents: meta.parents, mimeType: partes[1].match(/Content-Type: ([^\r\n]+)/)?.[1], dados: Buffer.from(conteudo, "latin1") });
+      return json(200, { id: novo });
+    }
+    if (req.method === "POST") {
+      const meta = JSON.parse(corpo);
+      if (meta.parents?.[0] && !drive.has(meta.parents[0])) return json(404, { error: { message: "File not found: parent" } });
+      const novo = `pasta${randomBytes(4).toString("hex")}`;
+      drive.set(novo, { name: meta.name, parents: meta.parents ?? [], mimeType: meta.mimeType });
+      return json(200, { id: novo });
+    }
+    const f = drive.get(id);
+    if (!f) return json(404, { error: { message: "File not found" } });
+    if (req.method === "GET" && url.searchParams.get("alt") === "media") {
+      res.writeHead(200, { "content-type": f.mimeType ?? "application/octet-stream" });
+      return res.end(f.dados ?? Buffer.alloc(0));
+    }
+    if (req.method === "GET") return json(200, { id, trashed: false });
   }
   if (url.pathname === "/__agenda") {
     return json(200, Object.fromEntries([...agendas].map(([id, a]) => [id, { summary: a.summary, eventos: Object.fromEntries(a.eventos), envios: a.envios }])));
