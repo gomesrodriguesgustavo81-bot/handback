@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { strToU8, zipSync } from "fflate";
 import { cabecalhoEntrega, instrucaoSistema, professorDefiniuConceito, trajetoria, validarResultado } from "./regras";
-import { exportacaoGoogle, lerArquivo, lerLink, limparCorpo, novoConteudo, textoDocx, textoPptx } from "./leitura";
+import { exportacaoGoogle, lerArquivo, lerLink, limparCorpo, novoConteudo, textoDocx, textoPptx, textoXlsx } from "./leitura";
 
 const itens = ["Matriz CSD", "Pesquisa acadêmica", "Benchmarking"];
 const resposta = (status: string[], conceito = "EXCELENTE") => ({
@@ -116,6 +116,23 @@ describe("leitura de arquivos", () => {
       "ppt/slides/slide1.xml": strToU8("<a:p><a:r><a:t>Primeiro</a:t></a:r></a:p>"),
     });
     expect(textoPptx(pptx)).toBe("--- Slide 1 ---\nPrimeiro\n\n--- Slide 2 ---\nSegundo");
+  });
+
+  it("lê planilha do Excel, vídeo e áudio", async () => {
+    const ExcelJS = (await import("exceljs")).default;
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Notas");
+    ws.addRow(["Aluno", "Nota"]);
+    ws.addRow(["Ana & Bia", 9.5]);
+    const xlsx = new Uint8Array(await wb.xlsx.writeBuffer());
+    expect(textoXlsx(xlsx)).toBe("--- Planilha 1 ---\nAluno | Nota\nAna & Bia | 9.5");
+    const c = novoConteudo();
+    lerArquivo(c, xlsx, "notas.xlsx", "");
+    lerArquivo(c, new Uint8Array([1, 2]), "apresentacao.MP4", "");
+    lerArquivo(c, new Uint8Array([3]), "podcast.mp3", "audio/mpeg");
+    expect(c.lidos).toEqual(["notas.xlsx", "apresentacao.MP4", "podcast.mp3"]);
+    expect(c.partes.filter((p) => "inlineData" in p).map((p) => ("inlineData" in p ? p.inlineData.mimeType : ""))).toEqual(["video/mp4", "audio/mpeg"]);
+    expect(c.textos[0]).toContain("Ana & Bia | 9.5");
   });
 
   it("PDF vai como arquivo para a IA; formato desconhecido vira aviso", () => {

@@ -23,6 +23,8 @@ export type EmailRecebido = {
   messageId: string;
   respondeA: string[];
   anexos: AnexoRecebido[];
+  /** Anexos que o e-mail tinha mas não deu para baixar (com o motivo). */
+  problemasAnexos?: string[];
 };
 
 type Json = Record<string, unknown>;

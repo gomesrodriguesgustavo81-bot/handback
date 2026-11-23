@@ -75,7 +75,7 @@ export async function receberEmail(admin: SupabaseClient, email: EmailRecebido):
       html: email.html,
       enviadoEm: email.enviadoEm,
       respondeA: email.respondeA,
-      quantidadeDeAnexos: anexos.length,
+      quantidadeDeAnexos: anexos.length + (email.problemasAnexos?.length ?? 0),
     },
     ctx,
   );
@@ -120,6 +120,7 @@ export async function receberEmail(admin: SupabaseClient, email: EmailRecebido):
       motivo: triagem.motivo,
       avisos: [
         ...triagem.avisos,
+        ...(email.problemasAnexos ?? []),
         ...guardados.filter((g) => !g.caminho).map((g) => `Anexo não guardado: ${g.nome}`),
       ],
       etapa_sugerida: triagem.etapaId,

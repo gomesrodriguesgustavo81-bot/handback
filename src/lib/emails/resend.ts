@@ -81,6 +81,18 @@ async function api(caminho: string, chave: string): Promise<Json> {
   return (await r.json()) as Json;
 }
 
+const mensagem = (e: unknown) => (e instanceof Error ? e.message : String(e)).slice(0, 160);
+
+/** Tenta de novo uma vez (falhas passageiras de rede). */
+async function tentar<T>(f: () => Promise<T>): Promise<T> {
+  try {
+    return await f();
+  } catch {
+    await new Promise((r) => setTimeout(r, 800));
+    return f();
+  }
+}
+
 async function baixar(url: string, chave: string): Promise<Buffer> {
   // O link de download costuma ser temporário e público; se pedir login, manda a chave.
   let r = await fetch(url, { signal: AbortSignal.timeout(30_000) });
@@ -100,39 +112,49 @@ export async function buscarEmailResend(evento: Json, chave: string): Promise<Em
   const e = { ...resumo, ...((completo.data as Json | undefined) ?? completo) } as Json;
   const cab = cabecalhos(e.headers);
 
-  // Anexos: a lista com links de download; se não vier, usa a lista do resumo.
-  let infos = lista(e.attachments) as Json[];
+  // Anexos: a lista com links de download; se não vier, usa a lista do e-mail
+  // (ou do resumo do evento). Nada some calado: cada falha vira um aviso.
+  const problemas: string[] = [];
+  let infos = (lista(e.attachments).length ? lista(e.attachments) : lista(resumo.attachments)) as Json[];
   try {
-    const r = await api(`/emails/receiving/${encodeURIComponent(id)}/attachments`, chave);
+    const r = await tentar(() => api(`/emails/receiving/${encodeURIComponent(id)}/attachments`, chave));
     const l = lista(r.data ?? r.attachments) as Json[];
     if (l.length) infos = l;
-  } catch {
-    /* segue com o que veio no e-mail */
+  } catch (erro) {
+    if (infos.length) problemas.push(`Não deu para listar os anexos no Resend (${mensagem(erro)}).`);
   }
   const anexos: AnexoRecebido[] = [];
   let total = 0;
   for (const a of infos) {
-    let url = texto(a.download_url) || texto(a.url);
-    if (!url && texto(a.id)) {
-      try {
-        const det = await api(`/emails/receiving/${encodeURIComponent(id)}/attachments/${encodeURIComponent(texto(a.id))}`, chave);
+    const nome = texto(a.filename) || texto(a.name) || "anexo";
+    try {
+      let url = texto(a.download_url) || texto(a.url);
+      const conteudoBase64 = texto(a.content);
+      if (!url && !conteudoBase64 && texto(a.id)) {
+        const det = await tentar(() => api(`/emails/receiving/${encodeURIComponent(id)}/attachments/${encodeURIComponent(texto(a.id))}`, chave));
         const d = (det.data as Json | undefined) ?? det;
         url = texto(d.download_url) || texto(d.url);
-      } catch {
-        /* sem link: anexo fica de fora */
+        if (!url && texto(d.content)) a.content = d.content;
       }
+      const base64 = texto(a.content);
+      if (!url && !base64) throw new Error("o Resend não deu o link para baixar");
+      const conteudo = base64 ? Buffer.from(base64, "base64") : await tentar(() => baixar(url, chave));
+      if (!conteudo.length) throw new Error("arquivo veio vazio");
+      total += conteudo.length;
+      if (total > LIMITE_ANEXOS) {
+        problemas.push(`“${nome}” não foi guardado: os anexos passaram de 30 MB.`);
+        break;
+      }
+      anexos.push({
+        nome,
+        tipo: texto(a.content_type) || texto(a.contentType),
+        conteudo,
+        embutido: Boolean(texto(a.content_id)) && /inline/i.test(texto(a.content_disposition) || "inline"),
+      });
+    } catch (erro) {
+      console.error("[emails/resend] anexo", nome, erro);
+      problemas.push(`O anexo “${nome}” chegou, mas o Handback não conseguiu baixá-lo (${mensagem(erro)}).`);
     }
-    const conteudoBase64 = texto(a.content);
-    if (!url && !conteudoBase64) continue;
-    const conteudo = conteudoBase64 ? Buffer.from(conteudoBase64, "base64") : await baixar(url, chave);
-    total += conteudo.length;
-    if (total > LIMITE_ANEXOS) break;
-    anexos.push({
-      nome: texto(a.filename) || texto(a.name) || "anexo",
-      tipo: texto(a.content_type) || texto(a.contentType),
-      conteudo,
-      embutido: Boolean(texto(a.content_id)) && /inline/i.test(texto(a.content_disposition) || "inline"),
-    });
   }
 
   const html = texto(e.html);
@@ -155,5 +177,6 @@ export async function buscarEmailResend(evento: Json, chave: string): Promise<Em
     messageId: ids(cab.get("message-id") ?? "")[0] ?? (texto(e.message_id) ? `<${texto(e.message_id).replace(/^<|>$/g, "")}>` : `<${id}@resend>`),
     respondeA: [...new Set([...ids(cab.get("in-reply-to") ?? ""), ...ids(cab.get("references") ?? "")])],
     anexos,
+    problemasAnexos: problemas,
   };
 }

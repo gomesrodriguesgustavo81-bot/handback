@@ -32,6 +32,7 @@ type Entrega = {
   etapas: { numero: number; titulo: string; moodle_tarefa: number | null; moodle_nota_max: number | null } | null;
   grupos: { nome: string; tema: string } | null;
   arquivos_entrega: { id: string; caminho: string; nome: string; tamanho: number }[];
+  emails_recebidos: { avisos: string[] } | null;
 };
 
 type Analise = {
@@ -75,7 +76,7 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
   const { data } = await supabase
     .from("entregas")
     .select(
-      "id, etapa_id, grupo_id, enviada_em, origem, remetente, assunto, atrasada, status, comentario, links, etapas(numero, titulo, moodle_tarefa, moodle_nota_max), grupos(nome, tema), arquivos_entrega(id, caminho, nome, tamanho)",
+      "id, etapa_id, grupo_id, enviada_em, origem, remetente, assunto, atrasada, status, comentario, links, etapas(numero, titulo, moodle_tarefa, moodle_nota_max), grupos(nome, tema), arquivos_entrega(id, caminho, nome, tamanho), emails_recebidos!entregas_email_id_fkey(avisos)",
     )
     .eq("org_id", empresa.id)
     .eq("id", id)
@@ -173,8 +174,17 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
     </Bloco>
   ) : null;
 
+  // Anexos que o e-mail tinha mas não chegaram (o motivo vem do recebimento).
+  const problemasAnexo = (entrega.emails_recebidos?.avisos ?? []).filter((x) => /anexo/i.test(x));
   const arquivos = (
     <Bloco titulo="Arquivos da entrega">
+      {problemasAnexo.length ? (
+        <ul role="alert" className="mb-2 flex flex-col gap-1 rounded-xl bg-alerta-fundo px-3 py-2 text-sm text-alerta">
+          {problemasAnexo.map((x, i) => (
+            <li key={i}>{x}</li>
+          ))}
+        </ul>
+      ) : null}
       {!entrega.arquivos_entrega.length && !entrega.links.length ? (
         <p className="text-sm text-suave">Nenhum arquivo nem link{entrega.comentario ? " (só o texto do e-mail)" : ""}.</p>
       ) : (
