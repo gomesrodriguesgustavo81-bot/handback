@@ -8,6 +8,7 @@ import { contextoDaEmpresa } from "@/lib/empresa";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { restaurarGrupo } from "./acoes";
 import { AcoesEquipes } from "./acoes-equipes";
+import { IconeDrive, pastaDaTurmaNoDrive } from "@/lib/pastas-drive";
 import { CartaoGrupo } from "./cartao-grupo";
 
 export async function generateMetadata({ params }: PageProps<"/app/[slug]/grupos">): Promise<Metadata> {
@@ -36,6 +37,7 @@ export default async function ListaGrupos({ params }: PageProps<"/app/[slug]/gru
   const individual = turma?.modo === "individual";
   const nomes = quemEntrega(vc, turma?.modo ?? "grupos");
   const pessoas = grupos.reduce((n, g) => n + g.integrantes.length, 0);
+  const pastaDrive = turma ? await pastaDaTurmaNoDrive(supabase, turma.id) : null;
 
   return (
     <section className="flex flex-col gap-4">
@@ -45,6 +47,16 @@ export default async function ListaGrupos({ params }: PageProps<"/app/[slug]/gru
           {grupos.length} {grupos.length === 1 ? "cadastro" : "cadastros"} · {pessoas} {pessoas === 1 ? "pessoa" : "pessoas"}
         </span>
       </div>
+      {pastaDrive ? (
+        <a
+          href={pastaDrive}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex min-h-11 items-center gap-2 self-start rounded-xl border border-borda bg-cartao px-3 text-sm font-semibold text-marca-forte hover:bg-fundo"
+        >
+          <IconeDrive /> Abrir a pasta da turma no Google Drive
+        </a>
+      ) : null}
       {podeGerir ? (
         <AcoesEquipes
           slug={slug}

@@ -138,6 +138,11 @@ createServer(async (req, res) => {
       return res.end(f.dados ?? Buffer.alloc(0));
     }
     if (req.method === "GET") return json(200, { id, trashed: false });
+    if (req.method === "DELETE") {
+      drive.delete(id);
+      res.writeHead(204);
+      return res.end();
+    }
   }
   if (url.pathname === "/__agenda") {
     return json(200, Object.fromEntries([...agendas].map(([id, a]) => [id, { summary: a.summary, eventos: Object.fromEntries(a.eventos), envios: a.envios }])));

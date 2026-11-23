@@ -12,6 +12,8 @@ import { dataHoraBR } from "@/lib/textos";
 import { turmaAtual } from "@/lib/turma";
 import { desconectarDrive, levarAgora } from "./acoes";
 import { Antigos, LigarDrive } from "./painel";
+import { linksDasPastas } from "@/lib/drive";
+import { IconeDrive } from "@/lib/pastas-drive";
 
 export const metadata: Metadata = { title: "Google Drive" };
 
@@ -35,6 +37,8 @@ export default async function Drive({ params, searchParams }: PageProps<"/app/[s
     t?.drive_por && t.drive_por !== eu.user?.id && admin ? await admin.auth.admin.getUserById(t.drive_por).then((x) => x.data.user?.email ?? "outra pessoa") : null;
   const conectado = con && !con.invalida ? con : null;
   const meu = Boolean(t?.drive_por && t.drive_por === eu.user?.id);
+  const pastas = meu && admin && eu.user ? await linksDasPastas(admin, eu.user.id, [`turma:${turma.id}`, "raiz"]) : {};
+  const pasta = pastas[`turma:${turma.id}`] ?? pastas.raiz ?? null;
   const s = (sit ?? {}) as { no_drive?: number; esperando?: number; com_erro?: number };
   const grupoMin = vc.grupo.toLowerCase();
 
@@ -85,6 +89,16 @@ export default async function Drive({ params, searchParams }: PageProps<"/app/[s
             {s.esperando ? ` · ${s.esperando} esperando para ir` : ""}
             {s.com_erro ? ` · ${s.com_erro} com problema` : ""}. Pastas: Handback › {turma.nome} › cada {grupoMin}.
           </p>
+        ) : null}
+        {pasta ? (
+          <a
+            href={pasta}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-11 items-center gap-2 self-start rounded-xl bg-marca px-4 text-sm font-semibold text-sobre-marca hover:bg-marca-forte"
+          >
+            <IconeDrive /> Abrir a pasta no Google Drive
+          </a>
         ) : null}
         {meu && t?.drive_erro ? <p className="rounded-xl bg-erro-fundo px-3 py-2 text-sm text-erro">{t.drive_erro}</p> : null}
         {meu && s.esperando ? (

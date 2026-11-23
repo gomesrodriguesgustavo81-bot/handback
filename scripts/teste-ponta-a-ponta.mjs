@@ -1482,11 +1482,28 @@ try {
     const raiz = arvore.find((f) => f.name === "Handback");
     const pastaTurma = arvore.find((f) => f.name === "Turma A");
     const pastaEquipe = arvore.find((f) => f.name === "Equipe Azul");
+    const repetidas = arvore.filter((f) => /folder/.test(f.mimeType ?? "")).map((f) => `${f.parents?.[0] ?? ""}/${f.name}`);
+    const arquivosRep = arvore.filter((f) => !/folder/.test(f.mimeType ?? "")).map((f) => `${f.parents?.[0] ?? ""}/${f.name}`);
+    confere(new Set(repetidas).size === repetidas.length && new Set(arquivosRep).size === arquivosRep.length, `drive: nenhuma pasta nem arquivo repetido (${repetidas.length} pastas, ${arquivosRep.length} arquivos)`);
     confere(Boolean(raiz && pastaTurma && pastaEquipe) && arvore.some((f) => /^\d+ - .+/.test(f.name) && f.tamanho > 0), "drive: pastas Handback › Turma A › Equipe Azul criadas sozinhas, com os arquivos");
     await ana.p.reload();
     confere(await ana.p.getByRole("region", { name: "Arquivos da turma" }).getByText(new RegExp(`${totalA} arquivos? no Drive`)).isVisible(), "drive: a tela mostra quantos estão no Drive");
     await largura(ana.p, "google drive");
     await ana.p.screenshot({ path: `${FOTOS}/51-drive.png`, fullPage: true });
+    // Botões para abrir direto no Drive (só para quem tem a pasta no próprio Drive)
+    const idsDrive = Object.entries(await driveFalso());
+    const idTurma = idsDrive.find(([, f]) => f.name === "Turma A")?.[0];
+    const idEquipe = idsDrive.find(([, f]) => f.name === "Equipe Azul")?.[0];
+    const botaoPasta = ana.p.getByRole("link", { name: /Abrir a pasta no Google Drive/ });
+    confere((await botaoPasta.getAttribute("href")) === `https://drive.google.com/drive/folders/${idTurma}`, "drive: botão para abrir a pasta da turma direto no Drive");
+    await ana.p.goto(`${APP}/app/${SLUG}/grupos`);
+    confere((await ana.p.getByRole("link", { name: /pasta da turma no Google Drive/ }).getAttribute("href")) === `https://drive.google.com/drive/folders/${idTurma}`, "drive: Equipes tem o botão da pasta da turma");
+    const entAzul = sql(`select e.id ${daTurmaA} and g.nome = 'Equipe Azul' limit 1`);
+    await ana.p.goto(`${APP}/app/${SLUG}/entregas/${entAzul}`);
+    confere((await ana.p.getByRole("link", { name: /pasta da equipe no Google Drive/ }).getAttribute("href")) === `https://drive.google.com/drive/folders/${idEquipe}`, "drive: a entrega tem o botão da pasta da equipe");
+    const entProf = await prof.p.goto(`${APP}/app/${SLUG}/entregas/${entAzul}`);
+    confere(entProf.ok() && !(await prof.p.getByRole("link", { name: /no Google Drive/ }).count()), "drive: quem não ligou o Drive não vê o botão (a pasta é de outra pessoa)");
+    await ana.p.goto(`${APP}/app/${SLUG}/configuracoes/drive`);
 
     // Abrir pelo Handback continua funcionando (o Handback busca no Drive)
     const [entregaArq, arqId] = sql(`select e.id || '|' || a.id ${daTurmaA} and a.tipo = 'application/pdf' limit 1`).split("|");
@@ -1563,8 +1580,17 @@ try {
     await pp.goto(`${APP}/app/${SLUG}/entregas`);
     const lado = pp.getByRole("navigation", { name: "Seções da empresa" });
     const itens = (await lado.getByRole("link").allInnerTexts()).map((x) => x.trim());
-    confere(/^Entregas\|(Aulas|Encontros)\|Calendário\|Equipes\|Relatórios\|Moodle\|Configurações$/.test(itens.join("|")) && !(await pp.getByRole("button", { name: "Mais" }).count()), `computador: menu do lado com tudo à vista (${itens.join(", ")})`);
+    confere(/^Entregas\|(Aulas|Encontros)\|Calendário\|Equipes\|Relatórios\|Moodle\|Google Drive\|Configurações$/.test(itens.join("|")) && !(await pp.getByRole("button", { name: "Mais" }).count()), `computador: menu do lado com tudo à vista (${itens.join(", ")})`);
     await pp.screenshot({ path: `${FOTOS}/7e-computador.png` });
+    const largo = (await lado.boundingBox()).width;
+    await lado.getByRole("button", { name: "Recolher o menu" }).click();
+    await pp.waitForTimeout(400);
+    const estreito = (await lado.boundingBox()).width;
+    await pp.reload();
+    await pp.waitForTimeout(400);
+    confere(estreito < 70 && largo > 150 && (await lado.getByRole("button", { name: "Abrir o menu" }).isVisible()) && (await lado.boundingBox()).width < 70, `computador: o menu recolhe (${Math.round(largo)}→${Math.round(estreito)}px) e continua recolhido ao voltar`);
+    await pp.screenshot({ path: `${FOTOS}/7f-menu-recolhido.png` });
+    await lado.getByRole("button", { name: "Abrir o menu" }).click();
     await pc.close();
     await trocarTurma(ana.p, "Turma A");
   }

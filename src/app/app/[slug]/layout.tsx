@@ -41,12 +41,13 @@ export default async function LayoutEmpresa({
   const mais: ItemNav[] = [
     ...(podeAvaliar ? [{ href: `/app/${slug}/relatorios`, nome: "Relatórios", icone: "relatorios" as const }] : []),
     ...(podeGerir ? [{ href: `/app/${slug}/moodle`, nome: "Moodle", icone: "moodle" as const }] : []),
+    ...(podeGerir ? [{ href: `/app/${slug}/configuracoes/drive`, nome: "Google Drive", icone: "drive" as const }] : []),
   ];
   const configuracoes = podeGerir ? `/app/${slug}/configuracoes` : null;
   const paginasDeConfiguracao = podeGerir ? ["ajustes", "pessoas", "registro"].map((p) => `/app/${slug}/${p}`) : [];
 
   return (
-    <div className="flex flex-col gap-4 pb-20 lg:grid lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-start lg:gap-8 lg:pb-0 print:block print:pb-0">
+    <div className="flex flex-col gap-4 pb-20 lg:grid lg:grid-cols-[auto_minmax(0,1fr)] lg:items-start lg:gap-8 lg:pb-0 print:block print:pb-0">
       <Navegacao abas={abas} mais={mais} configuracoes={configuracoes} paginasDeConfiguracao={paginasDeConfiguracao} />
       <div className="flex min-w-0 flex-col gap-4">
       {!empresa.ativa ? (

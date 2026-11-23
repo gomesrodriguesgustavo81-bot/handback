@@ -64,13 +64,27 @@ async function criarPasta(acesso: string, nome: string, pai?: string): Promise<s
   return String((await json(r)).id);
 }
 
-/** Acha (ou cria de novo, se a pessoa apagou) a pasta guardada com esta chave. */
+/**
+ * Acha (ou cria de novo, se a pessoa apagou) a pasta guardada com esta chave.
+ * Se duas rodadas criarem a mesma pasta ao mesmo tempo, fica a primeira
+ * guardada e a outra é apagada (nada de pasta repetida no Drive).
+ */
 async function pasta(admin: SupabaseClient, userId: string, acesso: string, chave: string, nome: string, pai?: string): Promise<string> {
   const { data } = await admin.from("drive_pastas").select("pasta_id").eq("user_id", userId).eq("chave", chave).maybeSingle();
   if (data?.pasta_id && (await pastaExiste(acesso, data.pasta_id))) return data.pasta_id;
   const id = await criarPasta(acesso, nome, pai);
-  await admin.from("drive_pastas").upsert({ user_id: userId, chave, pasta_id: id }, { onConflict: "user_id,chave" });
-  return id;
+  if (data?.pasta_id) {
+    // A antiga foi apagada pela pessoa: troca, mas só se ninguém trocou antes.
+    const { data: trocou } = await admin.from("drive_pastas").update({ pasta_id: id }).match({ user_id: userId, chave, pasta_id: data.pasta_id }).select("pasta_id");
+    if (trocou?.length) return id;
+  } else {
+    const { data: entrou } = await admin.from("drive_pastas").upsert({ user_id: userId, chave, pasta_id: id }, { onConflict: "user_id,chave", ignoreDuplicates: true }).select("pasta_id");
+    if (entrou?.length) return id;
+  }
+  const { data: outra } = await admin.from("drive_pastas").select("pasta_id").eq("user_id", userId).eq("chave", chave).maybeSingle();
+  if (!outra?.pasta_id || outra.pasta_id === id) return id;
+  await fetch(`${enderecos().arquivos}/${encodeURIComponent(id)}`, { method: "DELETE", headers: { authorization: `Bearer ${acesso}` }, signal: AbortSignal.timeout(15_000) }).catch(() => undefined);
+  return outra.pasta_id;
 }
 
 async function enviarArquivo(acesso: string, nome: string, tipo: string, dados: Uint8Array, pai: string): Promise<string> {
@@ -121,6 +135,8 @@ export async function levarParaODrive(admin: SupabaseClient, ateMs: number): Pro
     if (!lista.length) return r;
     for (const a of lista) {
       if (Date.now() >= ateMs) {
+        // Devolve os que não deu tempo de levar, para a próxima rodada.
+        await admin.from("arquivos_entrega").update({ drive_pegou_em: null }).in("id", lista.slice(lista.indexOf(a)).map((x) => x.id));
         r.restam = true;
         return r;
       }
@@ -128,7 +144,7 @@ export async function levarParaODrive(admin: SupabaseClient, ateMs: number): Pro
       const acesso = acessos.get(a.drive_por);
       if (!acesso) {
         await admin.from("turmas").update({ drive_erro: "A conexão com o Google Drive expirou ou foi desconectada." }).eq("id", a.turma_id);
-        await admin.from("arquivos_entrega").update({ drive_tentativas: a.tentativas + 1, drive_erro: "sem conexão com o Drive" }).eq("id", a.id);
+        await admin.from("arquivos_entrega").update({ drive_tentativas: a.tentativas + 1, drive_erro: "sem conexão com o Drive", drive_pegou_em: null }).eq("id", a.id);
         r.erros++;
         continue;
       }
@@ -146,7 +162,7 @@ export async function levarParaODrive(admin: SupabaseClient, ateMs: number): Pro
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         if (e instanceof ErroDrive && e.status === 401) await admin.from("conexoes_google").update({ invalida: true }).eq("user_id", a.drive_por).eq("servico", "drive");
-        await admin.from("arquivos_entrega").update({ drive_tentativas: a.tentativas + 1, drive_erro: msg.slice(0, 300) }).eq("id", a.id);
+        await admin.from("arquivos_entrega").update({ drive_tentativas: a.tentativas + 1, drive_erro: msg.slice(0, 300), drive_pegou_em: null }).eq("id", a.id);
         r.erros++;
       }
     }
@@ -158,4 +174,15 @@ export async function levarParaODrive(admin: SupabaseClient, ateMs: number): Pro
 /** Mesma coisa, com o tempo em milissegundos a partir de agora. */
 export function levarParaODrivePor(admin: SupabaseClient, ms: number): Promise<RodadaDrive> {
   return levarParaODrive(admin, Date.now() + ms);
+}
+
+/**
+ * Endereços das pastas do Drive que o Handback criou para esta pessoa
+ * (só as dela: a pasta fica no Drive de quem ligou). Chaves: "raiz",
+ * "turma:<id>", "grupo:<id>".
+ */
+export async function linksDasPastas(admin: SupabaseClient, userId: string, chaves: string[]): Promise<Record<string, string>> {
+  if (!chaves.length) return {};
+  const { data } = await admin.from("drive_pastas").select("chave, pasta_id").eq("user_id", userId).in("chave", chaves);
+  return Object.fromEntries((data ?? []).map((p) => [p.chave as string, `https://drive.google.com/drive/folders/${encodeURIComponent(String(p.pasta_id))}`]));
 }

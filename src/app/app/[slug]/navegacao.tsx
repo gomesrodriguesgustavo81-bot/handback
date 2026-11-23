@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
-export type Icone = "entregas" | "aulas" | "calendario" | "equipes" | "relatorios" | "moodle" | "config" | "conta" | "avisos";
+export type Icone = "entregas" | "aulas" | "calendario" | "equipes" | "relatorios" | "moodle" | "config" | "conta" | "avisos" | "drive";
 export type ItemNav = { href: string; nome: string; icone: Icone };
 
 const TRACOS: Record<Icone | "mais", ReactNode> = {
@@ -38,6 +38,7 @@ const TRACOS: Record<Icone | "mais", ReactNode> = {
   ),
   avisos: <path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 20a2 2 0 0 0 4 0" />,
   mais: <path d="M4 7h16M4 12h16M4 17h16" />,
+  drive: <path d="M8 3h8l6 11-4 7H6l-4-7zM8 3l6 11H2M16 3l-6 11M22 14H10l-4 7" />,
 };
 
 function Desenho({ icone }: { icone: Icone | "mais" }) {
@@ -70,12 +71,8 @@ export function Navegacao({
   const extras: ItemNav[] = [...mais, ...(configuracoes ? [{ href: configuracoes, nome: "Configurações", icone: "config" as const }] : [])];
   // A aba mais específica ganha (Relatórios fica acesa, não Entregas).
   const todas = [...abas, ...extras];
-  const ativa = (item: ItemNav) => {
-    if (item.icone === "config") return emConfiguracao;
-    if (emConfiguracao) return false;
-    const candidatas = todas.filter((x) => x.icone !== "config" && dentro(x.href)).sort((a, b) => b.href.length - a.href.length);
-    return candidatas[0]?.href === item.href;
-  };
+  const melhor = todas.filter((x) => dentro(x.href)).sort((a, b) => b.href.length - a.href.length)[0];
+  const ativa = (item: ItemNav) => (melhor ? melhor.href === item.href : item.icone === "config" && emConfiguracao);
   const maisAtivo = extras.some(ativa);
 
   // Esc fecha a gaveta; trocar de página também.
@@ -91,23 +88,59 @@ export function Navegacao({
     setAberto(false);
   }
 
+  // Menu do lado recolhido (lembrado neste navegador).
+  const [recolhido, setRecolhido] = useState(false);
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setRecolhido(localStorage.getItem("hb-menu-recolhido") === "1");
+    } catch {}
+  }, []);
+  const alternarMenu = () =>
+    setRecolhido((x) => {
+      try {
+        localStorage.setItem("hb-menu-recolhido", x ? "0" : "1");
+      } catch {}
+      return !x;
+    });
+
   const mostrarBarra = abas.length + (extras.length ? 1 : 0) > 1;
 
   return (
     <>
-      {/* Computador: menu na lateral. */}
-      <nav aria-label="Seções da empresa" className="hidden flex-col gap-1 self-start lg:sticky lg:top-6 lg:flex print:hidden">
+      {/* Computador: menu na lateral (dá para recolher e deixar só os ícones). */}
+      <nav
+        aria-label="Seções da empresa"
+        className={`hidden flex-col gap-1 self-start transition-[width] duration-200 lg:sticky lg:top-6 lg:flex print:hidden ${recolhido ? "lg:w-12" : "lg:w-52"}`}
+      >
+        <button
+          type="button"
+          onClick={alternarMenu}
+          aria-expanded={!recolhido}
+          aria-label={recolhido ? "Abrir o menu" : "Recolher o menu"}
+          title={recolhido ? "Abrir o menu" : "Recolher o menu"}
+          className="mb-1 flex min-h-10 items-center gap-3 rounded-xl px-3 text-sm font-medium text-suave hover:bg-cartao hover:text-texto"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0">
+            <rect x="3" y="4" width="18" height="16" rx="2" />
+            <path d={recolhido ? "M9 4v16M13 10l2 2-2 2" : "M9 4v16M16 10l-2 2 2 2"} />
+          </svg>
+          {recolhido ? null : <span>Recolher</span>}
+        </button>
         {todas.map((a) => (
           <Link
             key={a.href}
             href={a.href}
             aria-current={ativa(a) ? "page" : undefined}
+            title={recolhido ? a.nome : undefined}
             className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-[15px] transition-colors ${
               ativa(a) ? "bg-acento/40 font-semibold text-texto dark:bg-marca-clara" : "font-medium text-suave hover:bg-cartao hover:text-texto"
             }`}
           >
-            <Desenho icone={a.icone} />
-            {a.nome}
+            <span className="shrink-0">
+              <Desenho icone={a.icone} />
+            </span>
+            <span className={recolhido ? "sr-only" : "truncate"}>{a.nome}</span>
           </Link>
         ))}
       </nav>

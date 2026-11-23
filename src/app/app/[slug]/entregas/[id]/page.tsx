@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { BuscarAnexos } from "./buscar-anexos";
+import { IconeDrive, pastaDaEquipeNoDrive } from "@/lib/pastas-drive";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BotaoAnalisar, FolhaDevolutiva } from "@/components/analise";
@@ -84,6 +85,7 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
     .maybeSingle();
   const entrega = data as Entrega | null;
   if (!entrega) notFound();
+  const pastaDrive = await pastaDaEquipeNoDrive(supabase, entrega.grupo_id);
 
   const [{ data: analiseBruta }, { data: daEtapa }, { data: doGrupo }, gmail, { data: destinos }, { data: org }] = await Promise.all([
     supabase.from("analises").select("*").eq("entrega_id", entrega.id).maybeSingle(),
@@ -192,6 +194,16 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
           </ul>
           {podeBuscarDeNovo ? <BuscarAnexos slug={slug} entregaId={entrega.id} /> : null}
         </div>
+      ) : null}
+      {pastaDrive ? (
+        <a
+          href={pastaDrive}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mb-2 inline-flex min-h-11 items-center gap-2 self-start rounded-xl border border-borda px-3 text-sm font-semibold text-marca-forte hover:bg-fundo"
+        >
+          <IconeDrive /> Abrir a pasta da equipe no Google Drive
+        </a>
       ) : null}
       {!entrega.arquivos_entrega.length && !entrega.links.length ? (
         <p className="text-sm text-suave">Nenhum arquivo nem link{entrega.comentario ? " (só o texto do e-mail)" : ""}.</p>
