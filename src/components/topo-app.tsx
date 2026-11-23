@@ -3,9 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { aplicarTema, temaAtual, type Tema } from "@/lib/tema";
 import { Marca } from "./marca";
 
-type Empresa = { slug: string; nome: string; papel: string; palavra: string };
+const TEMAS: { valor: Tema; nome: string }[] = [
+  { valor: "claro", nome: "Claro" },
+  { valor: "escuro", nome: "Escuro" },
+  { valor: "sistema", nome: "Sistema" },
+];
+
+type Empresa = { slug: string; nome: string; papel: string; palavra: string; avalia?: boolean };
 
 function iniciais(email: string) {
   const partes = email.split("@")[0].split(/[._-]+/).filter(Boolean);
@@ -21,6 +28,11 @@ function iniciais(email: string) {
 export function TopoApp({ email, dono, empresas }: { email: string; dono: boolean; empresas: Empresa[] }) {
   const caminho = usePathname();
   const [aberto, setAberto] = useState(false);
+  const [tema, setTema] = useState<Tema>("sistema");
+  const abrirMenu = () => {
+    setTema(temaAtual());
+    setAberto((x) => !x);
+  };
   const slug = caminho.match(/^\/app\/([^/]+)/)?.[1];
   const empresa = empresas.find((e) => e.slug === slug);
   const item = "flex min-h-12 w-full items-center rounded-lg px-3 text-left text-[15px] hover:bg-fundo";
@@ -47,7 +59,7 @@ export function TopoApp({ email, dono, empresas }: { email: string; dono: boolea
             aria-label="Sua conta"
             aria-expanded={aberto}
             aria-haspopup="menu"
-            onClick={() => setAberto((x) => !x)}
+            onClick={abrirMenu}
             className="flex size-10 items-center justify-center rounded-full bg-acento text-sm font-bold text-sobre-acento transition-transform active:scale-95"
           >
             {iniciais(email)}
@@ -63,6 +75,32 @@ export function TopoApp({ email, dono, empresas }: { email: string; dono: boolea
                 <Link role="menuitem" href="/conta" onClick={() => setAberto(false)} className={item}>
                   Minha conta
                 </Link>
+                {empresa?.avalia ? (
+                  <Link role="menuitem" href={`/app/${empresa.slug}/configuracoes/email`} onClick={() => setAberto(false)} className={item}>
+                    E-mail de envio (Gmail)
+                  </Link>
+                ) : null}
+                <div className="mx-1 my-1 border-t border-borda" />
+                <span id="rotulo-tema" className="px-3 pt-1 text-xs font-semibold text-suave">
+                  Aparência
+                </span>
+                <div role="group" aria-labelledby="rotulo-tema" className="mx-1 mb-1 flex gap-1 rounded-xl bg-fundo p-1">
+                  {TEMAS.map((t) => (
+                    <button
+                      key={t.valor}
+                      type="button"
+                      aria-pressed={tema === t.valor}
+                      onClick={() => {
+                        aplicarTema(t.valor);
+                        setTema(t.valor);
+                      }}
+                      className={`min-h-10 flex-1 rounded-lg text-[13px] font-semibold transition-colors ${tema === t.valor ? "bg-acento text-sobre-acento" : "text-texto hover:bg-cartao"}`}
+                    >
+                      {t.nome}
+                    </button>
+                  ))}
+                </div>
+                <div className="mx-1 mb-1 border-t border-borda" />
                 {empresas.length > 1 ? (
                   <Link role="menuitem" href="/app?todas=1" onClick={() => setAberto(false)} className={item}>
                     Trocar de {(empresa?.palavra ?? "espaço").toLowerCase()}

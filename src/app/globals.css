@@ -1,5 +1,16 @@
 @import "tailwindcss";
 
+@custom-variant dark {
+  &:where([data-tema="escuro"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-tema="claro"]) *) {
+      @slot;
+    }
+  }
+}
+
 /* Cores da marca Handback. Mude aqui para mudar no app inteiro. */
 :root {
   /* Caminho B · Volta: verde-escuro com verde-limão vivo */
@@ -35,8 +46,10 @@
   --ok-fundo: #dcf2e6;
 }
 
+/* Tema escuro: segue o aparelho ("sistema"), a não ser que a pessoa escolha claro ou escuro no menu da conta. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-tema="claro"]) {
+    color-scheme: dark;
     --fundo: #0b1715;
     --cartao: #12221f;
     --texto: #e6f2ee;
@@ -67,6 +80,39 @@
     --ok: #8fdcb1;
     --ok-fundo: #173626;
   }
+}
+
+:root[data-tema="escuro"] {
+  color-scheme: dark;
+  --fundo: #0b1715;
+  --cartao: #12221f;
+  --texto: #e6f2ee;
+  --texto-suave: #9fb4ae;
+  --borda: #23403b;
+  --marca: #c6f15a;
+  --marca-forte: #d9f88f;
+  --marca-clara: #1d3a2f;
+  --sobre-marca: #0e2b28;
+  --acento: #c6f15a;
+  --sobre-acento: #0e2b28;
+  --alerta: #f3c56b;
+  --alerta-fundo: #33280f;
+  --erro: #f59a91;
+  --erro-fundo: #3a1816;
+  --exc: #7fdcc4;
+  --exc-fundo: #163a31;
+  --bom: #9cc2f5;
+  --bom-fundo: #1a2b45;
+  --reg: #f1c27a;
+  --reg-fundo: #3a2c10;
+  --ruim: #f4a39a;
+  --ruim-fundo: #3d1a17;
+  --neutro: #b5c0bb;
+  --neutro-fundo: #27302d;
+  --info: #a9c1f2;
+  --info-fundo: #1c2740;
+  --ok: #8fdcb1;
+  --ok-fundo: #173626;
 }
 
 @theme inline {

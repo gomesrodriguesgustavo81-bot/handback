@@ -18,7 +18,12 @@ export function SinalSalvo({ estado, erro }: { estado: Estado; erro: string }) {
 }
 
 /** Lógica comum: salva um campo e mostra o sinal. */
-export function useSalvar(slug: string, campo: string, inicial: string) {
+export function useSalvar(
+  slug: string,
+  campo: string,
+  inicial: string,
+  acao: (valor: string) => Promise<{ ok: boolean; mensagem: string }> = (valor) => salvarConfiguracao(slug, campo, valor),
+) {
   const router = useRouter();
   const ultimo = useRef(inicial);
   const [estado, setEstado] = useState<Estado>("parado");
@@ -28,7 +33,7 @@ export function useSalvar(slug: string, campo: string, inicial: string) {
     if (valor.trim() === ultimo.current.trim()) return;
     setEstado("salvando");
     iniciar(async () => {
-      const r = await salvarConfiguracao(slug, campo, valor);
+      const r = await acao(valor);
       if (r.ok) {
         ultimo.current = valor;
         setEstado("salvo");

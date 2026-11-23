@@ -30,8 +30,8 @@ const verde = { id: 13, name: "Grupo Verde" };
 const aluno = [{ shortname: "student" }];
 const PESSOAS = [
   { id: 2, fullname: "Marina Teixeira", email: "marina@ava.test", roles: [{ shortname: "editingteacher" }], groups: [] },
-  { id: 101, fullname: "Ana Souza", email: "ana.souza@aluno.test", roles: aluno, groups: [azul] },
-  { id: 102, fullname: "Bruno Lima", email: "bruno.lima@aluno.test", roles: aluno, groups: [azul] },
+  { id: 101, fullname: "Ana Souza", email: "ana.souza@aluno.test", idnumber: "2026-0312", roles: aluno, groups: [azul] },
+  { id: 102, fullname: "Bruno Lima", email: "bruno.lima@aluno.test", username: "11223344", roles: aluno, groups: [azul] },
   { id: 103, fullname: "Carla Dias", email: "carla.dias@aluno.test", roles: aluno, groups: [verde] },
   { id: 104, fullname: "Diego Rocha", roles: aluno, groups: [] }, // e-mail escondido pelo Moodle
 ];

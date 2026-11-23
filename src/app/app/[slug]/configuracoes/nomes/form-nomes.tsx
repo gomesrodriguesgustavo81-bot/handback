@@ -4,7 +4,7 @@ import { useState } from "react";
 import { CampoAuto } from "@/components/campo-auto";
 import { plural } from "@/lib/nomes";
 
-type Palavras = { organizacao: string; espaco: string; etapa: string; grupo: string; pessoa: string; avaliador: string };
+type Palavras = { organizacao: string; espaco: string; etapa: string; grupo: string; pessoa: string; avaliador: string; matricula: string };
 
 const CAMPOS: { chave: keyof Palavras; rotulo: string; dica: string }[] = [
   { chave: "organizacao", rotulo: "Como você chama este espaço?", dica: "Ex.: Escola, Escritório, Time, Hub, Agência" },
@@ -13,6 +13,7 @@ const CAMPOS: { chave: keyof Palavras; rotulo: string; dica: string }[] = [
   { chave: "grupo", rotulo: "Quem entrega junto", dica: "Ex.: Equipe, Squad, Time, Grupo" },
   { chave: "pessoa", rotulo: "Cada pessoa", dica: "Ex.: Aluno, Residente, Colaborador" },
   { chave: "avaliador", rotulo: "Quem avalia", dica: "Ex.: Professor, Gestor, Mentor" },
+  { chave: "matricula", rotulo: "Nome do número de identificação (opcional)", dica: "Ex.: Matrícula, nº USP, RA" },
 ];
 
 /** Nomes do dia a dia, com a prévia do topo e das abas mudando enquanto a pessoa digita. Salva sozinho. */

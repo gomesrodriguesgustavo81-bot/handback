@@ -20,7 +20,7 @@ export default async function Nomes({ params }: PageProps<"/app/[slug]/configura
       <FormNomes
         slug={slug}
         nome={empresa.nome}
-        inicial={{ organizacao: v.organizacao, espaco: v.espaco, etapa: v.etapa, grupo: v.grupo, pessoa: v.pessoa, avaliador: v.avaliador }}
+        inicial={{ organizacao: v.organizacao, espaco: v.espaco, etapa: v.etapa, grupo: v.grupo, pessoa: v.pessoa, avaliador: v.avaliador, matricula: v.matricula }}
       />
     </div>
   );

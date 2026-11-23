@@ -932,6 +932,25 @@ try {
       from public.grupos g join public.turmas t on t.id = g.turma_id where t.nome = 'Design de Interação' and t.org_id = (select id from public.organizacoes where slug = '${SLUG}')`)
       === "Diego Rocha: | Grupo Azul:ana.souza@aluno.test,bruno.lima@aluno.test | Grupo Verde:carla.dias@aluno.test", "Moodle: grupos com os e-mails; aluno sem grupo vira o próprio grupo; professora fica de fora");
 
+    confere(sql(`select string_agg(i.nome || '=' || i.matricula, ' | ' order by i.email) from public.integrantes i join public.turmas t on t.id = i.turma_id
+      where t.nome = 'Design de Interação' and t.org_id = (select id from public.organizacoes where slug = '${SLUG}')`)
+      === "Ana Souza=2026-0312 | Bruno Lima=11223344 | Carla Dias=", "Moodle: nome e matrícula vêm sozinhos (número de identificação ou usuário só com números); sem número fica vazio");
+    {
+      const urlTurma = ana.p.url();
+      const azul = sql(`select g.id from public.grupos g join public.turmas t on t.id = g.turma_id where g.nome = 'Grupo Azul' and t.nome = 'Design de Interação' and t.org_id = (select id from public.organizacoes where slug = '${SLUG}')`);
+      await ana.p.goto(`${APP}/app/${SLUG}/grupos/${azul}`);
+      const lista = ana.p.getByRole("region", { name: "Integrantes" });
+      await lista.getByText("Os nomes vieram do Moodle").waitFor();
+      confere(await lista.getByText("Ana Souza").isVisible() && await lista.getByText("2026-0312").isVisible(), "Moodle: o cadastro mostra nome e matrícula de cada aluno");
+      await lista.getByRole("button", { name: "Editar Bruno Lima" }).click();
+      await lista.getByLabel("Matrícula (opcional)").fill("99887766");
+      await lista.getByLabel("Matrícula (opcional)").press("Enter");
+      await lista.getByText("Salvo ✓").waitFor();
+      confere(sql(`select matricula from public.integrantes where email = 'bruno.lima@aluno.test' and grupo_id = '${azul}'`) === "99887766", "corrigir a matrícula salva sozinho");
+      await largura(ana.p, "integrantes com matrícula");
+      await ana.p.screenshot({ path: `${FOTOS}/28b-integrantes.png`, fullPage: true });
+      await ana.p.goto(urlTurma);
+    }
     await ana.p.getByRole("link", { name: "Ver as entregas" }).click();
     const faixa = ana.p.getByRole("region", { name: "Moodle" });
     await faixa.getByText("Ligada ao Moodle · Design de Interação").waitFor();
@@ -1003,6 +1022,67 @@ try {
     confere(sql(turmaMoodle) !== "sem", "Moodle: ligar de novo religa a turma que já existia");
     await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
     await trocarTurma(ana.p, "Turma A");
+  }
+
+  // 7h) Aparência, aba E-mail e calendário
+  {
+    await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
+    let menu = await menuConta(ana.p);
+    await menu.getByRole("button", { name: "Escuro" }).click();
+    confere((await ana.p.evaluate(() => document.documentElement.dataset.tema)) === "escuro", "tema escuro muda a tela na hora");
+    await ana.p.reload();
+    confere((await ana.p.evaluate(() => document.documentElement.dataset.tema)) === "escuro", "tema escuro continua depois de recarregar");
+    confere((await ana.p.evaluate(() => getComputedStyle(document.body).backgroundColor)) === "rgb(11, 23, 21)", "no tema escuro o fundo fica escuro");
+    await ana.p.screenshot({ path: `${FOTOS}/40-tema-escuro.png`, fullPage: true });
+    menu = await menuConta(ana.p);
+    confere((await menu.getByRole("button", { name: "Escuro" }).getAttribute("aria-pressed")) === "true", "menu mostra o tema escolhido");
+    await menu.getByRole("button", { name: "Claro" }).click();
+    confere((await ana.p.evaluate(() => getComputedStyle(document.body).backgroundColor)) === "rgb(244, 247, 245)", "tema claro volta o fundo claro");
+    await menu.getByRole("button", { name: "Sistema" }).click();
+    confere((await ana.p.evaluate(() => document.documentElement.dataset.tema)) === undefined, "tema Sistema segue o aparelho");
+
+    // E-mail: conectar abre só uma janelinha do Google, que fecha sozinha
+    await menu.getByRole("menuitem", { name: "E-mail de envio (Gmail)" }).click();
+    await ana.p.getByRole("heading", { name: "E-mail", exact: true }).waitFor();
+    const [janela] = await Promise.all([ana.p.waitForEvent("popup"), ana.p.getByRole("link", { name: "Conectar com Google" }).click()]);
+    await ana.p.getByText("Gmail conectado", { exact: true }).waitFor();
+    await janela.waitForEvent("close", { timeout: 10000 }).catch(() => {});
+    confere(janela.isClosed(), "a janelinha do Google fecha sozinha");
+    confere(ana.p.url().endsWith("/configuracoes/email") && (await ana.p.getByText("professora@gmail.test").isVisible()), "conecta o Gmail sem sair da tela");
+    await largura(ana.p, "aba E-mail");
+    await ana.p.screenshot({ path: `${FOTOS}/41-email.png`, fullPage: true });
+    await ana.p.getByRole("button", { name: "Desconectar Gmail" }).click();
+    confere(await ana.p.getByText(/Desconectar\? As devolutivas param/).isVisible(), "desconectar pede confirmação na tela");
+    await ana.p.getByRole("button", { name: "Não" }).click();
+    confere(await ana.p.getByText("Gmail conectado", { exact: true }).isVisible(), "dizer Não mantém o Gmail");
+    await ana.p.getByRole("button", { name: "Desconectar Gmail" }).click();
+    await ana.p.getByRole("button", { name: "Sim, confirmar" }).click();
+    await ana.p.getByText("Envie pelo seu Gmail").waitFor();
+    confere(sql(`select count(*) from public.contas_gmail g join auth.users u on u.id = g.user_id where u.email = '${ANA}'`) === "0", "desconectar apaga a ligação do Gmail");
+
+    // Calendário na aba das aulas
+    const hoje = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
+    const umaEtapa = sql(`select e.id || '|' || coalesce(e.recebe_ate::text, '') from public.etapas e join public.turmas t on t.id = e.turma_id
+      where t.nome = 'Turma A' and t.org_id = (select id from public.organizacoes where slug = '${SLUG}') order by e.numero limit 1`);
+    const [idEtapa, prazoAntigo] = umaEtapa.split("|");
+    sql(`update public.etapas set recebe_ate = '${hoje}' where id = '${idEtapa}'`);
+    await ana.p.goto(`${APP}/app/${SLUG}/etapas`);
+    await ana.p.getByRole("link", { name: "Calendário" }).click();
+    await ana.p.waitForURL(/ver=calendario/);
+    const diaHoje = ana.p.getByRole("button", { name: /, hoje/ });
+    confere((await diaHoje.getAttribute("aria-pressed")) === "true" && /vence/.test(await diaHoje.getAttribute("aria-label")), "calendário abre no dia de hoje, com o prazo marcado");
+    const doDia = ana.p.getByRole("region", { name: "Dia escolhido" });
+    confere(await doDia.getByText(/Prazo de entrega · \d+ de \d+ já entregaram/).isVisible() && await doDia.getByText("Vence", { exact: true }).isVisible(), "tocar no dia mostra o que vence e quantos já entregaram");
+    confere(await ana.p.getByText("Abre", { exact: true }).isVisible() && await ana.p.getByText("Hoje", { exact: true }).first().isVisible(), "legenda com Abre, Vence e Hoje em maiúscula");
+    await largura(ana.p, "calendário");
+    await ana.p.screenshot({ path: `${FOTOS}/42-calendario.png`, fullPage: true });
+    await ana.p.getByRole("button", { name: "Próximo mês" }).click();
+    await doDia.getByText(/Prazo de entrega/).waitFor();
+    confere(true, "trocar de mês mantém o dia escolhido");
+    await ana.p.getByRole("link", { name: "Lista" }).click();
+    await ana.p.waitForURL((u) => !u.search.includes("calendario"));
+    confere(!(await ana.p.getByRole("grid").count()), "volta para a lista");
+    sql(`update public.etapas set recebe_ate = ${prazoAntigo ? `'${prazoAntigo}'` : "null"} where id = '${idEtapa}'`);
   }
 
   // 7f) Privacidade: o dono não vê o conteúdo; o cliente libera o suporte

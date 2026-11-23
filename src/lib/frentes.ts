@@ -37,5 +37,7 @@ export type Vocabulario = {
   /** Como o cliente chama o próprio espaço no Handback (Escola, Escritório, Time…). */
   organizacao?: string;
   organizacoes?: string;
+  /** Como se chama o número de cada aluno (Matrícula, nº USP, RA…). */
+  matricula?: string;
   generos?: Partial<Record<"etapa" | "grupo" | "espaco" | "pessoa" | "organizacao", "f" | "m">>;
 };

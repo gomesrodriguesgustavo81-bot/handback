@@ -185,3 +185,19 @@ export async function cadastrarEmLote(slug: string, _a: Resultado, dados: FormDa
     vez: Date.now(),
   };
 }
+
+/** Corrige o nome ou a matrícula de um integrante (salva sozinho na tela). */
+export async function salvarIntegrante(slug: string, id: string, campo: "nome" | "matricula", valorBruto: string): Promise<{ ok: boolean; mensagem: string }> {
+  const { empresa, podeGerir } = await contextoDaEmpresa(slug);
+  if (!podeGerir) return { ok: false, mensagem: "Só quem administra pode mudar isso." };
+  if (!/^[0-9a-f-]{36}$/i.test(id) || (campo !== "nome" && campo !== "matricula")) return { ok: false, mensagem: "Campo desconhecido." };
+  const valor = String(valorBruto ?? "").trim().replace(/\s+/g, " ");
+  if (campo === "nome" && (valor.length < 2 || valor.length > 200)) return { ok: false, mensagem: "Escreva o nome (de 2 a 200 letras)." };
+  if (campo === "matricula" && valor.length > 40) return { ok: false, mensagem: "No máximo 40 caracteres." };
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.from("integrantes").update({ [campo]: valor }).eq("id", id).eq("org_id", empresa.id).select("id");
+  if (error) return { ok: false, mensagem: mensagemDeErro(error, "Não foi possível salvar. Tente de novo.") };
+  if (!data?.length) return { ok: false, mensagem: "Não foi possível salvar (sem permissão ou item apagado)." };
+  revalidatePath(`/app/${slug}/grupos`, "layout");
+  return { ok: true, mensagem: "Salvo." };
+}

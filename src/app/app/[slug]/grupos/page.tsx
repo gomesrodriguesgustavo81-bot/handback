@@ -27,7 +27,7 @@ export default async function ListaGrupos({ params }: PageProps<"/app/[slug]/gru
   const turma = await turmaAtual(empresa.id);
   const { data: grupos } = await supabase
     .from("grupos")
-    .select("id, nome, tema, ativo, integrantes(email)")
+    .select("id, nome, tema, ativo, integrantes(email, nome)")
     .eq("org_id", empresa.id)
     .eq("turma_id", turma?.id ?? "")
     .order("nome");
@@ -59,7 +59,7 @@ export default async function ListaGrupos({ params }: PageProps<"/app/[slug]/gru
                   {g.tema ? <span className="text-sm">{g.tema}</span> : null}
                   <span className="break-words text-sm text-suave">
                     {g.integrantes.length
-                      ? g.integrantes.map((i) => i.email).join(", ")
+                      ? g.integrantes.map((i) => i.nome || i.email).join(", ")
                       : "Nenhum e-mail cadastrado"}
                   </span>
                 </Link>

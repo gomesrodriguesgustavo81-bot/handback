@@ -251,6 +251,9 @@ export type Participante = {
   id: number;
   fullname: string;
   email?: string;
+  /** Número de identificação (matrícula). Só vem se o site mostra ao professor. */
+  idnumber?: string;
+  username?: string;
   roles?: { shortname: string }[];
   groups?: { id: number; name: string }[];
 };
@@ -293,6 +296,18 @@ export async function infoDoSite(site: string, chave: string): Promise<InfoSite>
 
 export function cursosDaPessoa(site: string, chave: string, usuario: number) {
   return chamar<Curso[]>(site, chave, "core_enrol_get_users_courses", { userid: usuario });
+}
+
+/**
+ * Matrícula do aluno no Moodle: o "número de identificação" ou, se o site
+ * usa o próprio número como usuário (como no e-Disciplinas da USP), o
+ * nome de usuário quando ele é só números. Vazio se o site não mostra.
+ */
+export function matriculaDe(p: Pick<Participante, "idnumber" | "username">): string {
+  const id = (p.idnumber ?? "").trim();
+  if (id && id.length <= 40) return id;
+  const usuario = (p.username ?? "").trim();
+  return /^\d{4,15}$/.test(usuario) ? usuario : "";
 }
 
 export function participantes(site: string, chave: string, curso: number) {

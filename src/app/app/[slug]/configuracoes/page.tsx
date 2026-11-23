@@ -48,6 +48,7 @@ export default async function Configuracoes({ params }: PageProps<"/app/[slug]/c
     {
       titulo: "Avaliação",
       itens: [
+        { nome: "E-mail (Gmail)", detalhe: "De onde saem as devolutivas · conectar ou desconectar", href: `${base}/configuracoes/email` },
         { nome: "Conceitos e IA", detalhe: "O que vale cada conceito, regra do checklist, exemplos", href: `${base}/configuracoes/avaliacao` },
         {
           nome: "Nomes usados aqui",

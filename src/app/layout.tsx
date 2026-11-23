@@ -22,9 +22,15 @@ export const viewport: Viewport = {
   ],
 };
 
+const TEMA = `try{var m=document.cookie.match(/(?:^|; )hb_tema=(claro|escuro)/);if(m)document.documentElement.dataset.tema=m[1]}catch(e){}`;
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="pt-BR" className={`h-full antialiased ${titulo.variable} ${texto.variable}`}>
+    <html lang="pt-BR" suppressHydrationWarning className={`h-full antialiased ${titulo.variable} ${texto.variable}`}>
+      <head>
+        {/* Aplica o tema escolhido (claro/escuro) antes de desenhar a tela, para não piscar. */}
+        <script dangerouslySetInnerHTML={{ __html: TEMA }} />
+      </head>
       <body className="flex min-h-full flex-col">{children}</body>
     </html>
   );

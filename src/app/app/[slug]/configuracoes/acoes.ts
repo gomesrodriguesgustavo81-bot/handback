@@ -7,7 +7,7 @@ import { criarClienteServidor } from "@/lib/supabase/server";
 
 export type Salvo = { ok: boolean; mensagem: string };
 
-const PALAVRAS = ["organizacao", "espaco", "etapa", "grupo", "pessoa", "avaliador"] as const;
+const PALAVRAS = ["organizacao", "espaco", "etapa", "grupo", "pessoa", "avaliador", "matricula"] as const;
 const CONCEITOS = ["EXCELENTE", "BOM", "REGULAR", "RUIM"] as const;
 
 /**
@@ -38,6 +38,7 @@ export async function salvarConfiguracao(slug: string, campo: string, valorBruto
         grupo: atual.grupo,
         pessoa: atual.pessoa,
         avaliador: atual.avaliador,
+        matricula: atual.matricula,
         [chave]: valor,
       }),
     };

@@ -12,6 +12,7 @@ import {
   htmlParaTexto,
   notaDoConceito,
   notasDaTarefa,
+  matriculaDe,
   participantes,
   salvarDevolutiva,
   tarefasDoCurso,
@@ -71,7 +72,7 @@ export async function alunosDoCurso(c: Conexao, curso: number) {
 
 /** Atualiza grupos (ou alunos, no modo individual) e e-mails da turma com o que está no Moodle. */
 async function atualizarPessoas(admin: SupabaseClient, t: TurmaMoodle, alunos: Participante[]) {
-  type Desejado = { nome: string; membros: number[]; pessoas: { email: string; nome: string }[] };
+  type Desejado = { nome: string; membros: number[]; pessoas: { email: string; nome: string; matricula: string }[] };
   const desejados = new Map<string, Desejado>();
   for (const a of alunos) {
     const grupo = t.modo === "grupos" ? a.groups?.[0] : undefined;
@@ -79,7 +80,7 @@ async function atualizarPessoas(admin: SupabaseClient, t: TurmaMoodle, alunos: P
     const d = desejados.get(chave) ?? { nome: (grupo?.name ?? a.fullname).trim() || `Aluno ${a.id}`, membros: [], pessoas: [] };
     d.membros.push(a.id);
     const email = (a.email ?? "").trim().toLowerCase();
-    if (email && emailValido(email)) d.pessoas.push({ email, nome: a.fullname.trim().slice(0, 200) });
+    if (email && emailValido(email)) d.pessoas.push({ email, nome: a.fullname.trim().slice(0, 200), matricula: matriculaDe(a) });
     desejados.set(chave, d);
   }
 
@@ -106,10 +107,22 @@ async function atualizarPessoas(admin: SupabaseClient, t: TurmaMoodle, alunos: P
   }
 
   const integrantes = [...desejados].flatMap(([chave, d]) =>
-    d.pessoas.map((p) => ({ org_id: t.org_id, turma_id: t.id, grupo_id: idDoGrupo.get(chave)!, email: p.email, nome: p.nome })),
+    d.pessoas.map((p) => ({ org_id: t.org_id, turma_id: t.id, grupo_id: idDoGrupo.get(chave)!, email: p.email, nome: p.nome, matricula: p.matricula })),
   );
   if (integrantes.length) {
     await admin.from("integrantes").upsert(integrantes, { onConflict: "turma_id,email", ignoreDuplicates: true });
+    // Quem já estava cadastrado sem nome ou sem matrícula ganha o que veio do
+    // Moodle; o que o professor digitou nunca é trocado.
+    const { data: atuais } = await admin.from("integrantes").select("id, email, nome, matricula").eq("turma_id", t.id);
+    const vindos = new Map(integrantes.map((i) => [i.email, i]));
+    for (const a of atuais ?? []) {
+      const v = vindos.get(a.email);
+      if (!v) continue;
+      const mudar: Record<string, string> = {};
+      if (!a.nome && v.nome) mudar.nome = v.nome;
+      if (!a.matricula && v.matricula) mudar.matricula = v.matricula;
+      if (Object.keys(mudar).length) await admin.from("integrantes").update(mudar).eq("id", a.id);
+    }
   }
   return { grupos: desejados.size, alunos: alunos.length };
 }

@@ -45,7 +45,8 @@ export function generoDe(palavra: string): Genero {
   return /a$|ção$|dade$|gem$/.test(base) ? "f" : "m";
 }
 
-export type Vocab = Required<Omit<Vocabulario, "generos" | "pessoa" | "pessoas" | "espaco" | "espacos" | "organizacao" | "organizacoes">> & {
+export type Vocab = Required<Omit<Vocabulario, "generos" | "pessoa" | "pessoas" | "espaco" | "espacos" | "organizacao" | "organizacoes" | "matricula">> & {
+  matricula: string;
   organizacao: string;
   organizacoes: string;
   espaco: string;
@@ -62,6 +63,7 @@ export function completarVocabulario(v: Vocabulario): Vocab {
   const organizacao = v.organizacao || "Espaço";
   return {
     ...v,
+    matricula: v.matricula || "Matrícula",
     organizacao,
     organizacoes: v.organizacoes || plural(organizacao),
     espaco,
@@ -147,7 +149,7 @@ export function lerListaDePessoas(texto: string): { nome: string; email: string;
 }
 
 /** Monta o vocabulário completo só a partir das palavras no singular. */
-export function montarVocabulario(s: { etapa: string; grupo: string; espaco: string; pessoa: string; avaliador: string; organizacao?: string }) {
+export function montarVocabulario(s: { etapa: string; grupo: string; espaco: string; pessoa: string; avaliador: string; organizacao?: string; matricula?: string }) {
   const limpar = (x: string) => x.trim().replace(/\s+/g, " ").slice(0, 40);
   const etapa = limpar(s.etapa);
   const grupo = limpar(s.grupo);
@@ -155,7 +157,9 @@ export function montarVocabulario(s: { etapa: string; grupo: string; espaco: str
   const pessoa = limpar(s.pessoa);
   const avaliador = limpar(s.avaliador);
   const organizacao = limpar(s.organizacao ?? "") || "Espaço";
+  const matricula = limpar(s.matricula ?? "") || "Matrícula";
   return {
+    matricula,
     organizacao,
     organizacoes: plural(organizacao),
     etapa,

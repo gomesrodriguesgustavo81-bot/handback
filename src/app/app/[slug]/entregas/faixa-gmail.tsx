@@ -1,3 +1,4 @@
+import { ConectarGmail } from "@/components/conectar-gmail";
 import { BotaoConfirmar } from "@/components/form-acao";
 import { desconectarGmail } from "./acoes";
 
@@ -34,12 +35,7 @@ export function FaixaGmail({
         <strong>Conecte seu Gmail</strong> para enviar as devolutivas aprovadas
         {pendentes ? ` (${pendentes} esperando)` : ""}. O Handback só envia; não lê sua caixa.
       </p>
-      <a
-        href={conectarHref}
-        className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl bg-marca px-4 font-medium text-sobre-marca hover:bg-marca-forte"
-      >
-        Conectar meu Gmail
-      </a>
+      <ConectarGmail voltar={new URLSearchParams(conectarHref.split("?")[1] ?? "").get("voltar") ?? "/app"} texto="Conectar meu Gmail" destaque={false} />
     </div>
   );
 }

@@ -8,6 +8,8 @@ import { criarClienteServidor } from "@/lib/supabase/server";
 import { minusc } from "@/lib/textos";
 import { apagarGrupo, salvarGrupo } from "../acoes";
 import { CamposGrupo } from "../campos";
+import { Integrantes } from "./integrantes";
+import { completarVocabulario } from "@/lib/nomes";
 
 async function carregar(slug: string, id: string) {
   const ctx = await contextoDaEmpresa(slug);
@@ -15,7 +17,7 @@ async function carregar(slug: string, id: string) {
   const supabase = await criarClienteServidor();
   const { data: grupo } = await supabase
     .from("grupos")
-    .select("id, nome, tema, observacoes, ativo, integrantes(email)")
+    .select("id, nome, tema, observacoes, ativo, moodle_id, integrantes(id, email, nome, matricula)")
     .eq("org_id", ctx.empresa.id)
     .eq("id", id)
     .maybeSingle();
@@ -67,6 +69,15 @@ export default async function DetalheGrupo({ params }: PageProps<"/app/[slug]/gr
           </dl>
         )}
       </Cartao>
+      {grupo.integrantes.length ? (
+        <Integrantes
+          slug={slug}
+          lista={[...grupo.integrantes].sort((a, b) => (a.nome || a.email).localeCompare(b.nome || b.email, "pt-BR"))}
+          rotuloMatricula={completarVocabulario(v).matricula}
+          podeEditar={podeGerir}
+          doMoodle={Boolean(grupo.moodle_id)}
+        />
+      ) : null}
       {podeGerir ? (
         <div className="flex justify-end">
           <BotaoConfirmar
