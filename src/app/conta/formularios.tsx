@@ -4,10 +4,26 @@ import { useActionState, useState, useTransition } from "react";
 import { comecarDuasEtapas, conferirCodigo, confirmarDuasEtapas, definirSenha, type Estado } from "./acoes";
 import { Aviso, Botao, Campo } from "@/components/ui";
 
-export function FormSenha() {
+export function FormSenha({ pedirNome = false }: { pedirNome?: boolean }) {
   const [estado, acao, enviando] = useActionState<Estado, FormData>(definirSenha, null);
+  // Guardado aqui para não sumir se a senha for recusada.
+  const [nome, setNome] = useState("");
   return (
     <form action={acao} className="flex flex-col gap-4">
+      {pedirNome ? (
+        <Campo
+          rotulo="Seu nome"
+          name="nome"
+          autoComplete="name"
+          required
+          minLength={2}
+          maxLength={80}
+          placeholder="Ex.: Prof. Ana Souza"
+          value={nome}
+          onChange={(e) => setNome(e.target.value)}
+          dica="É este nome que os alunos veem nos e-mails do Handback (devolutivas e lembretes). Dá para trocar depois em Configurações › E-mail."
+        />
+      ) : null}
       <Campo
         rotulo="Nova senha"
         name="senha"

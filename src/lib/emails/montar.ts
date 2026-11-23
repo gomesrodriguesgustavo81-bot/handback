@@ -135,6 +135,12 @@ export function cabecalhoCodificado(texto: string): string {
   return `=?UTF-8?B?${Buffer.from(texto, "utf8").toString("base64")}?=`;
 }
 
+/** "Nome" <email> (o nome sempre codificado, para acentos e vírgulas não quebrarem o cabeçalho). */
+export function remetenteComNome(email: string, nome?: string | null): string {
+  const n = String(nome ?? "").replace(/[\r\n"<>]+/g, " ").trim().slice(0, 80);
+  return n ? `=?UTF-8?B?${Buffer.from(n, "utf8").toString("base64")}?= <${email}>` : email;
+}
+
 function semQuebra(s: string): string {
   return s.replace(/[\r\n]+/g, " ").trim();
 }
@@ -149,10 +155,13 @@ export function montarMensagem(
   de: string,
   d: DadosEnvio,
   fronteira = `hb-${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`,
+  /** Cópia oculta (ex.: para quem enviou guardar o registro). */
+  oculta: string[] = [],
 ): { raw: string; para: string[]; copia: string[]; assunto: string } {
   const para = d.para.map((x) => x.trim().toLowerCase()).filter((x) => EMAIL.test(x));
   const copia = d.copia.map((x) => x.trim().toLowerCase()).filter((x) => EMAIL.test(x) && !para.includes(x));
   if (!para.length) throw new Error("Ninguém para receber: cadastre os e-mails dos integrantes.");
+  const bcc = oculta.map((x) => x.trim().toLowerCase()).filter((x) => EMAIL.test(x) && !para.includes(x) && !copia.includes(x));
   const assunto = semQuebra(assuntoDoEnvio(d));
   const id = semQuebra(d.message_id);
   const refs = [...d.referencias.map(semQuebra), id].filter((x) => /^<[^<>\s]+>$/.test(x));
@@ -160,6 +169,7 @@ export function montarMensagem(
     `From: ${semQuebra(de)}`,
     `To: ${para.join(", ")}`,
     ...(copia.length ? [`Cc: ${copia.join(", ")}`] : []),
+    ...(bcc.length ? [`Bcc: ${bcc.join(", ")}`] : []),
     `Subject: ${cabecalhoCodificado(assunto)}`,
     ...(/^<[^<>\s]+>$/.test(id) ? [`In-Reply-To: ${id}`] : []),
     ...(refs.length ? [`References: ${[...new Set(refs)].join(" ")}`] : []),

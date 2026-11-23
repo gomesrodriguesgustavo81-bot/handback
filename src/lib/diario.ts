@@ -1,7 +1,8 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { enderecoDeRecebimento } from "./emails/endereco";
-import { montarAviso } from "./emails/montar";
+import { montarAviso, remetenteComNome } from "./emails/montar";
+import { preferenciasDeEnvio } from "./envio";
 import { decifrar, enviarPeloGmail, ErroGmail, tokenDeAcesso } from "./gmail";
 import { diasDosLembretes, somarDias, type TipoLembrete } from "./lembretes";
 import { completarVocabulario } from "./nomes";
@@ -16,7 +17,7 @@ function diaPorExtenso(iso: string) {
 }
 const ddmm = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
 
-type Gmail = { email: string; acesso: string };
+type Gmail = { email: string; acesso: string; de: string };
 /** Abre o Gmail de alguém para enviar (guarda em memória durante a rodada). */
 async function abrirGmail(admin: SupabaseClient, userId: string, cache: Map<string, Gmail | null>): Promise<Gmail | null> {
   if (cache.has(userId)) return cache.get(userId)!;
@@ -24,7 +25,8 @@ async function abrirGmail(admin: SupabaseClient, userId: string, cache: Map<stri
   const { data } = await admin.from("contas_gmail").select("email, token_cifrado, invalida").eq("user_id", userId).maybeSingle();
   if (data && !data.invalida) {
     try {
-      g = { email: data.email, acesso: await tokenDeAcesso(decifrar(data.token_cifrado)) };
+      const eu = await preferenciasDeEnvio(admin, userId);
+      g = { email: data.email, acesso: await tokenDeAcesso(decifrar(data.token_cifrado)), de: remetenteComNome(data.email, eu.nome) };
     } catch (e) {
       if (e instanceof ErroGmail && e.reconectar) await admin.from("contas_gmail").update({ invalida: true }).eq("user_id", userId);
     }
@@ -76,7 +78,7 @@ export async function rodarDiario(admin: SupabaseClient, hoje: string, site: str
           .select("etapa_id");
         if (!reservou?.length) continue;
         try {
-          const msg = montarAviso(gmail.email, textoDoLembrete(tipo, { etapa, grupo: g.nome, turma: t.nome, vc, endereco, etiqueta: org.etiqueta_assunto, moodle: Boolean(t.moodle_conta), para, site }));
+          const msg = montarAviso(gmail.de, textoDoLembrete(tipo, { etapa, grupo: g.nome, turma: t.nome, vc, endereco, etiqueta: org.etiqueta_assunto, moodle: Boolean(t.moodle_conta), para, site }));
           await enviarPeloGmail(gmail.acesso, msg.raw);
           r.lembretes++;
         } catch (e) {
@@ -147,7 +149,7 @@ export async function rodarDiario(admin: SupabaseClient, hoje: string, site: str
         conta("enviada") && `${conta("enviada")} ${conta("enviada") === 1 ? "devolutiva enviada" : "devolutivas enviadas"} por colegas`,
       ].filter(Boolean) as string[];
       try {
-        const msg = montarAviso(gmail.email, {
+        const msg = montarAviso(gmail.de, {
           para: [destino],
           assunto: `Seu dia no Handback: ${partes[0] ?? `${lista.length} avisos`}`,
           titulo: "Bom dia! Desde ontem no Handback:",

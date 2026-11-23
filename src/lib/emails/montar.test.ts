@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assuntoDoEnvio, montarMensagem, textoDoEnvio, type DadosEnvio } from "./montar";
+import { assuntoDoEnvio, montarMensagem, remetenteComNome, textoDoEnvio, type DadosEnvio } from "./montar";
 
 const base: DadosEnvio = {
   para: ["Lider@Verde.test"],
@@ -92,5 +92,13 @@ describe("texto e assunto", () => {
     expect(textoDoEnvio({ ...base, enviar_conceito: false })).toBe("Pessoal, ótima entrega!\n");
     expect(textoDoEnvio({ ...base, conceito: "PENDENTE" })).toBe("Pessoal, ótima entrega!\n");
     expect(assuntoDoEnvio({ ...base, assunto: "RE: entrega" })).toBe("RE: entrega");
+  });
+  it("sai com o nome escolhido e com cópia oculta para quem enviou", () => {
+    const de = remetenteComNome("prof@gmail.test", "Prof. Ana, Souza");
+    expect(de).toBe(`=?UTF-8?B?${Buffer.from("Prof. Ana, Souza").toString("base64")}?= <prof@gmail.test>`);
+    expect(remetenteComNome("prof@gmail.test", "")).toBe("prof@gmail.test");
+    const raw = Buffer.from(montarMensagem(de, base, "f", ["Ana@Escola.test"]).raw, "base64url").toString();
+    expect(raw).toContain(`From: ${de}`);
+    expect(raw).toContain("Bcc: ana@escola.test");
   });
 });

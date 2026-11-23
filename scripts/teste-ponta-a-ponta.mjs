@@ -108,6 +108,8 @@ async function primeiroAcesso(navegador, email, nome) {
   await p.goto(await linkDoEmail(email));
   await p.waitForURL(/\/definir-senha/);
   if (nome) await p.screenshot({ path: `${FOTOS}/${nome}-criar-senha.png`, fullPage: true });
+  confere(await p.getByLabel("Seu nome").isVisible(), "primeiro acesso pede o nome que os alunos vão ver nos e-mails");
+  await p.getByLabel("Seu nome").fill(email === ANA ? "Ana Martins" : "Prof. Pedro");
   await p.getByLabel("Nova senha").fill(SENHA);
   await p.getByLabel("Repita a senha").fill(SENHA);
   await p.getByRole("button", { name: "Salvar senha" }).click();
@@ -335,6 +337,7 @@ try {
     await p.getByText(/vai receber em instantes um e-mail/).waitFor();
     await p.goto(await linkDoEmail(ESQUECIDO));
     await p.waitForURL(/\/definir-senha/);
+    await p.getByLabel("Seu nome").fill("Pessoa Esquecida");
     await p.getByLabel("Nova senha").fill("curta123");
     await p.getByLabel("Repita a senha").fill("curta123");
     await p.getByRole("button", { name: "Salvar senha" }).click();
@@ -767,6 +770,8 @@ try {
   const env = enviados.at(-1);
   confere(enviados.length === 1, "uma devolutiva enviada pelo Gmail");
   confere(/^To: a1@aluno\.test/m.test(env.cabecalho), "vai para quem mandou a entrega");
+  confere(env.cabecalho.includes(`From: =?UTF-8?B?${Buffer.from("Ana Martins").toString("base64")}?= <professora@gmail.test>`), "sai com o nome que a pessoa escolheu (não o da conta Google)");
+  confere(new RegExp(`^Bcc: ${ANA.replace(/[.+]/g, "\\$&")}`, "m").test(env.cabecalho), "cópia oculta da devolutiva para quem enviou (registro)");
   confere(new RegExp(`^In-Reply-To: <e2-${sufixo}@aluno>`, "m").test(env.cabecalho), "responde na mesma conversa do e-mail da entrega");
   confere(env.texto.startsWith("Conceito: BOM\n\nPessoal, ótima entrega!"), "e-mail leva o conceito e a devolutiva aprovada");
   confere(env.html.includes("Devolutiva para Equipe Azul") && env.html.includes("Protótipo navegável"), "e-mail bonito (HTML) com a equipe e o checklist");
@@ -774,6 +779,13 @@ try {
   confere(await ana.p.getByRole("link", { name: /Seguinte →|Voltar ao painel/ }).isVisible(), "depois de enviar, ir para a próxima");
   await largura(ana.p, "devolutiva enviada");
   await ana.p.screenshot({ path: `${FOTOS}/17-devolutiva-enviada.png`, fullPage: true });
+  await ana.p.goto(`${APP}/app/${SLUG}/configuracoes/email`);
+  const prefs = ana.p.getByRole("form", { name: "Como você aparece nos e-mails" });
+  confere((await prefs.getByLabel("Seu nome").inputValue()) === "Ana Martins" && (await prefs.getByRole("checkbox").isChecked()), "Configurações › E-mail mostra o nome e a cópia ligada");
+  await prefs.getByLabel("Seu nome").fill("Profa. Ana Martins");
+  await prefs.getByRole("button", { name: "Salvar" }).click();
+  await prefs.getByText("Salvo.").waitFor();
+  confere(true, "dá para trocar o nome que aparece nos e-mails");
 
   await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
   confere((await ana.p.locator("dl div", { hasText: "Enviadas" }).innerText()).includes("1"), "painel conta as enviadas");
@@ -1294,7 +1306,7 @@ try {
     confere(r1.ok && r1.lembretes === esperados && esperados > 0, `rodada das 9h manda lembrete a quem não entregou (${r1.lembretes} de ${esperados})`);
     const novos = readFileSync(process.env.REGISTRO_GMAIL, "utf8").trim().split("\n").slice(antes).map((l) => JSON.parse(l));
     const lembrete = novos.find((m) => /Subject: =\?UTF-8\?B\?/.test(m.cabecalho) && m.texto.includes("Ainda não recebemos"));
-    confere(Boolean(lembrete) && /^From: professora@gmail\.test/m.test(lembrete.cabecalho) && lembrete.texto.includes("Como entregar"), "lembrete sai do Gmail da professora, com o que e como entregar");
+    confere(Boolean(lembrete) && /^From: .*professora@gmail\.test/m.test(lembrete.cabecalho) && lembrete.cabecalho.includes(Buffer.from("Profa. Ana Martins").toString("base64")) && lembrete.texto.includes("Como entregar"), "lembrete sai do Gmail da professora, com o que e como entregar");
     const resumo = novos.find((m) => new RegExp(`^To: ${ANA.replace(/[.+]/g, "\\$&")}`, "m").test(m.cabecalho));
     confere(Boolean(resumo) && resumo.texto.includes("Equipe Teste entregou") && r1.resumos >= 1, "resumo do dia chega por e-mail para quem tem aviso novo");
     confere(r1.prazos >= 1 && Number(sql(`select count(*) from public.avisos where user_id = '${anaId}' and tipo = 'prazo'`)) >= 1, "aviso de prazo amanhã para quem avalia");

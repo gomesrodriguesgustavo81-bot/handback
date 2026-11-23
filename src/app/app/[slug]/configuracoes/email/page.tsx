@@ -8,6 +8,7 @@ import { gmailConfigurado } from "@/lib/gmail";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { dataHoraBR } from "@/lib/textos";
 import { desconectarGmail } from "../../entregas/acoes";
+import { PreferenciasDeEnvio } from "./preferencias";
 
 export const metadata: Metadata = { title: "E-mail" };
 
@@ -18,7 +19,8 @@ export default async function Email({ params, searchParams }: PageProps<"/app/[s
   const { podeAvaliar } = await contextoDaEmpresa(slug);
   if (!podeAvaliar) notFound();
   const supabase = await criarClienteServidor();
-  const { data: conta } = await supabase.from("contas_gmail").select("email, conectada_em, invalida").maybeSingle();
+  const [{ data: conta }, { data: eu }] = await Promise.all([supabase.from("contas_gmail").select("email, conectada_em, invalida").maybeSingle(), supabase.auth.getUser()]);
+  const meta = (eu.user?.user_metadata ?? {}) as { nome?: string; copia_devolutiva?: boolean };
   const ligado = conta && !conta.invalida;
   const voltar = `/app/${slug}/configuracoes/email`;
 
@@ -65,6 +67,7 @@ export default async function Email({ params, searchParams }: PageProps<"/app/[s
           <p className="text-xs text-suave">Abre uma janelinha do Google. Depois de aceitar, ela fecha sozinha e você continua aqui.</p>
         </section>
       )}
+      <PreferenciasDeEnvio nome={String(meta.nome ?? "")} copia={meta.copia_devolutiva !== false} email={eu.user?.email ?? ""} />
       <section className="flex flex-col gap-1 rounded-2xl border border-borda bg-cartao p-4">
         <h2 className="font-semibold">Sem Gmail?</h2>
         <p className="text-sm text-suave">Dá para copiar a devolutiva pronta e enviar pelo seu e-mail de sempre.</p>

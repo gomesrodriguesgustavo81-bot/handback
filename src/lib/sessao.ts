@@ -26,6 +26,7 @@ export const sessaoBasica = cache(async () => {
     id: user.id,
     email: user.email ?? "",
     senhaDefinida: user.app_metadata?.senha_definida === true,
+    nome: String(user.user_metadata?.nome ?? "").trim(),
     nivel: nivel?.currentLevel ?? "aal1",
     temSegundaEtapa: nivel?.nextLevel === "aal2",
   };

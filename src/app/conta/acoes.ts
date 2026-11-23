@@ -24,8 +24,11 @@ export async function definirSenha(_a: Estado, dados: FormData): Promise<Estado>
   if (await senhaVazada(senha)) {
     return { ok: false, mensagem: "Essa senha já apareceu em vazamentos de dados na internet. Escolha outra." };
   }
+  // Nome que aparece nos e-mails para os alunos (pedido no primeiro acesso).
+  const nome = String(dados.get("nome") ?? "").trim().replace(/\s+/g, " ");
+  if (dados.has("nome") && (nome.length < 2 || nome.length > 80)) return { ok: false, mensagem: "Escreva seu nome (de 2 a 80 letras)." };
   const supabase = await criarClienteServidor();
-  const { error } = await supabase.auth.updateUser({ password: senha });
+  const { error } = await supabase.auth.updateUser({ password: senha, ...(nome ? { data: { nome } } : {}) });
   if (error && !/same|different from the old/i.test(error.message)) {
     return { ok: false, mensagem: /weak|short|characters/i.test(error.message) ? "Senha fraca: use pelo menos 12 caracteres com letras e números." : "Não foi possível salvar a senha. Tente de novo." };
   }
@@ -99,4 +102,15 @@ export async function sairDeTodos(): Promise<void> {
   await registrarAcesso(supabase, "saiu_de_todos");
   await supabase.auth.signOut({ scope: "global" });
   redirect("/entrar");
+}
+
+/** Nome nos e-mails e cópia das devolutivas (cada pessoa decide o seu). */
+export async function salvarPreferenciasDeEnvio(_a: Estado, dados: FormData): Promise<Estado> {
+  await sessaoBasica();
+  const nome = String(dados.get("nome") ?? "").trim().replace(/\s+/g, " ");
+  if (nome.length < 2 || nome.length > 80) return { ok: false, mensagem: "Escreva seu nome (de 2 a 80 letras)." };
+  const supabase = await criarClienteServidor();
+  const { error } = await supabase.auth.updateUser({ data: { nome, copia_devolutiva: dados.get("copia") === "sim" } });
+  if (error) return { ok: false, mensagem: "Não foi possível salvar. Tente de novo." };
+  return { ok: true, mensagem: "Salvo." };
 }

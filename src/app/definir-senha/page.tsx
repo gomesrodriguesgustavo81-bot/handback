@@ -15,7 +15,7 @@ export default async function DefinirSenha() {
       <p className="break-words text-sm text-suave">
         Conta: <strong className="text-texto">{s.email}</strong>
       </p>
-      <FormSenha />
+      <FormSenha pedirNome={!s.nome} />
     </TelaSimples>
   );
 }
