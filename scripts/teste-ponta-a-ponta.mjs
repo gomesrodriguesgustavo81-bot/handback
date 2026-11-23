@@ -464,7 +464,7 @@ try {
   confere(!(await prof.p.getByRole("link", { name: "Adicionar aula" }).count()), "professor não vê o botão de adicionar aula");
   await prof.p.getByText("Aula 1 · Diagnóstico").click();
   await prof.p.waitForURL(/\/etapas\/[0-9a-f-]{36}$/);
-  await prof.p.getByText("Mapa de stakeholders").waitFor();
+  await prof.p.getByText("Mapa de stakeholders", { exact: true }).waitFor();
   confere(!(await prof.p.getByRole("button", { name: "Salvar alterações" }).count()), "professor vê a aula só para leitura");
   confere((await prof.p.goto(`${APP}/app/${SLUG}/pessoas`)).status() === 404, "professor não abre Pessoas");
   confere((await prof.p.goto(`${APP}/app/${SLUG}/ajustes`)).status() === 404, "professor não abre Ajustes");
@@ -598,6 +598,12 @@ try {
   {
     const m = await ana.p.getByLabel("Mensagem para a turma", { exact: true }).innerText();
     confere(/vence .*\n\nO que entregar:\n• Protótipo navegável\n• Roteiro de teste/.test(m) && /Assunto \(copiem igual\):\n\[ENTREGA\] (Aula|Encontro) 2\n/.test(m), "mensagem já vem com o encontro da vez: prazo, o que entregar e o assunto exato");
+    const idE2 = sql(`select e.id from public.etapas e join public.turmas t on t.id = e.turma_id join public.organizacoes o on o.id = e.org_id where o.slug = '${SLUG}' and t.nome = 'Turma A' and e.numero = 2`);
+    await ana.p.goto(`${APP}/app/${SLUG}/etapas/${idE2}`);
+    await ana.p.getByText("Ver a mensagem").click();
+    const m2 = await ana.p.getByLabel("Mensagem desta aula").innerText();
+    confere(await ana.p.getByRole("button", { name: "Copiar mensagem para a turma" }).isVisible() && /A entrega do (Encontro|Aula) 2 · Protótipo vence/.test(m2.replace("do Aula", "da Aula")) && /\[ENTREGA\] (Encontro|Aula) 2\n/.test(m2), "cada encontro tem o próprio botão de copiar a mensagem (com “do Encontro”)");
+    await largura(ana.p, "encontro com a mensagem");
   }
 
   // E3) Chegam e-mails

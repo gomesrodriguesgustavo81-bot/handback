@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { generoDe } from "@/lib/nomes";
 
 export type AulaDaMensagem = { id: string; rotulo: string; numero: number; prazo: string | null; itens: string[] };
 export type DadosDaMensagem = {
@@ -39,9 +40,11 @@ function Copiar({ texto, rotulo, principal = false, aoCopiar }: { texto: string;
 /** A mensagem que o professor cola no WhatsApp, no Moodle ou no e-mail da turma. */
 export function montarMensagemDaTurma(endereco: string, d: DadosDaMensagem, aulaId: string | null): string {
   const aula = d.aulas.find((a) => a.id === aulaId);
+  const f = generoDe(d.palavraEtapa) === "f";
   const linhas = ["Olá, turma!", ""];
   if (aula) {
-    linhas.push(aula.prazo ? `A entrega da ${aula.rotulo} vence ${aula.prazo}.` : `Entrega da ${aula.rotulo}.`);
+    const de = f ? "da" : "do";
+    linhas.push(aula.prazo ? `A entrega ${de} ${aula.rotulo} vence ${aula.prazo}.` : `Entrega ${de} ${aula.rotulo}.`);
     if (aula.itens.length) linhas.push("", "O que entregar:", ...aula.itens.map((i) => `• ${i}`));
     linhas.push("", "Mandem por e-mail para:", endereco, "", "Assunto (copiem igual):", `${d.etiqueta} ${d.palavraEtapa} ${aula.numero}`);
   } else {
@@ -49,7 +52,7 @@ export function montarMensagemDaTurma(endereco: string, d: DadosDaMensagem, aula
       "As entregas são feitas por e-mail, para:",
       endereco,
       "",
-      `No assunto, escrevam ${d.etiqueta} e o número d${/a$|ção$/i.test(d.palavraEtapa) ? "a" : "o"} ${d.palavraEtapa.toLowerCase()}. Por exemplo, para ${/a$|ção$/i.test(d.palavraEtapa) ? "a" : "o"} ${d.palavraEtapa.toLowerCase()} 1:`,
+      `No assunto, escrevam ${d.etiqueta} e o número d${f ? "a" : "o"} ${d.palavraEtapa.toLowerCase()}. Por exemplo, para ${f ? "a" : "o"} ${d.palavraEtapa.toLowerCase()} 1:`,
       `${d.etiqueta} ${d.palavraEtapa} 1`,
     );
   }
@@ -106,6 +109,22 @@ export function EnderecoDaTurma({
         <Copiar texto={endereco} rotulo="Copiar só o endereço" aoCopiar={aoCopiar} />
       </div>
       <p className="text-xs text-suave">Cole no WhatsApp, no Moodle ou no e-mail da turma.</p>
+    </div>
+  );
+}
+
+/** Botão da página de cada aula/ciclo: copia a mensagem pronta daquela aula. */
+export function CopiarMensagemDaAula({ endereco, dados, aulaId, aoCopiar }: { endereco: string; dados: DadosDaMensagem; aulaId: string; aoCopiar?: () => void }) {
+  const mensagem = montarMensagemDaTurma(endereco, dados, aulaId);
+  return (
+    <div className="flex flex-col gap-2">
+      <Copiar texto={mensagem} rotulo="Copiar mensagem para a turma" principal aoCopiar={aoCopiar} />
+      <details className="text-sm">
+        <summary className="inline-flex min-h-10 cursor-pointer items-center font-medium text-marca-forte">Ver a mensagem</summary>
+        <pre aria-label="Mensagem desta aula" className="mt-1 whitespace-pre-wrap break-words rounded-xl border border-borda bg-fundo p-3 font-sans text-sm leading-relaxed">
+          {mensagem}
+        </pre>
+      </details>
     </div>
   );
 }

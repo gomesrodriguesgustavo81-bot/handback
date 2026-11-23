@@ -9,6 +9,10 @@ import { criarClienteServidor } from "@/lib/supabase/server";
 import { dataBR, minusc } from "@/lib/textos";
 import { apagarEtapa, salvarEtapa } from "../acoes";
 import { CamposEtapa } from "../campos";
+import { CopiarMensagemDaAula } from "@/components/endereco-turma";
+import { enderecoDeRecebimento } from "@/lib/emails/endereco";
+import { dadosDaMensagem } from "@/lib/mensagem-turma";
+import { marcarMensagemCopiada } from "../../turma-acoes";
 
 async function carregar(slug: string, id: string) {
   const ctx = await contextoDaEmpresa(slug);
@@ -16,7 +20,7 @@ async function carregar(slug: string, id: string) {
   const supabase = await criarClienteServidor();
   const { data: etapa } = await supabase
     .from("etapas")
-    .select("id, numero, titulo, data, recebe_de, recebe_ate, entregaveis, criterios, observacoes_ia")
+    .select("id, numero, titulo, data, recebe_de, recebe_ate, entregaveis, criterios, observacoes_ia, turma_id")
     .eq("org_id", ctx.empresa.id)
     .eq("id", id)
     .maybeSingle();
@@ -33,14 +37,28 @@ export async function generateMetadata({ params }: PageProps<"/app/[slug]/etapas
 export default async function DetalheEtapa({ params, searchParams }: PageProps<"/app/[slug]/etapas/[id]">) {
   const { slug, id } = await params;
   const { salvo } = await searchParams;
-  const { empresa, podeGerir, etapa } = await carregar(slug, id);
+  const { empresa, podeGerir, podeAvaliar, etapa } = await carregar(slug, id);
   const v = empresa.vocabulario;
+  // Mensagem pronta desta aula para a turma (prazo, o que entregar e o assunto exato).
+  const supabase = await criarClienteServidor();
+  const { data: turma } = await supabase.from("turmas").select("id, modo, caixa_token").eq("id", etapa.turma_id).maybeSingle();
+  const endereco = turma ? enderecoDeRecebimento(turma.caixa_token) : null;
+  const dadosMsg = podeAvaliar && turma && endereco ? await dadosDaMensagem(supabase, empresa, { id: turma.id, modo: turma.modo }) : null;
+  const copiar =
+    endereco && dadosMsg ? (
+      <Cartao className="flex flex-col gap-2">
+        <h2 className="font-semibold">Mandar para a turma</h2>
+        <p className="text-sm text-suave">A mensagem já vem com o prazo, o que entregar e o assunto certo. Cole no WhatsApp, no Moodle ou no e-mail da turma.</p>
+        <CopiarMensagemDaAula endereco={endereco} dados={dadosMsg} aulaId={etapa.id} aoCopiar={marcarMensagemCopiada.bind(null, slug)} />
+      </Cartao>
+    ) : null;
 
   return (
     <section className="flex flex-col gap-4">
       <Link href={`/app/${slug}/etapas`} className="text-sm text-suave hover:text-texto">
         ← {v.etapas}
       </Link>
+      {copiar}
 
       {podeGerir ? (
         <>
