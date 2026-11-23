@@ -2,6 +2,8 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Vocabulario } from "../frentes";
 import { dataHoraBR } from "../textos";
+import { despacharPush } from "../push";
+import { criarClienteAdmin } from "../supabase/admin";
 import { chamarGemini } from "./gemini";
 import { addTexto, lerArquivo, lerLink, limparCorpo, novoConteudo } from "./leitura";
 import {
@@ -143,6 +145,7 @@ export async function analisarEntrega(supabase: SupabaseClient, entregaId: strin
       },
     });
     if (erroGravar) throw new Error(erroGravar.message);
+    await despacharPush(criarClienteAdmin()).catch(() => 0);
     return { conceito: r.conceito, modelo };
   } catch (erro) {
     const msg = erro instanceof Error ? erro.message : String(erro);

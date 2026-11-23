@@ -5,7 +5,7 @@
 // Precisa do Playwright instalado e do Mailpit do Supabase local (porta 54324).
 import { execFileSync } from "node:child_process";
 import { createHmac } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
@@ -239,7 +239,7 @@ try {
   }
   confere(await ana.p.getByText("Escola Alfa").isVisible(), "Ana vê a Escola Alfa");
   confere(await (await menuConta(ana.p)).getByText("Seu papel: Administrador").isVisible(), "Ana é administradora (no menu da conta)");
-  await ana.p.getByRole("button", { name: "Fechar o menu" }).click();
+  await ana.p.getByRole("button", { name: "Fechar o menu" }).click({ position: { x: 8, y: 400 } });
   await largura(ana.p, "minhas empresas");
   await ana.p.screenshot({ path: `${FOTOS}/4-minhas-empresas.png`, fullPage: true });
   await ana.p.getByText("Escola Alfa").click();
@@ -281,7 +281,7 @@ try {
   await menuConta(ana.p);
   confere(!(await ana.p.getByRole("menuitem", { name: /^Trocar de/ }).count()), "“Trocar de …” não aparece para quem tem um espaço só");
   await ana.p.screenshot({ path: `${FOTOS}/32-menu-conta.png` });
-  await ana.p.getByRole("button", { name: "Fechar o menu" }).click();
+  await ana.p.getByRole("button", { name: "Fechar o menu" }).click({ position: { x: 8, y: 400 } });
   await largura(ana.p, "painel da empresa");
   await ana.p.screenshot({ path: `${FOTOS}/5-painel-da-empresa.png`, fullPage: true });
   confere((await ana.p.goto(`${APP}/admin`)).status() === 404, "Ana não abre o Painel do dono");
@@ -401,7 +401,7 @@ try {
   const abas = (await prof.p.getByRole("navigation", { name: "Seções da empresa" }).getByRole("link").allInnerTexts()).filter(Boolean);
   confere(abas.join("|") === "Entregas|Aulas|Equipes" && !(await prof.p.getByRole("link", { name: "Configurações" }).count()), `professor vê as abas certas, sem a engrenagem (${abas.join(", ")})`);
   confere(await (await menuConta(prof.p)).getByText("Seu papel: Avaliador").isVisible(), "papel de avaliador (no menu da conta)");
-  await prof.p.getByRole("button", { name: "Fechar o menu" }).click();
+  await prof.p.getByRole("button", { name: "Fechar o menu" }).click({ position: { x: 8, y: 400 } });
   await prof.p.getByRole("link", { name: "Aulas", exact: true }).click();
   await prof.p.waitForURL(/\/etapas$/);
   confere(!(await prof.p.getByRole("link", { name: "Adicionar aula" }).count()), "professor não vê o botão de adicionar aula");
@@ -1103,6 +1103,88 @@ try {
     await ana.p.waitForURL((u) => !u.search.includes("calendario"));
     confere(!(await ana.p.getByRole("grid").count()), "volta para a lista");
     sql(`update public.etapas set recebe_ate = ${prazoAntigo ? `'${prazoAntigo}'` : "null"} where id = '${idEtapa}'`);
+  }
+
+  // 7i) Avisos: sininho, meus avisos, lembretes aos alunos e a rodada das 9h
+  {
+    const somar = (iso, n) => { const d = new Date(`${iso}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+    const hoje = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
+    const orgId = sql(`select id from public.organizacoes where slug = '${SLUG}'`);
+    const anaId = sql(`select id from auth.users where email = '${ANA}'`);
+    confere(Number(sql(`select count(*) from public.avisos where user_id = '${anaId}' and tipo in ('entrega', 'atraso')`)) > 0, "entregas por e-mail viram avisos para a administradora");
+    await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
+    const sino = ana.p.getByRole("button", { name: /^Avisos, \d+ novos?$/ });
+    await sino.click();
+    const painel = ana.p.getByRole("region", { name: "Avisos" });
+    confere(await painel.getByText(/entregou/).first().isVisible(), "sininho mostra as entregas que chegaram");
+    await largura(ana.p, "sininho aberto");
+    await ana.p.screenshot({ path: `${FOTOS}/43-sininho.png`, fullPage: true });
+    await painel.getByRole("button", { name: "Marcar todos como lidos" }).click();
+    await ana.p.getByRole("button", { name: "Avisos", exact: true }).waitFor();
+    confere(sql(`select count(*) from public.avisos where user_id = '${anaId}' and lido_em is null`) === "0", "marcar todos como lidos");
+    await ana.p.keyboard.press("Escape");
+    await ana.p.goto(`${APP}/conta/avisos`);
+    const tipos = ana.p.getByRole("region", { name: "Do que quero saber" });
+    await tipos.getByLabel(/Devolutiva enviada por um colega/).check();
+    await tipos.getByText("Salvo ✓").waitFor();
+    confere(sql(`select array_to_string(tipos, ',') from public.preferencias_avisos where user_id = '${anaId}'`).includes("enviada"), "meus avisos: escolher do que quero saber salva sozinho");
+    confere(await ana.p.getByText(/Ativar neste aparelho|Este navegador não recebe|bloqueadas/).first().isVisible(), "meus avisos: mostra como ativar no celular");
+    const chave = await ana.p.evaluate(async () => (await (await fetch("/api/push")).json()).chave);
+    confere(/^[\w-]{80,}$/.test(chave ?? ""), "notificações: o Handback cria a própria chave sozinho");
+    const salvou = await ana.p.evaluate(async () => (await fetch("/api/push", { method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ endpoint: "https://push.exemplo.test/aparelho-teste-1", keys: { p256dh: "B".repeat(87), auth: "a".repeat(22) } }) })).status);
+    confere(salvou === 200 && sql(`select count(*) from public.aparelhos_push where user_id = '${anaId}'`) === "1", "notificações: o aparelho fica guardado");
+    confere((await ana.p.evaluate(async () => (await fetch("/api/push", { method: "POST", body: "{\"endpoint\":\"http://inseguro\"}" })).status)) === 400, "notificações: endereço inseguro é recusado");
+    await largura(ana.p, "meus avisos");
+    await ana.p.screenshot({ path: `${FOTOS}/44-meus-avisos.png`, fullPage: true });
+
+    // Lembretes para os alunos (Turma A)
+    await ana.p.goto(`${APP}/app/${SLUG}/configuracoes/email`);
+    const [janela] = await Promise.all([ana.p.waitForEvent("popup"), ana.p.getByRole("link", { name: "Conectar com Google" }).click()]);
+    await ana.p.getByText("Gmail conectado", { exact: true }).waitFor();
+    await janela.waitForEvent("close", { timeout: 10000 }).catch(() => {});
+    await ana.p.goto(`${APP}/app/${SLUG}/configuracoes`);
+    await ana.p.getByRole("link", { name: /^Lembretes para os alunos/ }).click();
+    await ana.p.getByRole("heading", { name: "Lembretes para os alunos" }).waitFor();
+    for (const nome of ["2 dias antes do prazo", "No dia do prazo"]) {
+      await ana.p.getByLabel(nome).check();
+      await ana.p.getByRole("region", { name: "Quando lembrar" }).getByText("Salvo ✓").first().waitFor();
+    }
+    await ana.p.reload();
+    confere(await ana.p.getByText("professora@gmail.test").isVisible(), "lembretes saem do Gmail de quem ligou");
+    const turmaA = sql(`select id from public.turmas where org_id = '${orgId}' and nome = 'Turma A'`);
+    const [etapaL, prazoL] = sql(`select id || '|' || coalesce(recebe_ate::text, '') from public.etapas where turma_id = '${turmaA}' order by numero limit 1`).split("|");
+    // Uma equipe que ainda não entregou e uma aula que vence no dia seguinte
+    const grupoL = sql(`insert into public.grupos (org_id, turma_id, nome) values ('${orgId}', '${turmaA}', 'Equipe Lembrete') returning id`).split("\n")[0];
+    sql(`insert into public.integrantes (org_id, turma_id, grupo_id, email, nome) values ('${orgId}', '${turmaA}', '${grupoL}', 'lembrete@aluno.test', 'Lia Lembrete')`);
+    const dia = somar(hoje, 30);
+    sql(`update public.etapas set recebe_ate = '${somar(dia, 2)}' where id = '${etapaL}'`);
+    const etapaP = sql(`insert into public.etapas (org_id, turma_id, numero, titulo, recebe_ate) values ('${orgId}', '${turmaA}', 98, 'Aula do prazo', '${somar(dia, 1)}') returning id`).split("\n")[0];
+    await ana.p.reload();
+    confere(await ana.p.getByRole("region", { name: "Próximos lembretes" }).getByText(/2 dias antes/).first().isVisible(), "tela mostra os próximos lembretes");
+    await largura(ana.p, "lembretes");
+    await ana.p.screenshot({ path: `${FOTOS}/45-lembretes.png`, fullPage: true });
+    const esperados = Number(sql(`select count(*) from public.grupos g where g.turma_id = '${turmaA}' and g.ativo and not g.escondido
+      and exists (select 1 from public.integrantes i where i.grupo_id = g.id) and not exists (select 1 from public.entregas e where e.etapa_id = '${etapaL}' and e.grupo_id = g.id)`));
+    // Alguém para avisar no resumo do dia
+    sql(`insert into public.avisos (user_id, org_id, tipo, titulo, texto) values ('${anaId}', '${orgId}', 'entrega', 'Equipe Teste entregou', 'Aviso para o resumo')`);
+    const rodar = (seg) => fetch(`${APP}/api/cron/diario?dia=${dia}`, { headers: seg ? { authorization: `Bearer ${seg}` } : {} });
+    confere((await rodar("")).status === 401 && (await rodar("errado-errado-errado-errado")).status === 401, "rodada diária não roda sem o segredo");
+    const antes = existsSync(process.env.REGISTRO_GMAIL) ? readFileSync(process.env.REGISTRO_GMAIL, "utf8").trim().split("\n").length : 0;
+    const r1 = await (await rodar(process.env.CRON_SECRET)).json();
+    confere(r1.ok && r1.lembretes === esperados && esperados > 0, `rodada das 9h manda lembrete a quem não entregou (${r1.lembretes} de ${esperados})`);
+    const novos = readFileSync(process.env.REGISTRO_GMAIL, "utf8").trim().split("\n").slice(antes).map((l) => JSON.parse(l));
+    const lembrete = novos.find((m) => /Subject: =\?UTF-8\?B\?/.test(m.cabecalho) && m.texto.includes("Ainda não recebemos"));
+    confere(Boolean(lembrete) && /^From: professora@gmail\.test/m.test(lembrete.cabecalho) && lembrete.texto.includes("Como entregar"), "lembrete sai do Gmail da professora, com o que e como entregar");
+    const resumo = novos.find((m) => new RegExp(`^To: ${ANA.replace(/[.+]/g, "\\$&")}`, "m").test(m.cabecalho));
+    confere(Boolean(resumo) && resumo.texto.includes("Equipe Teste entregou") && r1.resumos >= 1, "resumo do dia chega por e-mail para quem tem aviso novo");
+    confere(r1.prazos >= 1 && Number(sql(`select count(*) from public.avisos where user_id = '${anaId}' and tipo = 'prazo'`)) >= 1, "aviso de prazo amanhã para quem avalia");
+    const r2 = await (await rodar(process.env.CRON_SECRET)).json();
+    confere(r2.lembretes === 0 && r2.resumos === 0, "rodar de novo no mesmo dia não manda nada repetido");
+    sql(`update public.etapas set recebe_ate = ${prazoL ? `'${prazoL}'` : "null"} where id = '${etapaL}'`);
+    sql(`delete from public.etapas where id = '${etapaP}'`);
+    sql(`delete from public.grupos where id = '${grupoL}'`);
+    sql(`update public.turmas set lembrete_dois_dias = false, lembrete_no_dia = false where id = '${turmaA}'`);
   }
 
   // 7f) Privacidade: o dono não vê o conteúdo; o cliente libera o suporte

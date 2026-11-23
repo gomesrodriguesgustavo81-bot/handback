@@ -2,6 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { decifrarTexto } from "../cripto";
+import { despacharPush } from "../push";
 import { emailValido, nomeArquivoSeguro } from "../textos";
 import {
   baixarArquivo,
@@ -278,6 +279,7 @@ export async function sincronizarTurma(admin: SupabaseClient, turmaId: string, s
     const tarefas = await atualizarTarefas(admin, t, c);
     const entregas = await trazerEntregas(admin, t, c, alunos);
     await admin.from("turmas").update({ moodle_erro: "" }).eq("id", t.id);
+    if (entregas.novas) await despacharPush(admin).catch(() => 0);
     return { ...entregas, ...pessoas, ...tarefas };
   } catch (e) {
     const mensagem = e instanceof Error ? e.message : String(e);

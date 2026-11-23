@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { aplicarTema, temaAtual, type Tema } from "@/lib/tema";
 import { Marca } from "./marca";
+import { Sininho, type AvisoTela } from "./sininho";
 
 const TEMAS: { valor: Tema; nome: string }[] = [
   { valor: "claro", nome: "Claro" },
@@ -25,10 +26,27 @@ function iniciais(email: string) {
  * da conta (círculo com as iniciais). "Trocar de empresa" só aparece para
  * quem tem mais de uma.
  */
-export function TopoApp({ email, dono, empresas }: { email: string; dono: boolean; empresas: Empresa[] }) {
+export function TopoApp({
+  email,
+  dono,
+  empresas,
+  avisos,
+}: {
+  email: string;
+  dono: boolean;
+  empresas: Empresa[];
+  avisos?: { itens: AvisoTela[]; novos: number; hoje: string };
+}) {
   const caminho = usePathname();
   const [aberto, setAberto] = useState(false);
   const [tema, setTema] = useState<Tema>("sistema");
+  // Esc fecha o menu.
+  useEffect(() => {
+    if (!aberto) return;
+    const fechar = (e: KeyboardEvent) => e.key === "Escape" && setAberto(false);
+    window.addEventListener("keydown", fechar);
+    return () => window.removeEventListener("keydown", fechar);
+  }, [aberto]);
   const abrirMenu = () => {
     setTema(temaAtual());
     setAberto((x) => !x);
@@ -53,6 +71,8 @@ export function TopoApp({ email, dono, empresas }: { email: string; dono: boolea
             </>
           ) : null}
         </div>
+        <div className="flex items-center gap-1">
+        {avisos ? <Sininho {...avisos} /> : null}
         <div className="relative">
           <button
             type="button"
@@ -74,6 +94,9 @@ export function TopoApp({ email, dono, empresas }: { email: string; dono: boolea
                 </div>
                 <Link role="menuitem" href="/conta" onClick={() => setAberto(false)} className={item}>
                   Minha conta
+                </Link>
+                <Link role="menuitem" href="/conta/avisos" onClick={() => setAberto(false)} className={item}>
+                  Meus avisos
                 </Link>
                 {empresa?.avalia ? (
                   <Link role="menuitem" href={`/app/${empresa.slug}/configuracoes/email`} onClick={() => setAberto(false)} className={item}>
@@ -119,6 +142,7 @@ export function TopoApp({ email, dono, empresas }: { email: string; dono: boolea
               </div>
             </>
           ) : null}
+        </div>
         </div>
       </div>
     </header>

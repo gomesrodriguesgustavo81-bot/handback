@@ -1,6 +1,7 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, type NextRequest, after } from "next/server";
 import { buscarEmailResend, assinaturaValida } from "@/lib/emails/resend";
 import { receberEmail } from "@/lib/emails/receber";
+import { despacharPush } from "@/lib/push";
 import { criarClienteAdmin } from "@/lib/supabase/admin";
 
 export const maxDuration = 60;
@@ -41,6 +42,7 @@ export async function POST(request: NextRequest) {
   try {
     const email = await buscarEmailResend(evento, chave);
     const r = await receberEmail(admin, email);
+    after(() => despacharPush(admin).catch(() => 0));
     return NextResponse.json(r, { status: 200 });
   } catch (erro) {
     console.error("[emails/resend]", erro);
