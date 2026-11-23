@@ -8,7 +8,7 @@ import { Cartao, Vazio } from "@/components/ui";
 import { contextoDaEmpresa } from "@/lib/empresa";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { minusc } from "@/lib/textos";
-import { cadastrarEmLote, criarGrupo } from "./acoes";
+import { cadastrarEmLote, criarGrupo, restaurarGrupo } from "./acoes";
 import { CamposGrupo } from "./campos";
 import { CartaoGrupo } from "./cartao-grupo";
 
@@ -25,14 +25,15 @@ export default async function ListaGrupos({ params }: PageProps<"/app/[slug]/gru
   const v = empresa.vocabulario;
   const supabase = await criarClienteServidor();
   const turma = await turmaAtual(empresa.id);
-  const { data: grupos } = await supabase
+  const { data: todos } = await supabase
     .from("grupos")
-    .select("id, nome, tema, ativo, moodle_id, integrantes(email, nome)")
+    .select("id, nome, tema, ativo, moodle_id, escondido, integrantes(email, nome)")
     .eq("org_id", empresa.id)
-    .eq("escondido", false)
     .eq("turma_id", turma?.id ?? "")
     .order("nome");
 
+  const apagados = (todos ?? []).filter((g) => g.escondido);
+  const grupos = (todos ?? []).filter((g) => !g.escondido);
   const vc = completarVocabulario(v);
   const individual = turma?.modo === "individual";
   const nomes = quemEntrega(vc, turma?.modo ?? "grupos");
@@ -54,11 +55,31 @@ export default async function ListaGrupos({ params }: PageProps<"/app/[slug]/gru
                 podeGerir={podeGerir}
                 palavra={nomes.um}
                 doMoodle={Boolean(g.moodle_id)}
-                g={{ id: g.id, nome: g.nome, tema: g.tema, ativo: g.ativo, pessoas: g.integrantes.length ? g.integrantes.map((i) => i.nome || i.email).join(", ") : "Nenhum e-mail cadastrado" }}
+                g={{ id: g.id, nome: g.nome, tema: g.tema, ativo: g.ativo, pessoas: g.integrantes }}
               />
             ))}
           </ul>
         )}
+        {podeGerir && apagados.length ? (
+          <details className="rounded-2xl border border-dashed border-borda p-4">
+            <summary className="flex min-h-10 cursor-pointer items-center font-medium text-suave">Apagadas ({apagados.length})</summary>
+            <p className="mt-1 text-sm text-suave">Vieram do Moodle e foram apagadas (ou eram a turma inteira). Ficam guardadas para você trazer de volta se quiser.</p>
+            <ul className="mt-2 flex flex-col divide-y divide-borda">
+              {apagados.map((g) => (
+                <li key={g.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                  <span className="text-sm">
+                    <strong>{g.nome}</strong> · {g.integrantes.length} {g.integrantes.length === 1 ? "pessoa" : "pessoas"}
+                  </span>
+                  <form action={restaurarGrupo.bind(null, slug, g.id)}>
+                    <button type="submit" className="inline-flex min-h-11 items-center rounded-xl border border-borda px-3 text-sm font-medium text-marca-forte hover:bg-fundo">
+                      Trazer de volta
+                    </button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          </details>
+        ) : null}
       </section>
 
       {podeGerir && individual ? (

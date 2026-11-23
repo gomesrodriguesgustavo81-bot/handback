@@ -1,33 +1,20 @@
 import { ConectarGmail } from "@/components/conectar-gmail";
-import { BotaoConfirmar } from "@/components/form-acao";
-import { desconectarGmail } from "./acoes";
 
 /** Faixa com o Gmail usado para enviar as devolutivas (ou o convite para conectar). */
 export function FaixaGmail({
-  slug,
   email,
   invalida,
   conectarHref,
   pendentes,
 }: {
-  slug: string;
+  slug?: string;
   email: string | null;
   invalida: boolean;
   conectarHref: string;
   pendentes: number;
 }) {
-  if (email) {
-    return (
-      <div className="flex flex-wrap items-center justify-between gap-2 text-[13px] text-suave">
-        <span className="break-all">
-          Devolutivas saem do seu Gmail: <strong className="text-texto">{email}</strong>
-        </span>
-        <BotaoConfirmar acao={desconectarGmail.bind(null, slug)} pergunta="Desconectar seu Gmail do Handback?">
-          Desconectar
-        </BotaoConfirmar>
-      </div>
-    );
-  }
+  // Conectado: nada aqui (ver e desconectar fica em Configurações › E-mail).
+  if (email) return null;
   return (
     <div className="flex flex-col gap-2 rounded-2xl border border-marca/30 bg-marca-clara p-4 sm:max-w-2xl sm:flex-row sm:items-center sm:justify-between">
       <p className="text-sm text-texto">

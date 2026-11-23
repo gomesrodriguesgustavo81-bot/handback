@@ -75,8 +75,16 @@ export async function alunosDoCurso(c: Conexao, curso: number) {
 async function atualizarPessoas(admin: SupabaseClient, t: TurmaMoodle, alunos: Participante[]) {
   type Desejado = { nome: string; membros: number[]; pessoas: { email: string; nome: string; matricula: string }[] };
   const desejados = new Map<string, Desejado>();
+  // Tamanho de cada grupo do Moodle. Grupo com a turma (quase) toda, como o
+  // "T-MAT2453-2026126" que o Moodle da USP cria, não é equipe: fica de fora.
+  const tamanho = new Map<number, number>();
+  for (const a of alunos) for (const g of a.groups ?? []) tamanho.set(g.id, (tamanho.get(g.id) ?? 0) + 1);
+  const turmaToda = (id: number) => (tamanho.get(id) ?? 0) >= Math.max(3, alunos.length * 0.8);
+  // Em mais de um grupo? Vale o menor (a equipe de verdade).
+  const equipeDe = (a: Participante) =>
+    (a.groups ?? []).filter((g) => !turmaToda(g.id)).sort((x, y) => (tamanho.get(x.id) ?? 0) - (tamanho.get(y.id) ?? 0))[0];
   for (const a of alunos) {
-    const grupo = t.modo === "grupos" ? a.groups?.[0] : undefined;
+    const grupo = t.modo === "grupos" ? equipeDe(a) : undefined;
     const chave = grupo ? `g:${grupo.id}` : `u:${a.id}`;
     const d = desejados.get(chave) ?? { nome: (grupo?.name ?? a.fullname).trim() || `Aluno ${a.id}`, membros: [], pessoas: [] };
     d.membros.push(a.id);
@@ -112,7 +120,21 @@ async function atualizarPessoas(admin: SupabaseClient, t: TurmaMoodle, alunos: P
   const integrantes = [...desejados].filter(([chave]) => !escondidos.has(idDoGrupo.get(chave)!)).flatMap(([chave, d]) =>
     d.pessoas.map((p) => ({ org_id: t.org_id, turma_id: t.id, grupo_id: idDoGrupo.get(chave)!, email: p.email, nome: p.nome, matricula: p.matricula })),
   );
+  // Grupos que vieram do Moodle e não existem mais lá (ou eram a turma toda): somem das telas.
+  const desejadosIds = new Set(idDoGrupo.values());
+  const sobrando = (existentes ?? []).filter((g) => g.moodle_id && !g.escondido && !desejadosIds.has(g.id)).map((g) => g.id as string);
+  if (sobrando.length) await admin.from("grupos").update({ escondido: true, ativo: false }).in("id", sobrando);
+  const doMoodle = new Set((existentes ?? []).filter((g) => g.moodle_id).map((g) => g.id as string));
+
   if (integrantes.length) {
+    // Aluno que estava num grupo do Moodle e mudou de grupo lá: muda aqui também.
+    // Quem o professor colocou à mão num cadastro dele fica onde está.
+    const { data: ja } = await admin.from("integrantes").select("id, email, grupo_id").eq("turma_id", t.id).in("email", integrantes.map((i) => i.email));
+    const destino = new Map(integrantes.map((i) => [i.email, i.grupo_id]));
+    for (const i of ja ?? []) {
+      const novo = destino.get(i.email);
+      if (novo && novo !== i.grupo_id && doMoodle.has(i.grupo_id as string)) await admin.from("integrantes").update({ grupo_id: novo }).eq("id", i.id);
+    }
     await admin.from("integrantes").upsert(integrantes, { onConflict: "turma_id,email", ignoreDuplicates: true });
     // Quem já estava cadastrado sem nome ou sem matrícula ganha o que veio do
     // Moodle; o que o professor digitou nunca é trocado.

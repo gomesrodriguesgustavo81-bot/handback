@@ -371,7 +371,12 @@ try {
   await ana.p.getByLabel("E-mails de quem entrega").fill("a1@aluno.test, A2@Aluno.test; a1@aluno.test");
   await ana.p.getByRole("button", { name: "Adicionar" }).click();
   await ana.p.getByText("“Equipe Azul” cadastrado com 2 e-mail(s).").waitFor();
-  confere(await ana.p.getByText("a1@aluno.test, a2@aluno.test").isVisible(), "e-mails guardados em minúsculas e sem repetição");
+  {
+    const azul = ana.p.getByRole("listitem").filter({ hasText: "Equipe Azul" });
+    confere(await azul.getByText("2 pessoas", { exact: true }).isVisible() && await azul.getByText("a1, a2").isVisible(), "lista mostra quantas pessoas e a prévia dos nomes");
+    await azul.getByText(/Ver as 2 pessoas e os e-mails/).click();
+    confere(await azul.getByText("a1@aluno.test").isVisible() && await azul.getByText("a2@aluno.test").isVisible(), "e-mails guardados em minúsculas e sem repetição");
+  }
   confere((await ana.p.getByLabel("Nome", { exact: true }).inputValue()) === "", "formulário de equipe limpa depois de salvar");
   await ana.p.getByLabel("Nome", { exact: true }).fill("Equipe Verde");
   await ana.p.getByLabel("E-mails de quem entrega").fill("a1@aluno.test");
@@ -412,7 +417,8 @@ try {
   confere((await prof.p.goto(`${APP}/app/${SLUG}/pessoas`)).status() === 404, "professor não abre Pessoas");
   confere((await prof.p.goto(`${APP}/app/${SLUG}/ajustes`)).status() === 404, "professor não abre Ajustes");
   await prof.p.goto(`${APP}/app/${SLUG}/grupos`);
-  confere(await prof.p.getByText("a1@aluno.test, a2@aluno.test").isVisible(), "professor vê os e-mails das equipes");
+  await prof.p.getByRole("listitem").filter({ hasText: "Equipe Azul" }).getByText(/Ver as \d+ pessoas e os e-mails/).click();
+  confere(await prof.p.getByText("a2@aluno.test").isVisible(), "professor vê os e-mails das equipes");
   await prof.p.screenshot({ path: `${FOTOS}/9-professor.png`, fullPage: true });
 
   // F6) Ana troca o vocabulário: Aula → Encontro
@@ -707,7 +713,7 @@ try {
   confere((await ana.p.locator("dl div", { hasText: "Aprovadas" }).innerText()).includes("1"), "painel conta as devolutivas aprovadas");
   const cartaoAzul = ana.p.getByRole("link", { name: /Equipe Azul/ });
   confere((await cartaoAzul.getByText("Enviada", { exact: true }).isVisible()) && (await cartaoAzul.getByText("BOM", { exact: true }).isVisible()), "painel mostra o conceito e que foi enviada");
-  confere(await ana.p.getByText("professora@gmail.test").isVisible(), "painel mostra o Gmail conectado");
+  confere(!(await ana.p.getByText("Devolutivas saem do seu Gmail").count()) && !(await ana.p.getByRole("button", { name: "Desconectar" }).count()), "conectado, o painel não mostra a faixa do Gmail (fica em Configurações › E-mail)");
   await ana.p.getByRole("link", { name: /^Aprovadas/ }).click();
   await ana.p.waitForURL(/filtro=aprovadas/);
   confere((await ana.p.evaluate(() => [...document.querySelectorAll("main a")].filter((a) => /\/entregas\/[0-9a-f-]{36}$/.test(a.getAttribute("href"))).length)) === 1, "filtro Aprovadas mostra só a aprovada");
@@ -721,9 +727,11 @@ try {
   await ana.p.screenshot({ path: `${FOTOS}/18-relatorio.png`, fullPage: true });
 
   // Desconectar o Gmail
-  await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
-  await ana.p.getByRole("button", { name: "Desconectar" }).click();
+  await ana.p.goto(`${APP}/app/${SLUG}/configuracoes/email`);
+  await ana.p.getByRole("button", { name: "Desconectar Gmail" }).click();
   await ana.p.getByRole("button", { name: "Sim, confirmar" }).click();
+  await ana.p.getByText("Envie pelo seu Gmail").waitFor();
+  await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
   await ana.p.getByRole("link", { name: "Conectar meu Gmail" }).waitFor();
   confere(true, "Gmail desconectado; painel volta a oferecer a conexão");
 
@@ -955,7 +963,7 @@ try {
       await verde.getByRole("button", { name: "Renomear" }).click();
       await ana.p.getByLabel("Novo nome").fill("Grupo Verde Claro");
       await ana.p.getByLabel("Novo nome").press("Enter");
-      await ana.p.getByRole("link", { name: /Grupo Verde Claro/ }).waitFor();
+      await ana.p.getByRole("link", { name: /Grupo Verde Claro/ }).getByText("Salvo ✓").waitFor();
       await ana.p.reload();
       confere(await ana.p.getByRole("link", { name: /Grupo Verde Claro/ }).isVisible(), "renomear a equipe direto na lista");
       const diego = ana.p.getByRole("listitem").filter({ hasText: "Diego Rocha" });
@@ -1022,8 +1030,13 @@ try {
     await ana.p.getByRole("link", { name: /Grupo Verde/ }).waitFor();
     confere(true, "Moodle: “Buscar entregas agora” traz o envio novo");
     await ana.p.goto(`${APP}/app/${SLUG}/grupos`);
-    confere(!(await ana.p.getByText("Diego Rocha").count()) && sql(`select g.escondido || '/' || g.ativo from public.grupos g join public.turmas t on t.id = g.turma_id
+    confere(!(await ana.p.getByRole("link", { name: /Diego Rocha/ }).count()) && sql(`select g.escondido || '/' || g.ativo from public.grupos g join public.turmas t on t.id = g.turma_id
       where g.nome = 'Diego Rocha' and t.org_id = (select id from public.organizacoes where slug = '${SLUG}')`) === "true/false", "Moodle: equipe apagada não volta depois de buscar de novo");
+    confere(!(await ana.p.getByText("T-DI-2026").count()), "Moodle: grupo com a turma toda não vira equipe");
+    await ana.p.getByText(/^Apagadas \(/).click();
+    await ana.p.getByRole("listitem").filter({ hasText: "Diego Rocha" }).getByRole("button", { name: "Trazer de volta" }).click();
+    await ana.p.getByRole("link", { name: /Diego Rocha/ }).waitFor();
+    confere(true, "equipe apagada pode ser trazida de volta");
     await ana.p.goto(`${APP}/app/${SLUG}/registro?ver=avaliacoes`);
     confere((await ana.p.locator("main ol").innerText()).includes("Devolveu no Moodle a devolutiva de"), "Moodle: devolução aparece no registro de atividades");
     // Desligar e ligar de novo: a turma volta a ficar ligada sozinha.

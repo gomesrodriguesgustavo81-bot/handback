@@ -221,3 +221,12 @@ export async function renomearGrupo(slug: string, id: string, valorBruto: string
   revalidatePath(`/app/${slug}`, "layout");
   return { ok: true, mensagem: "Salvo." };
 }
+
+/** Traz de volta uma equipe apagada (as do Moodle ficam só escondidas). */
+export async function restaurarGrupo(slug: string, id: string): Promise<void> {
+  const { empresa, podeGerir } = await contextoDaEmpresa(slug);
+  if (!podeGerir) return;
+  const supabase = await criarClienteServidor();
+  await supabase.from("grupos").update({ escondido: false, ativo: true }).eq("id", id).eq("org_id", empresa.id);
+  revalidatePath(`/app/${slug}`, "layout");
+}
