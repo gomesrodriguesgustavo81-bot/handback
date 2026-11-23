@@ -20,6 +20,7 @@ async function carregar(slug: string, id: string) {
     .select("id, nome, tema, observacoes, ativo, moodle_id, integrantes(id, email, nome, matricula)")
     .eq("org_id", ctx.empresa.id)
     .eq("id", id)
+    .eq("escondido", false)
     .maybeSingle();
   if (!grupo) notFound();
   return { ...ctx, grupo };

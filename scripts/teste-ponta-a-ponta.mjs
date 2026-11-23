@@ -949,6 +949,23 @@ try {
       confere(sql(`select matricula from public.integrantes where email = 'bruno.lima@aluno.test' and grupo_id = '${azul}'`) === "99887766", "corrigir a matrícula salva sozinho");
       await largura(ana.p, "integrantes com matrícula");
       await ana.p.screenshot({ path: `${FOTOS}/28b-integrantes.png`, fullPage: true });
+      // Renomear e apagar direto na lista
+      await ana.p.goto(`${APP}/app/${SLUG}/grupos`);
+      const verde = ana.p.getByRole("listitem").filter({ hasText: "Grupo Verde" });
+      await verde.getByRole("button", { name: "Renomear" }).click();
+      await ana.p.getByLabel("Novo nome").fill("Grupo Verde Claro");
+      await ana.p.getByLabel("Novo nome").press("Enter");
+      await ana.p.getByRole("link", { name: /Grupo Verde Claro/ }).waitFor();
+      await ana.p.reload();
+      confere(await ana.p.getByRole("link", { name: /Grupo Verde Claro/ }).isVisible(), "renomear a equipe direto na lista");
+      const diego = ana.p.getByRole("listitem").filter({ hasText: "Diego Rocha" });
+      await diego.getByRole("button", { name: /^Apagar/ }).click();
+      await diego.getByText(/o Moodle não traz de volta/).waitFor();
+      await diego.getByRole("button", { name: "Sim, confirmar" }).click();
+      await ana.p.waitForFunction(() => !document.body.innerText.includes("Diego Rocha"));
+      confere(true, "apagar a equipe direto na lista");
+      await largura(ana.p, "lista de equipes");
+      await ana.p.screenshot({ path: `${FOTOS}/28c-equipes.png`, fullPage: true });
       await ana.p.goto(urlTurma);
     }
     await ana.p.getByRole("link", { name: "Ver as entregas" }).click();
@@ -1004,6 +1021,9 @@ try {
     await ana.p.getByText("1 entrega nova chegou do Moodle.").waitFor();
     await ana.p.getByRole("link", { name: /Grupo Verde/ }).waitFor();
     confere(true, "Moodle: “Buscar entregas agora” traz o envio novo");
+    await ana.p.goto(`${APP}/app/${SLUG}/grupos`);
+    confere(!(await ana.p.getByText("Diego Rocha").count()) && sql(`select g.escondido || '/' || g.ativo from public.grupos g join public.turmas t on t.id = g.turma_id
+      where g.nome = 'Diego Rocha' and t.org_id = (select id from public.organizacoes where slug = '${SLUG}')`) === "true/false", "Moodle: equipe apagada não volta depois de buscar de novo");
     await ana.p.goto(`${APP}/app/${SLUG}/registro?ver=avaliacoes`);
     confere((await ana.p.locator("main ol").innerText()).includes("Devolveu no Moodle a devolutiva de"), "Moodle: devolução aparece no registro de atividades");
     // Desligar e ligar de novo: a turma volta a ficar ligada sozinha.

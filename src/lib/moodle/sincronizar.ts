@@ -84,7 +84,8 @@ async function atualizarPessoas(admin: SupabaseClient, t: TurmaMoodle, alunos: P
     desejados.set(chave, d);
   }
 
-  const { data: existentes } = await admin.from("grupos").select("id, nome, moodle_id").eq("turma_id", t.id);
+  const { data: existentes } = await admin.from("grupos").select("id, nome, moodle_id, escondido").eq("turma_id", t.id);
+  const escondidos = new Set((existentes ?? []).filter((g) => g.escondido).map((g) => g.id as string));
   const porMoodle = new Map((existentes ?? []).filter((g) => g.moodle_id).map((g) => [g.moodle_id as string, g.id as string]));
   const nomes = new Set((existentes ?? []).map((g) => String(g.nome).trim().toLowerCase()));
 
@@ -92,7 +93,8 @@ async function atualizarPessoas(admin: SupabaseClient, t: TurmaMoodle, alunos: P
   for (const [chave, d] of desejados) {
     let id = porMoodle.get(chave);
     if (id) {
-      await admin.from("grupos").update({ moodle_membros: d.membros, ativo: true }).eq("id", id);
+      // Não reativa: se o professor pausou ou apagou a equipe, fica como ele deixou.
+      await admin.from("grupos").update({ moodle_membros: d.membros }).eq("id", id);
     } else {
       let nome = d.nome.slice(0, 110);
       for (let n = 2; nomes.has(nome.toLowerCase()); n++) nome = `${d.nome.slice(0, 110)} (${n})`;
@@ -106,7 +108,7 @@ async function atualizarPessoas(admin: SupabaseClient, t: TurmaMoodle, alunos: P
     idDoGrupo.set(chave, id);
   }
 
-  const integrantes = [...desejados].flatMap(([chave, d]) =>
+  const integrantes = [...desejados].filter(([chave]) => !escondidos.has(idDoGrupo.get(chave)!)).flatMap(([chave, d]) =>
     d.pessoas.map((p) => ({ org_id: t.org_id, turma_id: t.id, grupo_id: idDoGrupo.get(chave)!, email: p.email, nome: p.nome, matricula: p.matricula })),
   );
   if (integrantes.length) {
@@ -169,7 +171,7 @@ async function atualizarTarefas(admin: SupabaseClient, t: TurmaMoodle, c: Conexa
 async function trazerEntregas(admin: SupabaseClient, t: TurmaMoodle, c: Conexao, alunos: Participante[]) {
   const [{ data: etapas }, { data: grupos }] = await Promise.all([
     admin.from("etapas").select("id, titulo, moodle_tarefa").eq("turma_id", t.id).eq("moodle_corrigir", true).not("moodle_tarefa", "is", null),
-    admin.from("grupos").select("id, moodle_id, moodle_membros").eq("turma_id", t.id).not("moodle_id", "is", null),
+    admin.from("grupos").select("id, moodle_id, moodle_membros").eq("turma_id", t.id).eq("escondido", false).not("moodle_id", "is", null),
   ]);
   const porMoodle = new Map((grupos ?? []).map((g) => [g.moodle_id as string, g.id as string]));
   const porAluno = new Map<number, string>();

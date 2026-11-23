@@ -2,15 +2,15 @@ import type { Metadata } from "next";
 import { turmaAtual } from "@/lib/turma";
 import { completarVocabulario, quemEntrega } from "@/lib/nomes";
 import { ColarLista } from "@/components/colar-lista";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FormAcao } from "@/components/form-acao";
-import { Cartao, Selo, Vazio } from "@/components/ui";
+import { Cartao, Vazio } from "@/components/ui";
 import { contextoDaEmpresa } from "@/lib/empresa";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { minusc } from "@/lib/textos";
 import { cadastrarEmLote, criarGrupo } from "./acoes";
 import { CamposGrupo } from "./campos";
+import { CartaoGrupo } from "./cartao-grupo";
 
 export async function generateMetadata({ params }: PageProps<"/app/[slug]/grupos">): Promise<Metadata> {
   const { slug } = await params;
@@ -27,8 +27,9 @@ export default async function ListaGrupos({ params }: PageProps<"/app/[slug]/gru
   const turma = await turmaAtual(empresa.id);
   const { data: grupos } = await supabase
     .from("grupos")
-    .select("id, nome, tema, ativo, integrantes(email, nome)")
+    .select("id, nome, tema, ativo, moodle_id, integrantes(email, nome)")
     .eq("org_id", empresa.id)
+    .eq("escondido", false)
     .eq("turma_id", turma?.id ?? "")
     .order("nome");
 
@@ -47,23 +48,14 @@ export default async function ListaGrupos({ params }: PageProps<"/app/[slug]/gru
         ) : (
           <ul className="flex flex-col gap-3">
             {grupos.map((g) => (
-              <li key={g.id}>
-                <Link
-                  href={`/app/${slug}/grupos/${g.id}`}
-                  className="flex flex-col gap-1 rounded-2xl border border-borda bg-cartao p-4 hover:border-marca"
-                >
-                  <span className="flex flex-wrap items-center gap-2 font-semibold">
-                    {g.nome}
-                    {!g.ativo ? <Selo>Pausado</Selo> : null}
-                  </span>
-                  {g.tema ? <span className="text-sm">{g.tema}</span> : null}
-                  <span className="break-words text-sm text-suave">
-                    {g.integrantes.length
-                      ? g.integrantes.map((i) => i.nome || i.email).join(", ")
-                      : "Nenhum e-mail cadastrado"}
-                  </span>
-                </Link>
-              </li>
+              <CartaoGrupo
+                key={g.id}
+                slug={slug}
+                podeGerir={podeGerir}
+                palavra={nomes.um}
+                doMoodle={Boolean(g.moodle_id)}
+                g={{ id: g.id, nome: g.nome, tema: g.tema, ativo: g.ativo, pessoas: g.integrantes.length ? g.integrantes.map((i) => i.nome || i.email).join(", ") : "Nenhum e-mail cadastrado" }}
+              />
             ))}
           </ul>
         )}

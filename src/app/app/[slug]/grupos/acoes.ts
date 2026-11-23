@@ -132,7 +132,13 @@ export async function apagarGrupo(slug: string, id: string): Promise<void> {
   const { empresa, podeGerir } = await contextoDaEmpresa(slug);
   if (!podeGerir) return;
   const supabase = await criarClienteServidor();
-  await supabase.from("grupos").delete().eq("id", id).eq("org_id", empresa.id);
+  const { data: g } = await supabase.from("grupos").select("moodle_id").eq("id", id).eq("org_id", empresa.id).maybeSingle();
+  if (g?.moodle_id) {
+    // Veio do Moodle: só esconde, senão a próxima busca traria de volta.
+    await supabase.from("grupos").update({ escondido: true, ativo: false }).eq("id", id).eq("org_id", empresa.id);
+  } else {
+    await supabase.from("grupos").delete().eq("id", id).eq("org_id", empresa.id);
+  }
   revalidatePath(`/app/${slug}`, "layout");
   redirect(`/app/${slug}/grupos`);
 }
@@ -199,5 +205,19 @@ export async function salvarIntegrante(slug: string, id: string, campo: "nome" |
   if (error) return { ok: false, mensagem: mensagemDeErro(error, "Não foi possível salvar. Tente de novo.") };
   if (!data?.length) return { ok: false, mensagem: "Não foi possível salvar (sem permissão ou item apagado)." };
   revalidatePath(`/app/${slug}/grupos`, "layout");
+  return { ok: true, mensagem: "Salvo." };
+}
+
+/** Troca só o nome da equipe (direto na lista). */
+export async function renomearGrupo(slug: string, id: string, valorBruto: string): Promise<{ ok: boolean; mensagem: string }> {
+  const { empresa, podeGerir } = await contextoDaEmpresa(slug);
+  if (!podeGerir) return { ok: false, mensagem: "Só quem administra pode mudar isso." };
+  const nome = String(valorBruto ?? "").trim().replace(/\s+/g, " ");
+  if (!nome || nome.length > 120) return { ok: false, mensagem: "Escreva o nome (até 120 letras)." };
+  const supabase = await criarClienteServidor();
+  const { data, error } = await supabase.from("grupos").update({ nome }).eq("id", id).eq("org_id", empresa.id).select("id");
+  if (error) return { ok: false, mensagem: erroDoBanco(error, nome) };
+  if (!data?.length) return { ok: false, mensagem: "Não foi possível salvar (sem permissão ou item apagado)." };
+  revalidatePath(`/app/${slug}`, "layout");
   return { ok: true, mensagem: "Salvo." };
 }
