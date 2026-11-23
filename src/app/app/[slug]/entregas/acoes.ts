@@ -1,4 +1,6 @@
 "use server";
+
+import { recuperarAnexos } from "@/lib/emails/recuperar";
 import { origemDoSite } from "@/lib/acesso";
 import { chamarFila } from "@/lib/fila";
 import { levarParaODrive } from "@/lib/drive";
@@ -71,10 +73,19 @@ export async function importarEmail(slug: string, emailId: string, _a: Resultado
   const grupo = String(dados.get("grupo") ?? "");
   if (!etapa || !grupo) return { ok: false, mensagem: "Escolha a etapa e o grupo." };
   const supabase = await criarClienteServidor();
+  // Anexos que não foram guardados (e-mail ignorado, por privacidade): busca de novo agora.
+  let faltaram: string[] = [];
+  const { data: visivel } = await supabase.from("emails_recebidos").select("id, anexos_pendentes").eq("id", emailId).maybeSingle();
+  const admin = criarClienteAdmin();
+  if (visivel && admin && ((visivel.anexos_pendentes as unknown[]) ?? []).length) {
+    faltaram = (await recuperarAnexos(admin, emailId)).faltaram;
+  }
   const { error } = await supabase.rpc("importar_email", { p_email: emailId, p_etapa: etapa, p_grupo: grupo });
   if (error) return { ok: false, mensagem: mensagemDeErro(error, "Não foi possível confirmar. Tente de novo.") };
   revalidatePath(`/app/${slug}`, "layout");
-  return { ok: true, mensagem: "Confirmado como entrega." };
+  return faltaram.length
+    ? { ok: true, mensagem: `Confirmado como entrega, mas não deu para buscar de novo: ${faltaram.join(", ")}. Peça para a equipe reenviar.` }
+    : { ok: true, mensagem: "Confirmado como entrega." };
 }
 
 /** Marca um e-mail da caixa como "não é entrega". */
@@ -242,4 +253,25 @@ export async function analisarEmSegundoPlano(slug: string, entregaIds: string[])
       ? `${n} ${n === 1 ? "entrega entrou" : "entregas entraram"} na fila. Pode fechar a página: o sininho avisa quando ficar pronto.`
       : "Essas entregas já estão na fila.",
   };
+}
+
+/** Na entrega: busca de novo os anexos do e-mail que não tinham sido guardados. */
+export async function buscarAnexosDeNovo(slug: string, entregaId: string): Promise<{ ok: boolean; mensagem: string }> {
+  const { empresa, podeAvaliar } = await contextoDaEmpresa(slug);
+  if (!podeAvaliar) return { ok: false, mensagem: "Você não tem permissão para fazer isso." };
+  const supabase = await criarClienteServidor();
+  const { data: e } = await supabase.from("entregas").select("id, email_id").eq("id", entregaId).eq("org_id", empresa.id).maybeSingle();
+  const admin = criarClienteAdmin();
+  if (!e?.email_id || !admin) return { ok: false, mensagem: "Não há anexos para buscar." };
+  const { data: antes } = await admin.from("emails_recebidos").select("anexos").eq("id", e.email_id).maybeSingle();
+  const jaTinha = new Set(((antes?.anexos ?? []) as { caminho: string }[]).map((x) => x.caminho));
+  const r = await recuperarAnexos(admin, e.email_id);
+  const { data: depois } = await admin.from("emails_recebidos").select("anexos").eq("id", e.email_id).maybeSingle();
+  const novos = ((depois?.anexos ?? []) as { caminho: string; nome: string; tamanho: number; tipo: string }[]).filter((x) => !jaTinha.has(x.caminho));
+  if (novos.length) {
+    await admin.from("arquivos_entrega").insert(novos.map((x) => ({ org_id: empresa.id, entrega_id: e.id, caminho: x.caminho, nome: x.nome, tamanho: x.tamanho, tipo: x.tipo ?? "" })));
+  }
+  revalidatePath(`/app/${slug}`, "layout");
+  if (r.faltaram.length) return { ok: false, mensagem: `Não deu para buscar: ${r.faltaram.join(", ")}. O e-mail pode ter saído do serviço de recebimento; peça para a equipe reenviar.` };
+  return { ok: true, mensagem: novos.length === 1 ? "O anexo voltou." : `${novos.length} anexos voltaram.` };
 }

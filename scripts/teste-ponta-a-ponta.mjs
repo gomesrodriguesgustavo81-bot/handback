@@ -854,6 +854,34 @@ try {
     confere(r.ok === true && r.status === "confirmar", `Resend: e-mail recebido vai para a caixa (${r.status ?? r.motivo})`);
     await ana.p.goto(`${APP}/app/${SLUG}/entregas/caixa`);
     confere(await ana.p.locator("li.rounded-2xl", { hasText: "nova@aluno.test" }).getByText("trabalho-resend.pdf").isVisible(), "Resend: anexo baixado e guardado");
+
+    // E-mail ignorado (veio de alguém da escola) com vídeo: o anexo não é guardado,
+    // mas volta quando alguém diz que era entrega.
+    const idIgn = `em_ign_${sufixo}`;
+    await fetch(`${process.env.RESEND_API_BASE}/__emails`, {
+      method: "POST",
+      body: JSON.stringify({
+        id: idIgn, from: `Ana <${ANA}>`, to: [ENDERECO.replace("@caixa.handback.test", "@abc.resend.app")],
+        subject: "time roxa ciclo 2", text: "vídeo da equipe",
+        headers: { "message-id": `<ign-${sufixo}@escola>` },
+        anexos: [{ filename: "explica.mp4", content_type: "video/mp4", conteudo: "video de teste" }],
+      }),
+    });
+    const ev2 = JSON.stringify({ type: "email.received", created_at: new Date().toISOString(), data: { email_id: idIgn } });
+    const ass2 = `v1,${createHmac("sha256", chave).update(`msg2_${sufixo}.${ts}.${ev2}`).digest("base64")}`;
+    const r2 = await (await fetch(`${APP}/api/emails/resend`, { method: "POST", headers: { "content-type": "application/json", "svix-id": `msg2_${sufixo}`, "svix-timestamp": ts, "svix-signature": ass2 }, body: ev2 })).json();
+    confere(r2.status === "ignorado", `e-mail de alguém da escola é ignorado (${r2.status ?? r2.motivo})`);
+    confere(sql(`select count(*) from storage.objects where name like '%explica.mp4'`) === "0", "privacidade: anexo de e-mail ignorado não é guardado");
+    await ana.p.goto(`${APP}/app/${SLUG}/entregas/caixa?ver=ignorados`);
+    const itemIgn = ana.p.locator("li.rounded-2xl", { hasText: "time roxa ciclo 2" });
+    confere(await itemIgn.getByText(/Tinha 1 anexo \(explica\.mp4\)/).isVisible(), "a caixa mostra o anexo que não foi guardado");
+    await itemIgn.getByLabel("Equipe", { exact: true }).selectOption({ label: "Equipe Roxa" });
+    await itemIgn.locator('select[name="etapa"]').selectOption(sql(`select e.id from public.etapas e join public.turmas t on t.id = e.turma_id join public.organizacoes o on o.id = e.org_id where o.slug = '${SLUG}' and t.nome = 'Turma A' and e.numero = 2`));
+    await itemIgn.getByRole("button", { name: "É entrega" }).click();
+    await itemIgn.waitFor({ state: "detached" });
+    const entIgn = sql(`select entrega_id from public.emails_recebidos where message_id = '<ign-${sufixo}@escola>'`);
+    await ana.p.goto(`${APP}/app/${SLUG}/entregas/${entIgn}`);
+    confere(await ana.p.getByText("explica.mp4").isVisible(), "ao virar entrega, o Handback busca o anexo de novo e ele aparece");
   }
 
   // 7b2) Como a IA está indo (calibração)

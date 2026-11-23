@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BuscarAnexos } from "./buscar-anexos";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BotaoAnalisar, FolhaDevolutiva } from "@/components/analise";
@@ -32,7 +33,7 @@ type Entrega = {
   etapas: { numero: number; titulo: string; moodle_tarefa: number | null; moodle_nota_max: number | null } | null;
   grupos: { nome: string; tema: string } | null;
   arquivos_entrega: { id: string; caminho: string; nome: string; tamanho: number }[];
-  emails_recebidos: { avisos: string[] } | null;
+  emails_recebidos: { avisos: string[]; anexos_pendentes: { nome: string }[]; origem_id: string | null } | null;
 };
 
 type Analise = {
@@ -76,7 +77,7 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
   const { data } = await supabase
     .from("entregas")
     .select(
-      "id, etapa_id, grupo_id, enviada_em, origem, remetente, assunto, atrasada, status, comentario, links, etapas(numero, titulo, moodle_tarefa, moodle_nota_max), grupos(nome, tema), arquivos_entrega(id, caminho, nome, tamanho), emails_recebidos!entregas_email_id_fkey(avisos)",
+      "id, etapa_id, grupo_id, enviada_em, origem, remetente, assunto, atrasada, status, comentario, links, etapas(numero, titulo, moodle_tarefa, moodle_nota_max), grupos(nome, tema), arquivos_entrega(id, caminho, nome, tamanho), emails_recebidos!entregas_email_id_fkey(avisos, anexos_pendentes, origem_id)",
     )
     .eq("org_id", empresa.id)
     .eq("id", id)
@@ -175,15 +176,22 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
   ) : null;
 
   // Anexos que o e-mail tinha mas não chegaram (o motivo vem do recebimento).
-  const problemasAnexo = (entrega.emails_recebidos?.avisos ?? []).filter((x) => /anexo/i.test(x));
+  const pendentes = entrega.emails_recebidos?.anexos_pendentes ?? [];
+  // Depois que os anexos voltam, o aviso some (e-mails antigos, sem como buscar de novo, continuam mostrando).
+  const resolvido = !pendentes.length && Boolean(entrega.emails_recebidos?.origem_id);
+  const problemasAnexo = resolvido ? [] : (entrega.emails_recebidos?.avisos ?? []).filter((x) => /anexo/i.test(x));
+  const podeBuscarDeNovo = pendentes.length > 0 && Boolean(entrega.emails_recebidos?.origem_id);
   const arquivos = (
     <Bloco titulo="Arquivos da entrega">
       {problemasAnexo.length ? (
-        <ul role="alert" className="mb-2 flex flex-col gap-1 rounded-xl bg-alerta-fundo px-3 py-2 text-sm text-alerta">
-          {problemasAnexo.map((x, i) => (
-            <li key={i}>{x}</li>
-          ))}
-        </ul>
+        <div role="alert" className="mb-2 flex flex-col gap-2 rounded-xl bg-alerta-fundo px-3 py-2 text-sm text-alerta">
+          <ul className="flex flex-col gap-1">
+            {problemasAnexo.map((x, i) => (
+              <li key={i}>{x}</li>
+            ))}
+          </ul>
+          {podeBuscarDeNovo ? <BuscarAnexos slug={slug} entregaId={entrega.id} /> : null}
+        </div>
       ) : null}
       {!entrega.arquivos_entrega.length && !entrega.links.length ? (
         <p className="text-sm text-suave">Nenhum arquivo nem link{entrega.comentario ? " (só o texto do e-mail)" : ""}.</p>

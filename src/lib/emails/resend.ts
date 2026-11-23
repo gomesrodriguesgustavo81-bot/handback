@@ -178,5 +178,6 @@ export async function buscarEmailResend(evento: Json, chave: string): Promise<Em
     respondeA: [...new Set([...ids(cab.get("in-reply-to") ?? ""), ...ids(cab.get("references") ?? "")])],
     anexos,
     problemasAnexos: problemas,
+    idOrigem: `resend:${id}`,
   };
 }

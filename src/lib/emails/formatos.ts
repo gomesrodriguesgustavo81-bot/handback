@@ -25,6 +25,8 @@ export type EmailRecebido = {
   anexos: AnexoRecebido[];
   /** Anexos que o e-mail tinha mas não deu para baixar (com o motivo). */
   problemasAnexos?: string[];
+  /** Código do e-mail no serviço de recebimento (para buscar os anexos de novo). */
+  idOrigem?: string;
 };
 
 type Json = Record<string, unknown>;

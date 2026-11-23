@@ -135,5 +135,12 @@ export async function receberEmail(admin: SupabaseClient, email: EmailRecebido):
     throw new Error(`Falha ao gravar o e-mail: ${error.message}`);
   }
 
+  // Anexos não guardados (e-mail ignorado ou falha): guarda só o nome e de onde
+  // buscar de novo, se alguém disser que era uma entrega.
+  const pendentes = guardados.filter((g) => !g.caminho).map((g) => ({ nome: g.nome, tamanho: g.tamanho, tipo: g.tipo }));
+  if (email.idOrigem || pendentes.length) {
+    await admin.from("emails_recebidos").update({ origem_id: email.idOrigem ?? null, anexos_pendentes: pendentes }).eq("id", emailId);
+  }
+
   return { ok: true, status: triagem.status, motivo: triagem.motivo, emailId };
 }

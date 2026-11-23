@@ -32,6 +32,7 @@ type Email = {
   texto: string;
   links: string[];
   anexos: { nome: string; tamanho: number }[];
+  anexos_pendentes: { nome: string; tamanho: number }[];
   status: string;
   motivo: string;
   avisos: string[];
@@ -57,7 +58,7 @@ export default async function CaixaDeEmails({ params, searchParams }: PageProps<
     supabase.from("grupos").select("id, nome").eq("org_id", empresa.id).eq("turma_id", tId).eq("ativo", true).order("nome"),
     supabase
       .from("emails_recebidos")
-      .select("id, enviado_em, de_email, de_nome, assunto, texto, links, anexos, status, motivo, avisos, etapa_sugerida, grupo_sugerido")
+      .select("id, enviado_em, de_email, de_nome, assunto, texto, links, anexos, anexos_pendentes, status, motivo, avisos, etapa_sugerida, grupo_sugerido")
       .eq("org_id", empresa.id)
       .eq("turma_id", tId)
       .eq("status", STATUS_DA_ABA[aba])
@@ -116,6 +117,13 @@ export default async function CaixaDeEmails({ params, searchParams }: PageProps<
                   </span>
                 </div>
 
+                {m.anexos_pendentes?.length ? (
+                  <p className="rounded-lg bg-neutro-fundo px-2 py-1 text-xs text-neutro">
+                    Tinha {m.anexos_pendentes.length === 1 ? "1 anexo" : `${m.anexos_pendentes.length} anexos`} ({m.anexos_pendentes.map((x) => x.nome).join(", ")}) que
+                    não {m.anexos_pendentes.length === 1 ? "foi guardado" : "foram guardados"}
+                    {m.status === "ignorado" ? " (e-mail ignorado: por privacidade, o Handback não guarda)" : ""}. Se for entrega, o Handback busca de novo quando você confirmar.
+                  </p>
+                ) : null}
                 {m.anexos.length || m.links.length ? (
                   <ul className="flex flex-wrap gap-1.5" aria-label="Anexos e links">
                     {m.anexos.map((x, i) => (
