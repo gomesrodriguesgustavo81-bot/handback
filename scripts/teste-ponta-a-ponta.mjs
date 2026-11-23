@@ -111,7 +111,11 @@ async function primeiroAcesso(navegador, email, nome) {
   await p.getByLabel("Nova senha").fill(SENHA);
   await p.getByLabel("Repita a senha").fill(SENHA);
   await p.getByRole("button", { name: "Salvar senha" }).click();
-  await p.waitForURL(/\/conta\/duas-etapas/);
+  // Conta nova: entra só com a senha e vê o lembrete (14 dias para ativar).
+  await p.waitForURL(/\/app/);
+  await p.getByRole("status", { name: "Proteja sua conta" }).waitFor();
+  await p.goto(`${APP}/conta/duas-etapas`);
+  await p.getByRole("link", { name: /^Fazer depois \(até/ }).waitFor();
   if (nome) await p.screenshot({ path: `${FOTOS}/${nome}-duas-etapas.png`, fullPage: true });
   await cadastrarCelular(p, email);
   await p.waitForURL(/\/app/);
@@ -295,8 +299,11 @@ try {
   confere(true, "quem tem uma empresa só entra direto nas Entregas");
   const abasAna = (await ana.p.getByRole("navigation", { name: "Seções da empresa" }).getByRole("link").allInnerTexts()).filter(Boolean);
   confere(abasAna.join("|") === "Entregas|Aulas|Equipes", `só 3 abas, com o vocabulário de escola (${abasAna.join(", ")})`);
-  confere(await ana.p.getByRole("link", { name: "Configurações" }).isVisible(), "administrador vê a engrenagem das Configurações");
-  await ana.p.getByRole("link", { name: "Configurações" }).click();
+  await ana.p.getByRole("button", { name: "Mais" }).click();
+  const gavetaMais = ana.p.getByRole("dialog", { name: "Mais opções" });
+  confere(await gavetaMais.getByRole("link", { name: "Configurações" }).isVisible() && await gavetaMais.getByRole("link", { name: "Relatórios" }).isVisible(), "celular: barra embaixo; Relatórios e Configurações ficam em “Mais”");
+  await ana.p.screenshot({ path: `${FOTOS}/30b-mais.png` });
+  await gavetaMais.getByRole("link", { name: "Configurações" }).click();
   await ana.p.getByRole("heading", { name: "Configurações" }).waitFor();
   confere(await ana.p.getByRole("link", { name: /Quem usa o Handback/ }).isVisible() && await ana.p.getByRole("link", { name: /Registro de atividades/ }).isVisible(), "Configurações reúnem o que é da conta inteira");
   await largura(ana.p, "configurações");
@@ -399,26 +406,33 @@ try {
     }
   };
   await ana.p.goto(`${APP}/app/${SLUG}/grupos`);
-  await ana.p.getByLabel("Nome", { exact: true }).fill("Equipe Azul");
+  const gavetaEquipe = ana.p.getByRole("dialog", { name: "Criar equipe" });
+  await ana.p.getByRole("button", { name: "+ Criar equipe" }).click();
+  await gavetaEquipe.getByLabel("Nome da equipe").fill("Equipe Azul");
   await pessoasNovas(["a1@aluno.test", "A2@Aluno.test", "a1@aluno.test"]);
-  await ana.p.getByRole("button", { name: "Adicionar", exact: true }).click();
+  await gavetaEquipe.getByRole("button", { name: "Criar equipe", exact: true }).click();
   await ana.p.getByText("“Equipe Azul” cadastrado com 2 pessoas.").waitFor();
+  confere(!(await gavetaEquipe.count()), "a janela de criar equipe fecha depois de salvar");
   {
     const azul = ana.p.getByRole("listitem").filter({ hasText: "Equipe Azul" });
+    await azul.getByText("2 pessoas", { exact: true }).waitFor();
     confere(await azul.getByText("2 pessoas", { exact: true }).isVisible() && await azul.getByText("a1, a2").isVisible(), "lista mostra quantas pessoas e a prévia dos nomes");
     await azul.getByText(/Ver as 2 pessoas e os e-mails/).click();
     confere(await azul.getByText("a1@aluno.test").isVisible() && await azul.getByText("a2@aluno.test").isVisible(), "e-mails guardados em minúsculas e sem repetição");
   }
-  confere((await ana.p.getByLabel("Nome", { exact: true }).inputValue()) === "", "formulário de equipe limpa depois de salvar");
-  await ana.p.getByLabel("Nome", { exact: true }).fill("Equipe Verde");
+  await ana.p.getByRole("button", { name: "+ Criar equipe" }).click();
+  await gavetaEquipe.getByLabel("Nome da equipe").fill("Equipe Verde");
   await pessoasNovas(["a1@aluno.test"]);
-  await ana.p.getByRole("button", { name: "Adicionar", exact: true }).click();
+  await gavetaEquipe.getByRole("button", { name: "Criar equipe", exact: true }).click();
   await ana.p.getByText(/a1@aluno.test \(já está em “Equipe Azul”\)/).waitFor();
   confere(true, "o mesmo e-mail não entra em duas equipes");
   await pessoasNovas(["v1@aluno.test", "nao-e-email"]);
-  await ana.p.getByRole("button", { name: "Adicionar", exact: true }).click();
+  await gavetaEquipe.getByRole("button", { name: "Criar equipe", exact: true }).click();
   await ana.p.getByText("Estes e-mails não parecem válidos: nao-e-email.").waitFor();
   confere(true, "e-mail inválido é apontado");
+  await largura(ana.p, "criar equipe");
+  await ana.p.screenshot({ path: `${FOTOS}/7a-criar-equipe.png` });
+  await gavetaEquipe.getByRole("button", { name: "Fechar" }).click();
   await largura(ana.p, "equipes");
   await ana.p.screenshot({ path: `${FOTOS}/7-equipes.png`, fullPage: true });
 
@@ -562,8 +576,9 @@ try {
   await ana.p.getByRole("button", { name: "Salvar" }).click();
   await ana.p.getByText("Cadastro salvo.").waitFor();
   await ana.p.goto(`${APP}/app/${SLUG}/grupos`);
-  await ana.p.getByLabel("Nome", { exact: true }).fill("Equipe Roxa");
-  await ana.p.getByRole("button", { name: "Adicionar" }).click();
+  await ana.p.getByRole("button", { name: "+ Criar equipe" }).click();
+  await ana.p.getByRole("dialog", { name: "Criar equipe" }).getByLabel("Nome da equipe").fill("Equipe Roxa");
+  await ana.p.getByRole("dialog", { name: "Criar equipe" }).getByRole("button", { name: "Criar equipe", exact: true }).click();
   await ana.p.getByText("“Equipe Roxa” cadastrado").waitFor();
 
   // E3) Chegam e-mails
@@ -913,13 +928,16 @@ try {
   confere(abasT2.includes("Estudantes"), `na turma individual a aba vira o nome das pessoas (${abasT2.join(", ")})`);
   await ana.p.goto(`${APP}/app/${SLUG}/grupos`);
   confere(await ana.p.getByText("Nada cadastrado ainda").isVisible(), "turma nova começa vazia (as equipes da outra turma não aparecem)");
+  confere(!(await ana.p.getByRole("button", { name: /Criar equipe/ }).count()), "turma individual não tem “Criar equipe”");
+  await ana.p.getByRole("button", { name: "Colar uma lista" }).click();
   await ana.p.getByLabel("Lista de estudantes").fill("Bia Souza; a1@aluno.test\nCarlos Lima <carlos@aluno.test>\nSem Email");
   await ana.p.getByText("2 pronto(s) para cadastrar · 1 com problema").waitFor();
   await ana.p.screenshot({ path: `${FOTOS}/23-colar-lista.png`, fullPage: true });
   await ana.p.getByRole("button", { name: "Cadastrar 2 estudantes" }).click();
   await ana.p.getByText("2 cadastrado(s).").waitFor();
   confere((await ana.p.getByLabel("Lista de estudantes").inputValue()) === "Sem Email", "linha com problema fica na caixa para corrigir");
-  confere(await ana.p.getByText("Carlos Lima").isVisible(), "estudantes cadastrados em lote (o mesmo e-mail pode estar em outra turma)");
+  await ana.p.getByRole("dialog").getByRole("button", { name: "Fechar" }).click();
+  confere(await ana.p.getByText("Carlos Lima").first().isVisible(), "estudantes cadastrados em lote (o mesmo e-mail pode estar em outra turma)");
   await largura(ana.p, "cadastrar em lote");
   await ana.p.goto(`${APP}/app/${SLUG}/etapas/nova`);
   confere((await ana.p.getByLabel("Nº").inputValue()) === "1", "numeração das etapas é por turma");
@@ -1440,6 +1458,84 @@ try {
     confere(pediuConfirmacao("Conectar seu Google Drive?") && pediuConfirmacao("Guardar os arquivos no seu Drive?") && pediuConfirmacao("Levar também os arquivos antigos?") && pediuConfirmacao("Desconectar o Google Drive?"), "drive: conectar, ligar, levar e desconectar pedem confirmação");
   }
 
+  // 7m) Equipes: adicionar pessoa (sozinha ou numa equipe) e criar equipe juntando quem está sozinho
+  {
+    await ana.p.goto(`${APP}/app/${SLUG}/configuracoes/turmas`);
+    await ana.p.locator("summary", { hasText: "+ Criar turma" }).click();
+    const formT = ana.p.locator("details", { hasText: "+ Criar turma" });
+    await formT.getByLabel("Nome").fill("Projeto Final");
+    await formT.getByRole("button", { name: "Criar" }).click();
+    await ana.p.getByText("“Projeto Final” criada").waitFor();
+    await trocarTurma(ana.p, "Projeto Final");
+    await ana.p.goto(`${APP}/app/${SLUG}/grupos`);
+    const gaveta = ana.p.getByRole("dialog", { name: "Adicionar pessoa" });
+    for (const [nome, email] of [["Lia Prado", "lia@solo.test"], ["Rui Costa", "rui@solo.test"], ["Téo Alves", "teo@solo.test"]]) {
+      await ana.p.getByRole("button", { name: "+ Adicionar pessoa" }).click();
+      await gaveta.getByLabel("Nome").fill(nome);
+      await gaveta.getByLabel("E-mail").fill(email);
+      if (nome === "Lia Prado") {
+        await largura(ana.p, "adicionar pessoa");
+        await ana.p.screenshot({ path: `${FOTOS}/7b-adicionar-pessoa.png` });
+      }
+      await gaveta.getByRole("button", { name: "Adicionar", exact: true }).click();
+      await ana.p.getByText(`${nome} entrou, com entrega individual.`).waitFor();
+    }
+    confere(pediuConfirmacao("Adicionar Lia Prado?"), "adicionar pessoa pede confirmação");
+    confere(await ana.p.getByText("3 cadastros · 3 pessoas").isVisible(), "cada pessoa sozinha vira um cadastro (entrega individual)");
+    // Junta duas pessoas sozinhas numa equipe
+    await ana.p.getByRole("button", { name: "+ Criar equipe" }).click();
+    const ge = ana.p.getByRole("dialog", { name: "Criar equipe" });
+    await ge.getByLabel("Nome da equipe").fill("Equipe Sol");
+    await ge.getByRole("checkbox", { name: /Lia Prado/ }).check();
+    await ge.getByRole("checkbox", { name: /Rui Costa/ }).check();
+    await ana.p.screenshot({ path: `${FOTOS}/7c-juntar.png` });
+    await ge.getByRole("button", { name: "Criar equipe", exact: true }).click();
+    await ana.p.getByText("“Equipe Sol” cadastrado com 2 pessoas.").waitFor();
+    confere(pediuConfirmacao("Criar “Equipe Sol”?"), "criar equipe pede confirmação");
+    await ana.p.getByText("2 cadastros · 3 pessoas").waitFor({ timeout: 10000 }).catch(() => undefined);
+    confere(await ana.p.getByText("2 cadastros · 3 pessoas").isVisible() && await ana.p.getByText("Apagadas (2)").isVisible(), "criar equipe junta quem estava sozinho; os cadastros vazios vão para “Apagadas”");
+    // Mais uma pessoa direto na equipe
+    await ana.p.getByRole("button", { name: "+ Adicionar pessoa" }).click();
+    await gaveta.getByLabel("Nome").fill("Ivo Melo");
+    await gaveta.getByLabel("E-mail").fill("ivo@solo.test");
+    await gaveta.getByLabel("Em qual equipe ela entra?").selectOption({ label: "Equipe Sol (2 pessoas)" });
+    await gaveta.getByRole("button", { name: "Adicionar", exact: true }).click();
+    await ana.p.getByText("Ivo Melo entrou em “Equipe Sol”.").waitFor();
+    confere(pediuConfirmacao("Adicionar Ivo Melo em “Equipe Sol”?") && await ana.p.getByRole("listitem").filter({ hasText: "Equipe Sol" }).getByText("3 pessoas", { exact: true }).isVisible(), "adicionar pessoa numa equipe que já existe");
+    await ana.p.getByRole("button", { name: "+ Adicionar pessoa" }).click();
+    await gaveta.getByLabel("Nome").fill("Repetido");
+    await gaveta.getByLabel("E-mail").fill("LIA@solo.test");
+    await gaveta.getByRole("button", { name: "Adicionar", exact: true }).click();
+    await gaveta.getByText(/Esse e-mail já está num cadastro/).waitFor();
+    confere(true, "o mesmo e-mail não entra duas vezes");
+    await gaveta.getByRole("button", { name: "Fechar" }).click();
+    await largura(ana.p, "equipes com os dois botões");
+    await ana.p.screenshot({ path: `${FOTOS}/7d-equipes-botoes.png`, fullPage: true });
+    // Computador: menu do lado, sem a barra de baixo
+    const pc = await navegador.newContext({ viewport: { width: 1280, height: 800 }, storageState: await ana.ctx.storageState() });
+    const pp = await pc.newPage();
+    await pp.goto(`${APP}/app/${SLUG}/entregas`);
+    const lado = pp.getByRole("navigation", { name: "Seções da empresa" });
+    const itens = (await lado.getByRole("link").allInnerTexts()).map((x) => x.trim());
+    confere(/^Entregas\|(Aulas|Encontros)\|Equipes\|Relatórios\|Moodle\|Configurações$/.test(itens.join("|")) && !(await pp.getByRole("button", { name: "Mais" }).count()), `computador: menu do lado com tudo à vista (${itens.join(", ")})`);
+    await pp.screenshot({ path: `${FOTOS}/7e-computador.png` });
+    await pc.close();
+    await trocarTurma(ana.p, "Turma A");
+  }
+
+  // Conta antiga (mais de 14 dias) numa escola que exige: o app autenticador é obrigatório
+  {
+    const VELHO = `velho-${sufixo}@escola.test`;
+    await criarConta(VELHO);
+    sql(`update auth.users set created_at = now() - interval '20 days' where email = '${VELHO}'`);
+    sql(`insert into public.membros (org_id, user_id, papel) select o.id, u.id, 'avaliador' from public.organizacoes o, auth.users u where o.slug = '${SLUG}' and u.email = '${VELHO}'`);
+    const velho = await entrar(navegador, VELHO);
+    await velho.p.goto(`${APP}/app/${SLUG}/entregas`);
+    await velho.p.waitForURL(/\/conta\/duas-etapas/);
+    confere(!(await velho.p.getByRole("link", { name: /Fazer depois/ }).count()), "depois de 14 dias, o código do app passa a ser obrigatório");
+    await velho.ctx.close();
+  }
+
   // 7f) Privacidade: o dono não vê o conteúdo; o cliente libera o suporte
   await dono.p.goto(`${APP}/admin`);
   const painelUso = dono.p.getByRole("region", { name: "Uso dos planos" });
@@ -1555,7 +1651,7 @@ try {
 
   // Toda ação de adicionar, apagar, conectar, desconectar ou enviar pediu confirmação antes.
   const esperadas = [
-    ["Adicionar esta equipe?", "adicionar equipe"],
+    ["Criar “Equipe Azul”?", "criar equipe"],
     ["Adicionar ", "adicionar pessoa ou aula"],
     ["Convidar esta pessoa?", "convidar"],
     ["Criar esta turma?", "criar turma"],

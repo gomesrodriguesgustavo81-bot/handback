@@ -40,7 +40,7 @@ export default async function Pessoas({ params }: PageProps<"/app/[slug]/pessoas
   }));
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
+    <div className="grid gap-6 xl:grid-cols-[1fr_20rem]">
       <div className="flex flex-col gap-6">
         <section className="flex flex-col gap-3">
           <h2 className="text-lg font-semibold">Pessoas com acesso ({pessoas?.length ?? 0})</h2>

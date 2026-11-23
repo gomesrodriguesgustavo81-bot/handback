@@ -6,7 +6,7 @@ import { acessoAtivo } from "@/lib/suporte";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { dataHoraBR } from "@/lib/textos";
 import { contextoDaEmpresa } from "@/lib/empresa";
-import { AbasEmpresa } from "./abas";
+import { Navegacao, VoltarConfiguracoes, type ItemNav } from "./navegacao";
 import { completarVocabulario, o, quemEntrega } from "@/lib/nomes";
 import { turmaAtual, turmasDaEmpresa } from "@/lib/turma";
 import { SeletorTurma } from "./seletor-turma";
@@ -32,18 +32,22 @@ export default async function LayoutEmpresa({
   const acesso = await acessoAtivo(await criarClienteServidor(), empresa.id);
   const entrega = quemEntrega(v, atual?.modo ?? "grupos");
 
-  const abas = [
-    ...(podeAvaliar
-      ? [{ href: `/app/${slug}/entregas`, nome: "Entregas" }]
-      : []),
-    { href: `/app/${slug}/etapas`, nome: v.etapas },
-    ...(podeAvaliar
-      ? [{ href: `/app/${slug}/grupos`, nome: entrega.varios }]
-      : []),
+  const abas: ItemNav[] = [
+    ...(podeAvaliar ? [{ href: `/app/${slug}/entregas`, nome: "Entregas", icone: "entregas" as const }] : []),
+    { href: `/app/${slug}/etapas`, nome: v.etapas, icone: "aulas" },
+    ...(podeAvaliar ? [{ href: `/app/${slug}/grupos`, nome: entrega.varios, icone: "equipes" as const }] : []),
   ];
+  const mais: ItemNav[] = [
+    ...(podeAvaliar ? [{ href: `/app/${slug}/relatorios`, nome: "Relatórios", icone: "relatorios" as const }] : []),
+    ...(podeGerir ? [{ href: `/app/${slug}/moodle`, nome: "Moodle", icone: "moodle" as const }] : []),
+  ];
+  const configuracoes = podeGerir ? `/app/${slug}/configuracoes` : null;
+  const paginasDeConfiguracao = podeGerir ? ["ajustes", "pessoas", "registro"].map((p) => `/app/${slug}/${p}`) : [];
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 pb-20 lg:grid lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-start lg:gap-8 lg:pb-0 print:block print:pb-0">
+      <Navegacao abas={abas} mais={mais} configuracoes={configuracoes} paginasDeConfiguracao={paginasDeConfiguracao} />
+      <div className="flex min-w-0 flex-col gap-4">
       {!empresa.ativa ? (
         <Aviso tipo="alerta">
           Est{o(v, "organizacao")} {v.organizacao.toLowerCase()} está bloquead{o(v, "organizacao")}. Fale com o suporte do Handback.
@@ -93,17 +97,10 @@ export default async function LayoutEmpresa({
           />
         </SoForaDaFolha>
       ) : null}
-      <AbasEmpresa
-        abas={abas}
-        configuracoes={podeGerir ? `/app/${slug}/configuracoes` : null}
-        paginasDeConfiguracao={
-          podeGerir
-            ? ["ajustes", "pessoas", "registro", "moodle"].map((p) => `/app/${slug}/${p}`)
-            : []
-        }
-      />
+      {configuracoes ? <VoltarConfiguracoes configuracoes={configuracoes} paginasDeConfiguracao={paginasDeConfiguracao} /> : null}
       </div>
       {children}
+      </div>
     </div>
   );
 }

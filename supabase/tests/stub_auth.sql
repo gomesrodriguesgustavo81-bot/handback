@@ -9,7 +9,14 @@ grant usage on schema public to anon, authenticated, service_role;
 
 create table auth.users (
   id uuid primary key,
-  email text not null
+  email text not null,
+  created_at timestamptz not null default '2020-01-01'
+);
+
+create table auth.mfa_factors (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null,
+  status text not null default 'verified'
 );
 
 create function auth.uid() returns uuid language sql stable as $$

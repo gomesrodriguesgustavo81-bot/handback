@@ -183,6 +183,13 @@ h1, h2, .titulo {
 }
 .entra { animation: entra 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 
+/* Gaveta que sobe de baixo (celular) */
+@keyframes sobe {
+  from { transform: translateY(100%); }
+  to { transform: none; }
+}
+.sobe { animation: sobe 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
 /* "Salvo ✓" que aparece e some */
 .salvo-pilula {
   display: inline-flex;
@@ -197,7 +204,7 @@ h1, h2, .titulo {
 .salvo-some { animation: aparece 2.4s ease both; }
 
 @media (prefers-reduced-motion: reduce) {
-  .entra, .salvo-some { animation: none; }
+  .entra, .salvo-some, .sobe { animation: none; }
   * { transition-duration: 0.01ms !important; }
 }
 

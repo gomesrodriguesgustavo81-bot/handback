@@ -19,9 +19,12 @@ export function FormAcao({
   textoEnviando = "Salvando…",
   limparAoSalvar = false,
   confirmar,
+  aoSalvar,
   children,
 }: {
   acao: (anterior: Resultado, dados: FormData) => Promise<Resultado>;
+  /** Chamado depois de salvar com sucesso (ex.: fechar a gaveta). */
+  aoSalvar?: (mensagem: string) => void;
   textoBotao: string;
   textoEnviando?: string;
   limparAoSalvar?: boolean;
@@ -34,6 +37,7 @@ export function FormAcao({
   // esse número muda (um erro depois de um sucesso não apaga o que foi digitado).
   const [estado, enviar, enviando] = useActionState<Estado, FormData>(async (anterior, dados) => {
     const r = await acao(anterior, dados);
+    if (r?.ok && aoSalvar) aoSalvar(r.mensagem);
     const versao = anterior?.versao ?? 0;
     return r ? { ...r, versao: r.ok && limparAoSalvar ? versao + 1 : versao } : r;
   }, null);

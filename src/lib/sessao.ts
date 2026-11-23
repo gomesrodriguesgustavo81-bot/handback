@@ -40,12 +40,15 @@ export const usuarioAtual = cache(async () => {
   const s = await sessaoBasica();
   if (!s.senhaDefinida) redirect("/definir-senha");
   if (s.temSegundaEtapa && s.nivel !== "aal2") redirect("/entrar/codigo");
+  // Nos 14 primeiros dias (sem o app cadastrado), a senha basta: só aparece um lembrete.
+  let prazoDuasEtapas: string | null = null;
   if (s.nivel !== "aal2") {
     const supabase = await criarClienteServidor();
-    const { data: precisa } = await supabase.rpc("preciso_de_duas_etapas");
-    if (precisa) redirect("/conta/duas-etapas");
+    const [{ data: precisa }, { data: fim }] = await Promise.all([supabase.rpc("preciso_de_duas_etapas"), supabase.rpc("fim_da_experiencia")]);
+    if (precisa && !fim) redirect("/conta/duas-etapas");
+    if (precisa && fim) prazoDuasEtapas = String(fim);
   }
-  return { id: s.id, email: s.email, duasEtapas: s.nivel === "aal2" };
+  return { id: s.id, email: s.email, duasEtapas: s.nivel === "aal2", prazoDuasEtapas };
 });
 
 export const eDonoDaPlataforma = cache(async () => {

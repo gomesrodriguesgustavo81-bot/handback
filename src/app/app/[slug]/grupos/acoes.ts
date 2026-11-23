@@ -99,13 +99,81 @@ export async function criarGrupo(slug: string, _a: Resultado, dados: FormData): 
     await supabase.from("grupos").delete().eq("id", data.id);
     return { ok: false, mensagem: erroDoBanco(erroEmails, g.nome) };
   }
+  const movidos = await moverParaGrupo(supabase, empresa.id, turma.id, data.id, dados.getAll("membro").map(String));
 
   revalidatePath(`/app/${slug}`, "layout");
+  const total = g.emails.validos.length + movidos;
   return {
     ok: true,
-    mensagem: `“${g.nome}” cadastrado com ${g.emails.validos.length} ${g.emails.validos.length === 1 ? "pessoa" : "pessoas"}.`,
+    mensagem: `“${g.nome}” cadastrado com ${total} ${total === 1 ? "pessoa" : "pessoas"}.`,
     vez: Date.now(),
   };
+}
+
+/**
+ * Leva pessoas que já estão cadastradas (ex.: alunos que vieram sozinhos do
+ * Moodle) para outro cadastro. O cadastro de onde saíram, se ficar vazio,
+ * vai para "Apagadas" (com as entregas guardadas). O Moodle não desfaz:
+ * ele só muda de lugar quem está num cadastro que veio de lá.
+ */
+async function moverParaGrupo(supabase: Supabase, orgId: string, turmaId: string, grupoId: string, ids: string[]): Promise<number> {
+  const validos = [...new Set(ids)].filter((x) => /^[0-9a-f-]{36}$/i.test(x)).slice(0, 200);
+  if (!validos.length) return 0;
+  const { data: pessoas } = await supabase.from("integrantes").select("id, grupo_id").in("id", validos).eq("org_id", orgId).eq("turma_id", turmaId);
+  if (!pessoas?.length) return 0;
+  const { error } = await supabase.from("integrantes").update({ grupo_id: grupoId }).in("id", pessoas.map((p) => p.id));
+  if (error) return 0;
+  const origens = [...new Set(pessoas.map((p) => p.grupo_id as string))].filter((x) => x !== grupoId);
+  if (origens.length) {
+    const { data: ainda } = await supabase.from("integrantes").select("grupo_id").in("grupo_id", origens);
+    const comGente = new Set((ainda ?? []).map((x) => x.grupo_id as string));
+    const vazios = origens.filter((x) => !comGente.has(x));
+    if (vazios.length) await supabase.from("grupos").update({ escondido: true, ativo: false }).in("id", vazios).eq("org_id", orgId);
+  }
+  return pessoas.length;
+}
+
+/**
+ * Adiciona uma pessoa: numa equipe que já existe, junto com alguém que está
+ * sozinho, ou sozinha (entrega individual, vira um cadastro com o nome dela).
+ */
+export async function adicionarPessoa(slug: string, _a: Resultado, dados: FormData): Promise<Resultado> {
+  const { empresa, podeGerir } = await contextoDaEmpresa(slug);
+  if (!podeGerir) return { ok: false, mensagem: "Só quem administra pode mudar isso." };
+  const turma = await turmaAtual(empresa.id);
+  if (!turma) return { ok: false, mensagem: "Crie uma turma antes." };
+  const nome = String(dados.get("nome") ?? "").trim().replace(/\s+/g, " ").slice(0, 200);
+  const email = String(dados.get("email") ?? "").trim().toLowerCase();
+  const destino = String(dados.get("destino") ?? "sozinha");
+  if (nome.length < 2) return { ok: false, mensagem: "Escreva o nome da pessoa." };
+  if (!emailValido(email)) return { ok: false, mensagem: "Digite um e-mail válido." };
+  const supabase = await criarClienteServidor();
+  const repetidos = await emailsEmOutroGrupo(supabase, turma.id, [email]);
+  if (repetidos) return { ok: false, mensagem: `Esse e-mail já está num cadastro: ${repetidos}.` };
+
+  if (destino === "sozinha") {
+    const { data: existentes } = await supabase.from("grupos").select("nome").eq("turma_id", turma.id);
+    const usados = new Set((existentes ?? []).map((g) => String(g.nome).trim().toLowerCase()));
+    let nomeGrupo = nome.slice(0, 110);
+    for (let n = 2; usados.has(nomeGrupo.toLowerCase()); n++) nomeGrupo = `${nome.slice(0, 110)} (${n})`;
+    const { data: g, error } = await supabase.from("grupos").insert({ org_id: empresa.id, turma_id: turma.id, nome: nomeGrupo }).select("id").single();
+    if (error || !g) return { ok: false, mensagem: erroDoBanco(error ?? {}, nomeGrupo) };
+    const { error: e2 } = await supabase.from("integrantes").insert({ org_id: empresa.id, turma_id: turma.id, grupo_id: g.id, email, nome });
+    if (e2) {
+      await supabase.from("grupos").delete().eq("id", g.id);
+      return { ok: false, mensagem: mensagemDeErro(e2, "Não foi possível salvar. Tente de novo.") };
+    }
+    revalidatePath(`/app/${slug}`, "layout");
+    return { ok: true, mensagem: `${nome} entrou, com entrega individual.`, vez: Date.now() };
+  }
+
+  if (!/^[0-9a-f-]{36}$/i.test(destino)) return { ok: false, mensagem: "Escolha onde a pessoa entra." };
+  const { data: g } = await supabase.from("grupos").select("id, nome").eq("id", destino).eq("org_id", empresa.id).eq("turma_id", turma.id).maybeSingle();
+  if (!g) return { ok: false, mensagem: "Não foi possível salvar (sem permissão ou item apagado)." };
+  const { error } = await supabase.from("integrantes").insert({ org_id: empresa.id, turma_id: turma.id, grupo_id: g.id, email, nome });
+  if (error) return { ok: false, mensagem: mensagemDeErro(error, "Não foi possível salvar. Tente de novo.") };
+  revalidatePath(`/app/${slug}`, "layout");
+  return { ok: true, mensagem: `${nome} entrou em “${g.nome}”.`, vez: Date.now() };
 }
 
 export async function salvarGrupo(slug: string, id: string, _a: Resultado, dados: FormData): Promise<Resultado> {

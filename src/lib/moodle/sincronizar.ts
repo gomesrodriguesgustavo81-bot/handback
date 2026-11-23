@@ -199,10 +199,13 @@ async function atualizarTarefas(admin: SupabaseClient, t: TurmaMoodle, c: Conexa
 
 /** Busca no Moodle os envios novos das tarefas marcadas e grava como entregas (com os arquivos). */
 async function trazerEntregas(admin: SupabaseClient, t: TurmaMoodle, c: Conexao, alunos: Participante[]) {
-  const [{ data: etapas }, { data: grupos }] = await Promise.all([
+  const [{ data: etapas }, { data: grupos }, { data: cadastrados }] = await Promise.all([
     admin.from("etapas").select("id, titulo, moodle_tarefa").eq("turma_id", t.id).eq("moodle_corrigir", true).not("moodle_tarefa", "is", null),
     admin.from("grupos").select("id, moodle_id, moodle_membros").eq("turma_id", t.id).eq("escondido", false).not("moodle_id", "is", null),
+    admin.from("integrantes").select("email, grupo_id, grupos!inner(escondido)").eq("turma_id", t.id).eq("grupos.escondido", false),
   ]);
+  // Onde cada aluno está hoje no Handback (o professor pode ter juntado alunos numa equipe).
+  const porEmail = new Map((cadastrados ?? []).map((i) => [String(i.email), String(i.grupo_id)]));
   const porMoodle = new Map((grupos ?? []).map((g) => [g.moodle_id as string, g.id as string]));
   const porAluno = new Map<number, string>();
   for (const g of grupos ?? []) for (const m of (g.moodle_membros as number[]) ?? []) porAluno.set(Number(m), g.id);
@@ -223,8 +226,9 @@ async function trazerEntregas(admin: SupabaseClient, t: TurmaMoodle, c: Conexao,
     for (const s of envios) {
       const chaveEnvio = `${s.id}:${s.timemodified}`;
       if (jaTem.has(chaveEnvio)) continue;
+      const emailAluno = s.userid ? (quem.get(s.userid)?.email ?? "").trim().toLowerCase() : "";
       const grupoId = s.userid
-        ? (porAluno.get(s.userid) ?? porMoodle.get(`u:${s.userid}`))
+        ? ((emailAluno && porEmail.get(emailAluno)) || porAluno.get(s.userid) || porMoodle.get(`u:${s.userid}`))
         : s.groupid
           ? porMoodle.get(`g:${s.groupid}`)
           : undefined;
