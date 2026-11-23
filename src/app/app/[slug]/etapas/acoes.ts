@@ -7,6 +7,23 @@ import type { Resultado } from "@/components/form-acao";
 import { contextoDaEmpresa, mensagemDeErro } from "@/lib/empresa";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { lerData, linhas } from "@/lib/textos";
+import { after } from "next/server";
+import { origemDoSite } from "@/lib/acesso";
+import { sincronizarAgenda } from "@/lib/agenda";
+import { criarClienteAdmin } from "@/lib/supabase/admin";
+
+/** Depois de mexer numa etapa, a agenda da turma (se ligada) se atualiza sozinha. */
+async function atualizarAgendaDepois(orgId: string) {
+  const turma = await turmaAtual(orgId);
+  if (!turma) return;
+  const origem = await origemDoSite();
+  after(async () => {
+    const admin = criarClienteAdmin();
+    if (!admin) return;
+    const { data } = await admin.from("turmas").select("agenda_por").eq("id", turma.id).maybeSingle();
+    if (data?.agenda_por) await sincronizarAgenda(admin, turma.id, origem).catch(() => undefined);
+  });
+}
 
 function lerEtapa(dados: FormData) {
   return {
@@ -49,6 +66,7 @@ export async function criarEtapa(slug: string, _a: Resultado, dados: FormData): 
     .single();
   if (error) return { ok: false, mensagem: erroDoBanco(error, etapa.numero, empresa.vocabulario.etapa) };
 
+  await atualizarAgendaDepois(empresa.id);
   revalidatePath(`/app/${slug}`, "layout");
   redirect(`/app/${slug}/etapas/${data.id}?salvo=1`);
 }
@@ -70,6 +88,7 @@ export async function salvarEtapa(slug: string, id: string, _a: Resultado, dados
   if (error) return { ok: false, mensagem: erroDoBanco(error, etapa.numero, empresa.vocabulario.etapa) };
   if (!data?.length) return { ok: false, mensagem: "Não foi possível salvar (sem permissão ou item apagado)." };
 
+  await atualizarAgendaDepois(empresa.id);
   revalidatePath(`/app/${slug}`, "layout");
   return { ok: true, mensagem: "Alterações salvas.", vez: Date.now() };
 }
@@ -79,6 +98,7 @@ export async function apagarEtapa(slug: string, id: string): Promise<void> {
   if (!podeGerir) return;
   const supabase = await criarClienteServidor();
   await supabase.from("etapas").delete().eq("id", id).eq("org_id", empresa.id);
+  await atualizarAgendaDepois(empresa.id);
   revalidatePath(`/app/${slug}`, "layout");
   redirect(`/app/${slug}/etapas`);
 }

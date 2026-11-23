@@ -1329,6 +1329,64 @@ try {
     }
   }
 
+  // 7k) Google Agenda: cada um conecta a própria conta; a turma ganha uma agenda com os prazos
+  {
+    const GOOGLE = process.env.HANDBACK_GOOGLE_BASE.replace(/\/$/, "");
+    const agendasFalsas = async () => (await fetch(`${GOOGLE}/__agenda`)).json();
+    const daTurma = async () => Object.values(await agendasFalsas()).find((a) => a.summary === "Handback · Turma A");
+    const anaId = sql(`select id from auth.users where email = '${ANA}'`);
+    await ana.p.goto(`${APP}/app/${SLUG}/configuracoes`);
+    await ana.p.getByRole("link", { name: /^Google Agenda/ }).click();
+    await ana.p.getByRole("heading", { name: "Google Agenda", exact: true }).waitFor();
+    confere(await ana.p.getByLabel(/Pôr os prazos na minha agenda/).isDisabled(), "agenda: só liga depois de conectar a própria conta");
+    const [janelaG] = await Promise.all([ana.p.waitForEvent("popup"), ana.p.getByRole("link", { name: "Conectar Google Agenda" }).click()]);
+    await ana.p.getByRole("region", { name: "Sua conta Google" }).getByText("professora@gmail.test").waitFor();
+    await janelaG.waitForEvent("close", { timeout: 10000 }).catch(() => {});
+    confere(sql(`select servico from public.conexoes_google where user_id = '${anaId}'`) === "agenda", "agenda: conexão própria, separada do Gmail");
+    confere(sql(`select count(*) from public.conexoes_google where user_id = '${anaId}' and token_cifrado like 'v1.%'`) === "1", "agenda: a chave do Google fica cifrada");
+
+    await ana.p.getByLabel(/Pôr os prazos na minha agenda/).click();
+    await ana.p.getByText(/Agenda criada na sua conta Google/).waitFor();
+    let ag = await daTurma();
+    const evs = Object.values(ag?.eventos ?? {});
+    const prazo = sql(`select e.recebe_ate from public.etapas e join public.turmas t on t.id = e.turma_id where t.nome = 'Turma A' and t.org_id = (select id from public.organizacoes where slug = '${SLUG}') and e.recebe_ate is not null order by e.numero limit 1`);
+    const evPrazo = evs.find((e) => e.summary.startsWith("Prazo: "));
+    confere(Boolean(ag) && evPrazo?.start.date === prazo && evPrazo.reminders.overrides?.[0]?.minutes === 1440, `agenda "Handback · Turma A" criada com o prazo e lembrete de 1 dia (${evs.length} eventos)`);
+    confere(evs.every((e) => !e.attendees), "agenda: sem convidar, nenhum aluno é chamado");
+    await largura(ana.p, "google agenda");
+    await ana.p.screenshot({ path: `${FOTOS}/50-agenda.png`, fullPage: true });
+
+    // Mudar a aula no Handback muda o evento sozinho
+    const etapaId = sql(`select e.id from public.etapas e join public.turmas t on t.id = e.turma_id where t.nome = 'Turma A' and t.org_id = (select id from public.organizacoes where slug = '${SLUG}') and e.recebe_ate is not null order by e.numero limit 1`);
+    const tituloAntigo = sql(`select titulo from public.etapas where id = '${etapaId}'`);
+    await ana.p.goto(`${APP}/app/${SLUG}/etapas/${etapaId}`);
+    await ana.p.getByLabel("Título").fill(`${tituloAntigo} v2`);
+    await ana.p.getByRole("button", { name: "Salvar" }).click();
+    await ana.p.getByText("Alterações salvas.").waitFor();
+    let mudou = false;
+    for (let i = 0; i < 20 && !mudou; i++) {
+      mudou = Object.values((await daTurma())?.eventos ?? {}).some((e) => e.summary.endsWith(`${tituloAntigo} v2`));
+      if (!mudou) await espera(500);
+    }
+    confere(mudou, "agenda: mudar a aula no Handback muda o evento sozinho");
+    await ana.p.getByLabel("Título").fill(tituloAntigo);
+    await ana.p.getByRole("button", { name: "Salvar" }).click();
+    await ana.p.getByText("Alterações salvas.").waitFor();
+
+    await ana.p.goto(`${APP}/app/${SLUG}/configuracoes/agenda`);
+    await ana.p.getByLabel(/Convidar os alunos/).click();
+    await ana.p.getByRole("region", { name: "Alunos" }).getByText("Salvo ✓").waitFor();
+    ag = await daTurma();
+    confere(ag.envios.some((x) => x.para.includes("a1@aluno.test")), "agenda: com convite, o Google avisa os alunos");
+    await ana.p.getByLabel(/Pôr os prazos na minha agenda/).click();
+    await ana.p.getByText(/Agenda desligada e apagada/).waitFor();
+    confere(!(await daTurma()) && sql(`select count(*) from public.agenda_eventos ae join public.turmas t on t.id = ae.turma_id where t.nome = 'Turma A' and t.org_id = (select id from public.organizacoes where slug = '${SLUG}')`) === "0", "agenda: desligar apaga a agenda da conta Google");
+    await ana.p.getByRole("button", { name: "Desconectar Google Agenda" }).click();
+    await ana.p.getByRole("link", { name: "Conectar Google Agenda" }).waitFor();
+    confere(sql(`select count(*) from public.conexoes_google where user_id = '${anaId}'`) === "0", "agenda: desconectar apaga a conexão");
+    confere(pediuConfirmacao("Conectar seu Google Agenda?") && pediuConfirmacao("Criar a agenda da turma") && pediuConfirmacao("Convidar os alunos") && pediuConfirmacao("Desligar a agenda") && pediuConfirmacao("Desconectar o Google Agenda?"), "agenda: conectar, criar, convidar, desligar e desconectar pedem confirmação");
+  }
+
   // 7f) Privacidade: o dono não vê o conteúdo; o cliente libera o suporte
   await dono.p.goto(`${APP}/admin`);
   const painelUso = dono.p.getByRole("region", { name: "Uso dos planos" });

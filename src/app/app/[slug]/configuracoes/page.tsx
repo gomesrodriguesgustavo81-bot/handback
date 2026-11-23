@@ -41,6 +41,7 @@ export default async function Configuracoes({ params }: PageProps<"/app/[slug]/c
       titulo: `${vc.espacos} e entregas`,
       itens: [
         { nome: vc.espacos, detalhe: `${ativas} ativa(s) · criar, renomear, arquivar`, href: `${base}/configuracoes/turmas` },
+        { nome: "Google Agenda", detalhe: "Os prazos da turma na sua agenda (e, se quiser, na dos alunos)", href: `${base}/configuracoes/agenda` },
         { nome: "Lembretes para os alunos", detalhe: "E-mail de prazo para quem ainda não entregou", href: `${base}/configuracoes/lembretes` },
         { nome: "Receber por e-mail", detalhe: "Endereço de cada turma e a etiqueta do assunto", href: `${base}/configuracoes/recebimento` },
         { nome: "Moodle", detalhe: comMoodle.length ? `Ligado: ${comMoodle.join(", ")}` : "Trazer alunos, tarefas e entregas do Moodle", href: `${base}/moodle` },

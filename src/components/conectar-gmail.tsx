@@ -10,7 +10,23 @@ import { AvisoGmail } from "./aviso-gmail";
  * pessoa aceita, a janelinha fecha sozinha e esta tela se atualiza.
  * Se o navegador bloquear janelas, cai na troca de página normal.
  */
-export function ConectarGmail({ voltar, texto = "Conectar com Google", destaque = true }: { voltar: string; texto?: string; destaque?: boolean }) {
+const PERGUNTA = {
+  gmail: { titulo: "Conectar seu Gmail?", texto: "O Handback vai poder enviar e-mails do seu endereço (as devolutivas que você aprovar). Ele não lê sua caixa." },
+  agenda: { titulo: "Conectar seu Google Agenda?", texto: "O Handback só vai mexer nas agendas que ele mesmo criar. Ele não vê seus outros compromissos." },
+  drive: { titulo: "Conectar seu Google Drive?", texto: "O Handback só vai mexer nas pastas e arquivos que ele mesmo criar. Ele não vê o resto do seu Drive." },
+} as const;
+
+export function ConectarGmail({
+  voltar,
+  texto = "Conectar com Google",
+  destaque = true,
+  servico = "gmail",
+}: {
+  voltar: string;
+  texto?: string;
+  destaque?: boolean;
+  servico?: keyof typeof PERGUNTA;
+}) {
   const router = useRouter();
   const [esperando, setEsperando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -36,19 +52,20 @@ export function ConectarGmail({ voltar, texto = "Conectar com Google", destaque 
     return () => clearInterval(t);
   }, [esperando]);
 
-  const paginaInteira = `/api/gmail/conectar?voltar=${encodeURIComponent(voltar)}`;
+  const extra = servico === "gmail" ? "" : `&servico=${servico}`;
+  const paginaInteira = `/api/gmail/conectar?voltar=${encodeURIComponent(voltar)}${extra}`;
   return (
     <>
-      {aviso && aviso !== "conectado" ? <AvisoGmail aviso={aviso} /> : null}
+      {aviso && aviso !== "conectado" ? <AvisoGmail aviso={aviso} servico={servico} /> : null}
       <a
         href={paginaInteira}
         onClick={async (e) => {
           e.preventDefault();
-          if (!(await pedir({ titulo: "Conectar seu Gmail?", texto: "O Handback vai poder enviar e-mails do seu endereço (as devolutivas que você aprovar). Ele não lê sua caixa.", sim: "Sim, conectar" }))) return;
+          if (!(await pedir({ ...PERGUNTA[servico], sim: "Sim, conectar" }))) return;
           const largura = 480;
           const altura = 640;
           const w = window.open(
-            "/api/gmail/conectar?voltar=%2Fgmail-pronto",
+            `/api/gmail/conectar?voltar=%2Fgmail-pronto${extra}`,
             "handback-gmail",
             `popup=yes,width=${largura},height=${altura},left=${Math.max(0, (screen.width - largura) / 2)},top=${Math.max(0, (screen.height - altura) / 2)}`,
           );

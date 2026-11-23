@@ -11,7 +11,18 @@ import { cifrarTexto, criptoPronta, decifrarTexto } from "./cripto";
  * HANDBACK_GOOGLE_BASE troca os endereços do Google (só para testes).
  */
 export const ESCOPO_ENVIO = "https://www.googleapis.com/auth/gmail.send";
-const ESCOPOS = ["openid", "email", ESCOPO_ENVIO].join(" ");
+
+/**
+ * Cada serviço pede a MENOR permissão possível e vira uma conexão separada:
+ * Agenda e Drive só mexem no que o próprio Handback criou.
+ */
+export type ServicoGoogle = "gmail" | "agenda" | "drive";
+export const ESCOPO: Record<ServicoGoogle, string> = {
+  gmail: ESCOPO_ENVIO,
+  agenda: "https://www.googleapis.com/auth/calendar.app.created",
+  drive: "https://www.googleapis.com/auth/drive.file",
+};
+export const NOME_SERVICO: Record<ServicoGoogle, string> = { gmail: "Gmail", agenda: "Google Agenda", drive: "Google Drive" };
 
 function enderecos() {
   const base = process.env.HANDBACK_GOOGLE_BASE?.replace(/\/$/, "");
@@ -36,15 +47,16 @@ export function gmailConfigurado(): boolean {
   return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && criptoPronta());
 }
 
-export function urlDeAutorizacao(redirectUri: string, estado: string, dica?: string): string {
+export function urlDeAutorizacao(redirectUri: string, estado: string, dica?: string, servico: ServicoGoogle = "gmail"): string {
   const u = new URL(enderecos().autorizar);
   u.searchParams.set("client_id", process.env.GOOGLE_CLIENT_ID ?? "");
   u.searchParams.set("redirect_uri", redirectUri);
   u.searchParams.set("response_type", "code");
-  u.searchParams.set("scope", ESCOPOS);
+  u.searchParams.set("scope", ["openid", "email", ESCOPO[servico]].join(" "));
   u.searchParams.set("access_type", "offline");
   u.searchParams.set("prompt", "consent");
-  u.searchParams.set("include_granted_scopes", "true");
+  // Agenda e Drive: o token vale só para aquele serviço.
+  u.searchParams.set("include_granted_scopes", servico === "gmail" ? "true" : "false");
   u.searchParams.set("state", estado);
   if (dica) u.searchParams.set("login_hint", dica);
   return u.toString();
@@ -70,10 +82,14 @@ async function pedirToken(corpo: Record<string, string>) {
 }
 
 /** Troca o código da autorização pelo token. Devolve o e-mail da conta e o token de renovação. */
-export async function trocarCodigo(codigo: string, redirectUri: string): Promise<{ email: string; renovacao: string }> {
+export async function trocarCodigo(codigo: string, redirectUri: string, servico: ServicoGoogle = "gmail"): Promise<{ email: string; renovacao: string }> {
   const j = await pedirToken({ code: codigo, redirect_uri: redirectUri, grant_type: "authorization_code" });
-  if (!String(j.scope ?? "").split(" ").includes(ESCOPO_ENVIO)) {
-    throw new ErroGmail("Sem a permissão de enviar e-mails. Conecte de novo e marque a opção de enviar e-mails.");
+  if (!String(j.scope ?? "").split(" ").includes(ESCOPO[servico])) {
+    throw new ErroGmail(
+      servico === "gmail"
+        ? "Sem a permissão de enviar e-mails. Conecte de novo e marque a opção de enviar e-mails."
+        : `Sem a permissão do ${NOME_SERVICO[servico]}. Conecte de novo e marque a opção pedida.`,
+    );
   }
   if (!j.refresh_token) throw new ErroGmail("O Google não devolveu a autorização completa. Tente conectar de novo.");
   // O id_token veio direto do Google (pela conexão segura): só lemos o e-mail dele.
@@ -84,7 +100,7 @@ export async function trocarCodigo(codigo: string, redirectUri: string): Promise
   } catch {
     /* sem e-mail */
   }
-  if (!email) throw new ErroGmail("Não foi possível saber qual Gmail foi conectado. Tente de novo.");
+  if (!email) throw new ErroGmail("Não foi possível saber qual conta Google foi conectada. Tente de novo.");
   return { email, renovacao: j.refresh_token };
 }
 

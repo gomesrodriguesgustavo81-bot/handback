@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { decifrarTexto } from "../cripto";
 import { despacharPush } from "../push";
+import { sincronizarAgenda } from "../agenda";
 import { emailValido, nomeArquivoSeguro } from "../textos";
 import {
   baixarArquivo,
@@ -308,6 +309,9 @@ export async function sincronizarTurma(admin: SupabaseClient, turmaId: string, s
     const entregas = await trazerEntregas(admin, t, c, alunos);
     await admin.from("turmas").update({ moodle_erro: "" }).eq("id", t.id);
     if (entregas.novas) await despacharPush(admin).catch(() => 0);
+    // Tarefas novas do Moodle viram prazos na agenda da turma (se ligada).
+    const { data: ag } = await admin.from("turmas").select("agenda_por").eq("id", t.id).maybeSingle();
+    if (ag?.agenda_por) await sincronizarAgenda(admin, t.id, process.env.HANDBACK_SITE ?? "").catch(() => undefined);
     return { ...entregas, ...pessoas, ...tarefas };
   } catch (e) {
     const mensagem = e instanceof Error ? e.message : String(e);

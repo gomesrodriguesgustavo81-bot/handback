@@ -10,7 +10,21 @@ const AVISOS: Record<string, { tipo: "info" | "erro"; texto: string }> = {
   erro: { tipo: "erro", texto: "Não foi possível conectar o Gmail. Tente de novo." },
 };
 
-export function AvisoGmail({ aviso }: { aviso: string | string[] | undefined }) {
-  const a = typeof aviso === "string" ? AVISOS[aviso] : undefined;
+const NOME = { agenda: "Google Agenda", drive: "Google Drive" } as const;
+function avisoDe(servico: keyof typeof NOME, aviso: string) {
+  const n = NOME[servico];
+  const t: Record<string, { tipo: "info" | "erro"; texto: string }> = {
+    conectado: { tipo: "info", texto: `${n} conectado.` },
+    cancelado: { tipo: "erro", texto: `A conexão com o ${n} foi cancelada.` },
+    "sem-permissao": { tipo: "erro", texto: `O Google não deu a permissão do ${n}. Conecte de novo e marque a opção pedida.` },
+    expirou: { tipo: "erro", texto: `A conexão demorou demais. Tente conectar o ${n} de novo.` },
+    "nao-configurado": { tipo: "erro", texto: "A conexão com o Google ainda não foi configurada no servidor." },
+    erro: { tipo: "erro", texto: `Não foi possível conectar o ${n}. Tente de novo.` },
+  };
+  return t[aviso];
+}
+
+export function AvisoGmail({ aviso, servico = "gmail" }: { aviso: string | string[] | undefined; servico?: "gmail" | keyof typeof NOME }) {
+  const a = typeof aviso !== "string" ? undefined : servico === "gmail" ? AVISOS[aviso] : avisoDe(servico, aviso);
   return a ? <Aviso tipo={a.tipo}>{a.texto}</Aviso> : null;
 }

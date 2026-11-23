@@ -1,13 +1,15 @@
 import { randomBytes } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { caminhoSeguro, urlDoSite } from "@/lib/caminhos";
-import { gmailConfigurado, urlDeAutorizacao } from "@/lib/gmail";
+import { gmailConfigurado, urlDeAutorizacao, type ServicoGoogle } from "@/lib/gmail";
 import { COOKIE_ESTADO, comAviso } from "@/lib/gmail-rotas";
 import { criarClienteServidor } from "@/lib/supabase/server";
 
 /** Começa a conexão do Gmail: manda a pessoa para a tela de permissão do Google. */
 export async function GET(request: NextRequest) {
   const voltar = caminhoSeguro(request.nextUrl.searchParams.get("voltar"));
+  const pedido = request.nextUrl.searchParams.get("servico");
+  const servico: ServicoGoogle = pedido === "agenda" || pedido === "drive" ? pedido : "gmail";
   const supabase = await criarClienteServidor();
   const {
     data: { user },
@@ -17,8 +19,8 @@ export async function GET(request: NextRequest) {
 
   const estado = randomBytes(24).toString("base64url");
   const retorno = urlDoSite(request, "/api/gmail/retorno").toString();
-  const resposta = NextResponse.redirect(urlDeAutorizacao(retorno, estado, user.email ?? undefined));
-  resposta.cookies.set(COOKIE_ESTADO, `${estado}|${voltar}`, {
+  const resposta = NextResponse.redirect(urlDeAutorizacao(retorno, estado, user.email ?? undefined, servico));
+  resposta.cookies.set(COOKIE_ESTADO, `${estado}|${voltar}|${servico}`, {
     httpOnly: true,
     secure: retorno.startsWith("https://"),
     sameSite: "lax",

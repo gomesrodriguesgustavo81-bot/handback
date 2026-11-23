@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { urlDoSite } from "@/lib/caminhos";
 import { rodarDiario } from "@/lib/diario";
 import { chamarFila, filaParada } from "@/lib/fila";
+import { sincronizarTodasAsAgendas } from "@/lib/agenda";
 import { criarClienteAdmin } from "@/lib/supabase/admin";
 import { hojeISO } from "@/lib/textos";
 
@@ -26,5 +27,6 @@ export async function GET(request: NextRequest) {
   const site = (process.env.HANDBACK_SITE ?? urlDoSite(request, "/").origin).replace(/\/$/, "");
   const r = await rodarDiario(admin, hoje, site);
   if (await filaParada(admin).catch(() => false)) await chamarFila(site);
-  return NextResponse.json({ ok: true, ...r });
+  const agendas = await sincronizarTodasAsAgendas(admin, site).catch(() => 0);
+  return NextResponse.json({ ok: true, ...r, agendas });
 }
