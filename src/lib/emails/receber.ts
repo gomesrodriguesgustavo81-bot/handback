@@ -47,7 +47,7 @@ export async function receberEmail(admin: SupabaseClient, email: EmailRecebido):
   const anexos = email.anexos.filter((a) => !(a.embutido && a.conteudo.length < TAMANHO_MIN_IMAGEM_EMBUTIDA));
 
   const [etapas, grupos, equipe, comEntrega] = await Promise.all([
-    admin.from("etapas").select("id, numero, recebe_de, recebe_ate").eq("turma_id", turma.id),
+    admin.from("etapas").select("id, numero, titulo, recebe_de, recebe_ate").eq("turma_id", turma.id),
     admin.from("grupos").select("id, nome, integrantes(email)").eq("turma_id", turma.id).eq("ativo", true),
     admin.rpc("emails_da_equipe_interna", { org: org.id }),
     email.respondeA.length

@@ -26,7 +26,7 @@ export type EmailParaTriagem = {
   quantidadeDeAnexos: number;
 };
 
-export type EtapaParaTriagem = { id: string; numero: number; recebe_de: string | null; recebe_ate: string | null };
+export type EtapaParaTriagem = { id: string; numero: number; titulo?: string; recebe_de: string | null; recebe_ate: string | null };
 export type GrupoParaTriagem = { id: string; nome: string; emails: string[] };
 
 export type ContextoTriagem = {
@@ -221,8 +221,20 @@ export function triar(email: EmailParaTriagem, ctx: ContextoTriagem): ResultadoT
   let duvida = "";
   if (!etapa) {
     if (assunto.numero !== null) duvida = `O assunto cita o número ${assunto.numero}, que não está cadastrado.`;
-    etapa =
-      ctx.etapas.find((e) => e.recebe_ate && (!e.recebe_de || e.recebe_de <= dia) && dia <= e.recebe_ate) ?? null;
+    const abertas = ctx.etapas.filter((e) => e.recebe_ate && (!e.recebe_de || e.recebe_de <= dia) && dia <= e.recebe_ate);
+    etapa = abertas[0] ?? null;
+    if (abertas.length > 1) {
+      // Mais de uma etapa recebendo na mesma data: tenta pelo título citado no
+      // assunto; se não der para saber, vai para a caixa (não chuta).
+      const assuntoSimp = simplificar(email.assunto);
+      const pelo = abertas.filter((e) => {
+        const t = simplificar(e.titulo ?? "").trim();
+        return t.length >= 3 && assuntoSimp.includes(" " + t + " ");
+      });
+      if (pelo.length === 1) etapa = pelo[0];
+      else if (!duvida)
+        duvida = `Há ${abertas.length} etapas recebendo nesta data (${abertas.map((e) => `nº ${e.numero}`).join(", ")}): escolha a qual esta entrega pertence.`;
+    }
     if (!etapa) {
       const passadas = ctx.etapas
         .filter((e) => e.recebe_ate && e.recebe_ate < dia)

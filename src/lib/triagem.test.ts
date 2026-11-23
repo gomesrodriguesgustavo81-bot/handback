@@ -146,4 +146,18 @@ describe("apoio", () => {
   it("acha o autor original num encaminhamento em português", () => {
     expect(autorOriginal("---------- Mensagem encaminhada ---------\nDe: Caio <CAIO@aluno.test>\n")).toBe("caio@aluno.test");
   });
+  it("duas etapas recebendo na mesma data: pelo título; sem título, vai para a caixa", () => {
+    const dois = {
+      ...ctx,
+      etapas: [
+        { id: "c1", numero: 1, titulo: "Pesquisa", recebe_de: "2026-11-08", recebe_ate: "2026-11-14" },
+        { id: "c2", numero: 2, titulo: "Protótipo", recebe_de: "2026-11-08", recebe_ate: "2026-11-14" },
+      ],
+    };
+    expect(triar(email({ assunto: "[ENTREGA] Protótipo - Fleury" }), dois)).toMatchObject({ status: "entrega", etapaId: "c2" });
+    const r = triar(email({ assunto: "[ENTREGA] Fleury" }), dois);
+    expect(r.status).toBe("confirmar");
+    expect(r.avisos.join(" ")).toMatch(/2 etapas recebendo nesta data/);
+    expect(triar(email({ assunto: "[ENTREGA] Aula 2 - Fleury" }), dois)).toMatchObject({ status: "entrega", etapaId: "c2" });
+  });
 });
