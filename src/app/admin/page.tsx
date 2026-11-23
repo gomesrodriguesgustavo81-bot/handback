@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { connection } from "next/server";
 import { FormConfirmado } from "@/components/confirmar";
 import { Cartao, Selo } from "@/components/ui";
 import { FRENTES, type Frente } from "@/lib/frentes";
@@ -35,6 +36,7 @@ type Espaco = {
 
 /** Lista de espaços e números de uso. O conteúdo de cada espaço só abre com acesso de suporte (ou de emergência). */
 export default async function PainelDono() {
+  await connection(); // sempre na hora do acesso, nunca montada na publicação
   const supabase = await criarClienteServidor();
   const [{ data }, { data: gmail }, { data: uso }] = await Promise.all([
     supabase.rpc("espacos_da_plataforma"),
