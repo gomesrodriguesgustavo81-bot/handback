@@ -61,7 +61,7 @@ export default async function Pessoas({ params }: PageProps<"/app/[slug]/pessoas
                     </BotaoConfirmar>
                   ) : null}
                 </div>
-                <FormAcao acao={mudarPapel.bind(null, slug, p.user_id)} textoBotao="Salvar papel">
+                <FormAcao acao={mudarPapel.bind(null, slug, p.user_id)} textoBotao="Salvar papel" confirmar={{ titulo: "Mudar o papel desta pessoa?", texto: "Muda o que ela pode ver e fazer aqui.", sim: "Sim, mudar" }}>
                   <Escolha rotulo="Papel" name="papel" defaultValue={p.papel} opcoes={opcoesPapel} dica={descricao[p.papel]} />
                 </FormAcao>
               </li>
@@ -93,7 +93,7 @@ export default async function Pessoas({ params }: PageProps<"/app/[slug]/pessoas
 
       <Cartao className="flex flex-col gap-4 self-start">
         <h2 className="font-semibold">Convidar pessoa</h2>
-        <FormAcao acao={convidar.bind(null, slug)} textoBotao="Convidar" limparAoSalvar>
+        <FormAcao acao={convidar.bind(null, slug)} textoBotao="Convidar" limparAoSalvar confirmar={{ titulo: "Convidar esta pessoa?", texto: "Ela recebe um e-mail para criar a senha e passa a ter acesso com o papel escolhido.", sim: "Sim, convidar" }}>
           <Campo rotulo="E-mail" name="email" type="email" inputMode="email" required placeholder="pessoa@email.com" />
           <Escolha rotulo="Papel" name="papel" defaultValue="avaliador" opcoes={opcoesPapel} />
         </FormAcao>

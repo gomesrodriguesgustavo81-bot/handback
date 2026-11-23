@@ -1,4 +1,5 @@
 "use client";
+import { useConfirmar } from "@/components/confirmar";
 
 import { startTransition, useActionState, useState, useTransition } from "react";
 import type { Resultado } from "@/components/form-acao";
@@ -80,6 +81,7 @@ export function FormConectarMoodle({ slug, enderecoInicial, expirada }: { slug: 
   const [olhando, iniciarExame] = useTransition();
   const [modo, setModo] = useState<"senha" | "chave">("senha");
   const [estado, conectar, conectando] = useActionState<Resultado, FormData>(conectarMoodle.bind(null, slug), null);
+  const { pedir, janela } = useConfirmar();
 
   function examinar() {
     iniciarExame(async () => {
@@ -130,12 +132,14 @@ export function FormConectarMoodle({ slug, enderecoInicial, expirada }: { slug: 
   return (
     <form
       className="flex flex-col gap-4"
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
         const dados = new FormData(e.currentTarget);
+        if (!(await pedir({ titulo: `Conectar ao Moodle ${host}?`, texto: "O Handback guarda só a chave de acesso, cifrada. Você pode desconectar quando quiser.", sim: "Sim, conectar" }))) return;
         startTransition(() => conectar(dados));
       }}
     >
+      {janela}
       <input type="hidden" name="endereco" value={exame.site} />
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-borda px-3 py-2 text-sm">
         <span className="min-w-0 [overflow-wrap:anywhere]">

@@ -121,7 +121,12 @@ export function Integrantes({
         <details className="rounded-2xl border border-borda bg-cartao p-3.5">
           <summary className="flex min-h-10 cursor-pointer items-center font-semibold text-marca-forte">+ Adicionar pessoa</summary>
           <div className="mt-2">
-            <FormAcao acao={adicionarIntegrante.bind(null, slug, grupoId)} textoBotao="Adicionar pessoa" limparAoSalvar>
+            <FormAcao
+              acao={adicionarIntegrante.bind(null, slug, grupoId)}
+              textoBotao="Adicionar pessoa"
+              limparAoSalvar
+              confirmar={(d) => ({ titulo: `Adicionar ${String(d.get("nome") || d.get("email") || "esta pessoa")}?`, texto: "Ela passa a receber a devolutiva.", sim: "Sim, adicionar" })}
+            >
               <Campo rotulo="Nome" name="nome" placeholder="Ex.: Ana Souza" />
               <Campo rotulo="E-mail" name="email" type="email" required placeholder="ana@email.com" />
             </FormAcao>

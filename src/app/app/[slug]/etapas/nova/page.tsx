@@ -37,7 +37,7 @@ export default async function NovaEtapa({ params }: PageProps<"/app/[slug]/etapa
       </Link>
       <Cartao className="flex flex-col gap-4">
         <h2 className="text-lg font-semibold">Adicionar {minusc(v.etapa)}</h2>
-        <FormAcao acao={criarEtapa.bind(null, slug)} textoBotao="Salvar">
+        <FormAcao acao={criarEtapa.bind(null, slug)} textoBotao="Salvar" confirmar={{ titulo: `Adicionar ${minusc(v.etapa)}?`, sim: "Sim, adicionar" }}>
           <CamposEtapa v={v} inicial={{ numero: (ultima?.numero ?? 0) + 1 }} />
         </FormAcao>
       </Cartao>

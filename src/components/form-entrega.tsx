@@ -1,4 +1,5 @@
 "use client";
+import { useConfirmar } from "./confirmar";
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -42,6 +43,7 @@ export function FormEntrega({
   const [enviando, setEnviando] = useState(false);
   const [progresso, setProgresso] = useState("");
   const [resultado, setResultado] = useState<{ ok: boolean; mensagem: string } | null>(null);
+  const { pedir, janela } = useConfirmar();
 
   function escolherArquivos(lista: FileList | null) {
     const novos = Array.from(lista ?? []);
@@ -63,6 +65,7 @@ export function FormEntrega({
       setResultado({ ok: false, mensagem: `Escolha: ${nomeEtapa.toLowerCase()} e ${nomeGrupo.toLowerCase()}.` });
       return;
     }
+    if (!(await pedir({ titulo: "Registrar esta entrega?", texto: arquivos.length ? `Com ${arquivos.length === 1 ? "1 arquivo" : `${arquivos.length} arquivos`}.` : undefined, sim: "Sim, registrar" }))) return;
 
     setEnviando(true);
     setResultado(null);
@@ -214,6 +217,7 @@ export function FormEntrega({
       <Botao type="submit" disabled={enviando}>
         {enviando ? "Registrando…" : "Registrar entrega"}
       </Botao>
+      {janela}
     </form>
   );
 }

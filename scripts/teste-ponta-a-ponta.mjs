@@ -85,7 +85,7 @@ async function cadastrarCelular(p, email, botao = "Começar") {
 
 /** Entra com e-mail e senha; se pedir, digita o código do celular. */
 async function entrar(navegador, email, nome) {
-  const ctx = await navegador.newContext({ ...devices["Pixel 7"] });
+  const ctx = await prepararContexto(navegador, { ...devices["Pixel 7"] });
   const p = await ctx.newPage();
   await p.goto(`${APP}/entrar`);
   await p.getByLabel("E-mail").fill(email);
@@ -103,7 +103,7 @@ async function entrar(navegador, email, nome) {
 
 /** Primeiro acesso por convite: link do e-mail → cria a senha → cadastra o celular. */
 async function primeiroAcesso(navegador, email, nome) {
-  const ctx = await navegador.newContext({ ...devices["Pixel 7"] });
+  const ctx = await prepararContexto(navegador, { ...devices["Pixel 7"] });
   const p = await ctx.newPage();
   await p.goto(await linkDoEmail(email));
   await p.waitForURL(/\/definir-senha/);
@@ -138,12 +138,38 @@ async function largura(p, oQue) {
   confere(w <= 412, `${oQue} cabe no celular (${w}px)`);
 }
 
+/** Janelas de confirmação pedidas durante o teste (o título de cada uma). */
+const confirmacoes = [];
+/**
+ * Prepara o navegador: toda janela de confirmação do Handback é anotada e
+ * confirmada sozinha (a não ser que o teste ligue window.__semAuto para
+ * clicar ele mesmo em "Sim" ou "Não").
+ */
+async function prepararContexto(navegador, opcoes) {
+  const ctx = await navegador.newContext(opcoes);
+  await ctx.exposeBinding("__anotarConfirmacao", (_origem, titulo) => {
+    confirmacoes.push(titulo);
+  });
+  await ctx.addInitScript(() => {
+    new MutationObserver(() => {
+      const d = document.querySelector('[role="alertdialog"][aria-modal="true"]');
+      if (!d || d.dataset.visto) return;
+      d.dataset.visto = "1";
+      window.__anotarConfirmacao?.([d.querySelector("h2")?.textContent, d.querySelector("p")?.textContent].filter(Boolean).join(" "));
+      if (window.__semAuto) return;
+      setTimeout(() => d.querySelectorAll("button")[1]?.click(), 60);
+    }).observe(document, { childList: true, subtree: true });
+  });
+  return ctx;
+}
+const pediuConfirmacao = (trecho) => confirmacoes.some((t) => (typeof trecho === "string" ? t.includes(trecho) : trecho.test(t)));
+
 const sql = (q) => execFileSync("psql", [DB, "-Atc", q]).toString().trim();
 const navegador = await chromium.launch();
 try {
   // 1) Área protegida sem login → vai para /entrar
   {
-    const ctx = await navegador.newContext();
+    const ctx = await prepararContexto(navegador, );
     const p = await ctx.newPage();
     await p.goto(`${APP}/app`);
     confere(new URL(p.url()).pathname === "/entrar", "sem login, /app manda para /entrar");
@@ -154,7 +180,7 @@ try {
 
   // 2) Ninguém cria conta sozinho; senha errada não entra. O dono entra; ainda não é dono da plataforma
   {
-    const ctx = await navegador.newContext({ ...devices["Pixel 7"] });
+    const ctx = await prepararContexto(navegador, { ...devices["Pixel 7"] });
     const p = await ctx.newPage();
     const resp = await p.goto(`${APP}/entrar`);
     confere(resp.headers()["x-frame-options"] === "DENY" && /max-age/.test(resp.headers()["strict-transport-security"] ?? ""), "cabeçalhos de segurança no site");
@@ -170,7 +196,7 @@ try {
   }
   await criarConta(DONO);
   {
-    const ctx = await navegador.newContext({ ...devices["Pixel 7"] });
+    const ctx = await prepararContexto(navegador, { ...devices["Pixel 7"] });
     const p = await ctx.newPage();
     await p.goto(`${APP}/entrar`);
     await p.getByLabel("E-mail").fill(DONO);
@@ -221,7 +247,7 @@ try {
   confere(true, "Ana recebe o convite, cria a senha e ativa as duas etapas");
   {
     // Senha fraca e senha diferente são recusadas (outro link de "esqueci a senha" não é preciso: testa na própria tela).
-    const ctx = await navegador.newContext({ ...devices["Pixel 7"] });
+    const ctx = await prepararContexto(navegador, { ...devices["Pixel 7"] });
     const p = await ctx.newPage();
     await p.goto(`${APP}/entrar`);
     await p.getByLabel("E-mail").fill(ANA);
@@ -294,7 +320,7 @@ try {
     // "Esqueci minha senha": link por e-mail → senha nova (senha fraca é recusada).
     const ESQUECIDO = `esquecido-${sufixo}@qualquer.test`;
     await criarConta(ESQUECIDO);
-    const ctx = await navegador.newContext({ ...devices["Pixel 7"] });
+    const ctx = await prepararContexto(navegador, { ...devices["Pixel 7"] });
     const p = await ctx.newPage();
     await p.goto(`${APP}/entrar/esqueci`);
     await p.getByLabel("Seu e-mail").fill(ESQUECIDO);
@@ -324,7 +350,7 @@ try {
     });
     const j = await r.json();
     const link = j.action_link ?? j.properties?.action_link;
-    const ctx = await navegador.newContext({ ...devices["Pixel 7"] });
+    const ctx = await prepararContexto(navegador, { ...devices["Pixel 7"] });
     const p = await ctx.newPage();
     await p.goto(link);
     await p.waitForURL(/\/definir-senha/);
@@ -468,7 +494,6 @@ try {
     for (const quem of ["a2@aluno.test", "Ana Três"]) {
       await pessoas.getByRole("button", { name: `Editar ${quem}` }).click();
       await pessoas.getByRole("button", { name: "Tirar desta lista" }).click();
-      await pessoas.getByRole("button", { name: "Sim, confirmar" }).click();
       await ana.p.waitForFunction((q) => !document.querySelector('[aria-label="Pessoas"]').innerText.includes(q), quem === "Ana Três" ? "a3@aluno.test" : "a2@aluno.test");
     }
   }
@@ -478,7 +503,6 @@ try {
   await ana.p.getByText("Encontro 1 · Diagnóstico").click();
   await ana.p.waitForURL(/\/etapas\/[0-9a-f-]{36}$/);
   await ana.p.getByRole("button", { name: "Apagar encontro" }).click();
-  await ana.p.getByRole("button", { name: "Sim, confirmar" }).click();
   await ana.p.waitForURL(new RegExp(`/app/${SLUG}/etapas$`));
   confere(await ana.p.getByText("Nada cadastrado ainda.", { exact: false }).isVisible(), "encontro apagado");
 
@@ -757,7 +781,6 @@ try {
   // Desconectar o Gmail
   await ana.p.goto(`${APP}/app/${SLUG}/configuracoes/email`);
   await ana.p.getByRole("button", { name: "Desconectar Gmail" }).click();
-  await ana.p.getByRole("button", { name: "Sim, confirmar" }).click();
   await ana.p.getByText("Envie pelo seu Gmail").waitFor();
   await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
   await ana.p.getByRole("link", { name: "Conectar meu Gmail" }).waitFor();
@@ -842,7 +865,7 @@ try {
 
   // 7c) Registro de atividades
   {
-    const ctx = await navegador.newContext({ ...devices["Pixel 7"] });
+    const ctx = await prepararContexto(navegador, { ...devices["Pixel 7"] });
     const p = await ctx.newPage();
     await p.goto(`${APP}/entrar`);
     await p.getByLabel("E-mail").fill(PROF);
@@ -996,10 +1019,8 @@ try {
       confere(await ana.p.getByRole("link", { name: /Grupo Verde Claro/ }).isVisible(), "renomear a equipe direto na lista");
       const diego = ana.p.getByRole("listitem").filter({ hasText: "Diego Rocha" });
       await diego.getByRole("button", { name: /^Apagar/ }).click();
-      await diego.getByText(/o Moodle não traz de volta/).waitFor();
-      await diego.getByRole("button", { name: "Sim, confirmar" }).click();
       await ana.p.waitForFunction(() => !document.body.innerText.includes("Diego Rocha"));
-      confere(true, "apagar a equipe direto na lista");
+      confere(pediuConfirmacao(/Apagar “Diego Rocha”\? .*o Moodle não traz de volta/), "apagar a equipe pede confirmação e avisa do Moodle");
       await largura(ana.p, "lista de equipes");
       await ana.p.screenshot({ path: `${FOTOS}/28c-equipes.png`, fullPage: true });
       await ana.p.goto(urlTurma);
@@ -1070,7 +1091,6 @@ try {
     // Desligar e ligar de novo: a turma volta a ficar ligada sozinha.
     await ana.p.goto(`${APP}/app/${SLUG}/moodle`);
     await ana.p.getByRole("button", { name: "Desligar" }).click();
-    await ana.p.getByRole("button", { name: "Sim, confirmar" }).click();
     await ana.p.getByRole("button", { name: "Continuar" }).waitFor();
     const turmaMoodle = `select coalesce(moodle_conta::text, 'sem') from public.turmas where nome = 'Design de Interação' and org_id = (select id from public.organizacoes where slug = '${SLUG}')`;
     confere(sql(turmaMoodle) === "sem", "Moodle: desligar tira a ligação da turma");
@@ -1112,12 +1132,24 @@ try {
     confere(ana.p.url().endsWith("/configuracoes/email") && (await ana.p.getByText("professora@gmail.test").isVisible()), "conecta o Gmail sem sair da tela");
     await largura(ana.p, "aba E-mail");
     await ana.p.screenshot({ path: `${FOTOS}/41-email.png`, fullPage: true });
+    await ana.p.evaluate(() => (window.__semAuto = true));
     await ana.p.getByRole("button", { name: "Desconectar Gmail" }).click();
-    confere(await ana.p.getByText(/Desconectar\? As devolutivas param/).isVisible(), "desconectar pede confirmação na tela");
-    await ana.p.getByRole("button", { name: "Não" }).click();
-    confere(await ana.p.getByText("Gmail conectado", { exact: true }).isVisible(), "dizer Não mantém o Gmail");
+    const janelaConf = ana.p.getByRole("alertdialog");
+    confere(await janelaConf.getByRole("heading", { name: "Desconectar?" }).isVisible() && await janelaConf.getByText(/As devolutivas param/).isVisible(), "desconectar pede confirmação numa janela");
+    const caixaJanela = await ana.p.locator(".fixed.inset-0.z-\\[60\\]").boundingBox();
+    const tela = ana.p.viewportSize();
+    confere(caixaJanela && caixaJanela.width >= tela.width - 1 && caixaJanela.height >= tela.height - 1, "a janela cobre a tela toda");
+    await largura(ana.p, "janela de confirmação");
+    await espera(400);
+    await ana.p.screenshot({ path: `${FOTOS}/49-confirmar.png` });
+    await janelaConf.getByRole("button", { name: "Não" }).click();
+    confere(!(await ana.p.getByRole("alertdialog").count()) && await ana.p.getByText("Gmail conectado", { exact: true }).isVisible(), "dizer Não fecha a janela e mantém o Gmail");
     await ana.p.getByRole("button", { name: "Desconectar Gmail" }).click();
-    await ana.p.getByRole("button", { name: "Sim, confirmar" }).click();
+    await ana.p.keyboard.press("Escape");
+    confere(!(await ana.p.getByRole("alertdialog").count()) && await ana.p.getByText("Gmail conectado", { exact: true }).isVisible(), "Esc também cancela");
+    await ana.p.getByRole("button", { name: "Desconectar Gmail" }).click();
+    await ana.p.getByRole("alertdialog").getByRole("button", { name: "Sim, confirmar" }).click();
+    await ana.p.evaluate(() => (window.__semAuto = false));
     await ana.p.getByText("Envie pelo seu Gmail").waitFor();
     confere(sql(`select count(*) from public.contas_gmail g join auth.users u on u.id = g.user_id where u.email = '${ANA}'`) === "0", "desconectar apaga a ligação do Gmail");
 
@@ -1188,7 +1220,7 @@ try {
     await ana.p.getByRole("link", { name: /^Lembretes para os alunos/ }).click();
     await ana.p.getByRole("heading", { name: "Lembretes para os alunos" }).waitFor();
     for (const nome of ["2 dias antes do prazo", "No dia do prazo"]) {
-      await ana.p.getByLabel(nome).check();
+      await ana.p.getByLabel(nome).click();
       await ana.p.getByRole("region", { name: "Quando lembrar" }).getByText("Salvo ✓").first().waitFor();
     }
     await ana.p.reload();
@@ -1278,7 +1310,7 @@ try {
     const [cabCsv, ...linhasCsv] = csv.replace(/^\uFEFF/, "").trim().split("\r\n");
     confere(cabCsv.startsWith("Equipe;") && cabCsv.includes("Matrícula") && cabCsv.includes("Média (0 a 10)") && linhasCsv.some((l) => l.startsWith("Equipe Azul;") && l.includes("BOM")), "planilha CSV: uma linha por aluno, com equipe, matrícula, conceitos e média");
     {
-      const anonimo = await navegador.newContext();
+      const anonimo = await prepararContexto(navegador, );
       const r = await anonimo.request.get(`${APP}/app/${SLUG}/relatorios/planilha?formato=csv`, { maxRedirects: 0 });
       confere(r.status() >= 300 && r.status() < 400 && /\/entrar/.test(r.headers().location ?? ""), "planilha exige login");
       await anonimo.close();
@@ -1333,7 +1365,7 @@ try {
   // 7g) Cadastro sozinho pela página de vendas
   {
     const NOVA = `nova-${sufixo}@cadastro.test`;
-    const ctx = await navegador.newContext({ ...devices["Pixel 7"] });
+    const ctx = await prepararContexto(navegador, { ...devices["Pixel 7"] });
     const p = await ctx.newPage();
     await p.goto(`${APP}/`);
     await p.getByRole("link", { name: "Criar minha conta grátis" }).first().click();
@@ -1379,7 +1411,7 @@ try {
   confere(new URL(ana.p.url()).pathname === "/entrar", "depois de sair, /app pede login de novo");
 
   // 10) Link de login com destino externo não leva para fora do site
-  const ext = await navegador.newContext({ ...devices["Pixel 7"] });
+  const ext = await prepararContexto(navegador, { ...devices["Pixel 7"] });
   const pe = await ext.newPage();
   await pe.goto(`${APP}/auth/confirmar?voltar=//exemplo.com`);
   confere(new URL(pe.url()).host === new URL(APP).host, "link de login não redireciona para outro site");
@@ -1409,6 +1441,26 @@ try {
   await pe.goto(`${APP}/termos`);
   confere(await pe.getByRole("heading", { name: "Termos de uso", level: 1 }).isVisible(), "termos de uso abrem sem login");
   await ext.close();
+
+  // Toda ação de adicionar, apagar, conectar, desconectar ou enviar pediu confirmação antes.
+  const esperadas = [
+    ["Adicionar esta equipe?", "adicionar equipe"],
+    ["Adicionar ", "adicionar pessoa ou aula"],
+    ["Convidar esta pessoa?", "convidar"],
+    ["Criar esta turma?", "criar turma"],
+    ["Registrar esta entrega?", "registrar entrega à mão"],
+    [/^Analisar \d+ entregas? com a IA\?/, "analisar várias com a IA"],
+    ["Conectar seu Gmail?", "conectar o Gmail"],
+    [/Enviar a devolutiva|Enviar \d+ devolutiva/, "enviar devolutiva"],
+    ["Conectar ao Moodle", "conectar o Moodle"],
+    [/^Devolver/, "devolver no Moodle"],
+    ["Ligar o lembrete", "ligar lembrete para os alunos"],
+    ["Apagar", "apagar"],
+    [/^Desligar|Desconectar/, "desconectar"],
+    ["Liberar o suporte", "liberar o suporte"],
+  ];
+  for (const [trecho, oQue] of esperadas) confere(pediuConfirmacao(trecho), `${oQue} pede confirmação antes`);
+  if (esperadas.some(([t]) => !pediuConfirmacao(t))) console.log("janelas anotadas:", JSON.stringify(confirmacoes));
 } finally {
   await navegador.close();
 }

@@ -1,4 +1,5 @@
 "use client";
+import { useConfirmar } from "./confirmar";
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -14,6 +15,7 @@ export function ConectarGmail({ voltar, texto = "Conectar com Google", destaque 
   const [esperando, setEsperando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   const janela = useRef<Window | null>(null);
+  const { pedir, janela: confirmacao } = useConfirmar();
 
   useEffect(() => {
     function receber(e: MessageEvent) {
@@ -40,7 +42,9 @@ export function ConectarGmail({ voltar, texto = "Conectar com Google", destaque 
       {aviso && aviso !== "conectado" ? <AvisoGmail aviso={aviso} /> : null}
       <a
         href={paginaInteira}
-        onClick={(e) => {
+        onClick={async (e) => {
+          e.preventDefault();
+          if (!(await pedir({ titulo: "Conectar seu Gmail?", texto: "O Handback vai poder enviar e-mails do seu endereço (as devolutivas que você aprovar). Ele não lê sua caixa.", sim: "Sim, conectar" }))) return;
           const largura = 480;
           const altura = 640;
           const w = window.open(
@@ -48,8 +52,11 @@ export function ConectarGmail({ voltar, texto = "Conectar com Google", destaque 
             "handback-gmail",
             `popup=yes,width=${largura},height=${altura},left=${Math.max(0, (screen.width - largura) / 2)},top=${Math.max(0, (screen.height - altura) / 2)}`,
           );
-          if (!w) return; // janela bloqueada: segue o link normal
-          e.preventDefault();
+          if (!w) {
+            // Janela bloqueada pelo navegador: abre na própria página.
+            window.open(paginaInteira, "_self");
+            return;
+          }
           janela.current = w;
           setAviso(null);
           setEsperando(true);
@@ -68,6 +75,7 @@ export function ConectarGmail({ voltar, texto = "Conectar com Google", destaque 
         </svg>
         {texto}
       </a>
+      {confirmacao}
       {esperando ? (
         <div role="dialog" aria-modal="true" aria-label="Aguardando o Google" className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-6">
           <div className="entra flex w-full max-w-sm flex-col items-center gap-3 rounded-2xl bg-cartao p-6 text-center">

@@ -1,4 +1,5 @@
 "use client";
+import { useConfirmar } from "./confirmar";
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -42,6 +43,7 @@ export function BotaoEnviar({
   perguntar?: string;
 }) {
   const router = useRouter();
+  const { pedir, janela } = useConfirmar();
   const [pendente, iniciar] = useTransition();
   const [msg, setMsg] = useState<Msg>(null);
   return (
@@ -51,8 +53,8 @@ export function BotaoEnviar({
         variante={variante}
         disabled={pendente}
         className="w-full"
-        onClick={() => {
-          if (perguntar && !window.confirm(perguntar)) return;
+        onClick={async () => {
+          if (!(await pedir({ titulo: perguntar ?? "Enviar a devolutiva por e-mail?", texto: "Sai do seu Gmail para os e-mails cadastrados.", sim: "Sim, enviar" }))) return;
           iniciar(async () => {
             setMsg(null);
             const r = await enviarDevolutivaPorEmail(slug, entregaId);
@@ -63,6 +65,7 @@ export function BotaoEnviar({
       >
         {pendente ? "Enviando…" : texto}
       </Botao>
+      {janela}
       <AvisoEnvio msg={msg} conectarHref={conectarHref} />
     </div>
   );
@@ -83,6 +86,7 @@ export function EnviarVarias({
   const [feitas, setFeitas] = useState(0);
   const [erros, setErros] = useState<string[]>([]);
   const [reconectar, setReconectar] = useState(false);
+  const { pedir, janela } = useConfirmar();
   if (!entregas.length && !erros.length) return null;
   return (
     <div className="flex flex-col gap-2">
@@ -91,7 +95,7 @@ export function EnviarVarias({
           type="button"
           disabled={andando}
           onClick={async () => {
-            if (!window.confirm(`Enviar ${entregas.length} devolutiva(s) aprovada(s) pelo seu Gmail?`)) return;
+            if (!(await pedir({ titulo: `Enviar ${entregas.length === 1 ? "1 devolutiva aprovada" : `${entregas.length} devolutivas aprovadas`}?`, texto: "Saem do seu Gmail, cada uma para os e-mails da sua equipe.", sim: "Sim, enviar" }))) return;
             setAndando(true);
             setErros([]);
             setFeitas(0);
@@ -114,6 +118,7 @@ export function EnviarVarias({
           {andando ? `Enviando ${Math.min(feitas + 1, entregas.length)} de ${entregas.length}…` : `Enviar as ${entregas.length} aprovadas`}
         </Botao>
       ) : null}
+      {janela}
       {erros.length ? (
         <Aviso tipo="erro">
           <ul className="list-disc pl-4">
@@ -155,6 +160,7 @@ export function DevolverMoodle({
   const [comNota, setComNota] = useState(Boolean(moodle.notaPrevista));
   const [pendente, iniciar] = useTransition();
   const [msgs, setMsgs] = useState<NonNullable<Msg>[]>([]);
+  const { pedir, janela } = useConfirmar();
   const opcoes = [
     { id: "moodle", nome: "No Moodle", detalhe: "Aparece como comentário na tarefa. O Moodle avisa quem entregou.", pode: true },
     { id: "email", nome: "Por e-mail", detalhe: emailPronto ? "Sai do seu Gmail, como nas outras entregas." : "Conecte seu Gmail (e cadastre os e-mails) para usar.", pode: emailPronto },
@@ -211,8 +217,22 @@ export function DevolverMoodle({
         type="button"
         disabled={pendente}
         variante={moodle.enviada ? "secundario" : "primario"}
-        onClick={() => {
-          if (moodle.enviada && !window.confirm("Devolver de novo? O comentário no Moodle será trocado por este.")) return;
+        onClick={async () => {
+          const titulo = moodle.enviada
+            ? "Devolver de novo?"
+            : via === "moodle"
+              ? "Devolver no Moodle?"
+              : via === "email"
+                ? "Enviar por e-mail?"
+                : "Devolver no Moodle e por e-mail?";
+          const texto = [
+            moodle.enviada ? "O comentário no Moodle será trocado por este." : "",
+            via !== "email" && comNota && moodle.notaPrevista ? `A nota ${moodle.notaPrevista} vai para o Moodle.` : "",
+            via !== "moodle" ? "O e-mail sai do seu Gmail." : "",
+          ]
+            .filter(Boolean)
+            .join(" ");
+          if (!(await pedir({ titulo, texto: texto || undefined, sim: "Sim, devolver" }))) return;
           iniciar(async () => {
             const feitas: NonNullable<Msg>[] = [];
             if (via !== "email") feitas.push(await devolverNoMoodleAcao(slug, entregaId, comNota));
@@ -227,6 +247,7 @@ export function DevolverMoodle({
       >
         {pendente ? "Devolvendo…" : moodle.enviada ? "Devolver de novo" : "Devolver"}
       </Botao>
+      {janela}
       {msgs.map((m, i) => (
         <AvisoEnvio key={i} msg={m} conectarHref={conectarHref} />
       ))}

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { FormConfirmado } from "@/components/confirmar";
 import { Cartao, Selo } from "@/components/ui";
 import { FRENTES, type Frente } from "@/lib/frentes";
 import { criarClienteServidor } from "@/lib/supabase/server";
@@ -117,13 +118,20 @@ export default async function PainelDono() {
                         {e.ultima_atividade ? ` · último uso ${dataHoraBR(e.ultima_atividade)}` : ""}
                       </p>
                     </div>
-                    <form action={mudarStatus}>
+                    <FormConfirmado
+                      action={mudarStatus}
+                      pergunta={
+                        e.ativa
+                          ? { titulo: `Bloquear ${e.nome}?`, texto: "Ninguém do espaço consegue usar até você liberar de novo.", sim: "Sim, bloquear", perigo: true }
+                          : { titulo: `Liberar ${e.nome}?`, sim: "Sim, liberar" }
+                      }
+                    >
                       <input type="hidden" name="id" value={e.id} />
                       <input type="hidden" name="ativa" value={String(!e.ativa)} />
                       <button type="submit" className="min-h-11 rounded-xl border border-borda px-3 text-sm hover:bg-fundo">
                         {e.ativa ? "Bloquear" : "Liberar"}
                       </button>
-                    </form>
+                    </FormConfirmado>
                   </div>
                   <FormSituacao id={e.id} situacao={e.situacao} testeAte={e.teste_ate} />
                   {e.acesso_tipo ? (
@@ -131,12 +139,16 @@ export default async function PainelDono() {
                       Entrar para dar suporte
                     </Link>
                   ) : e.pessoas === 0 ? (
-                    <form action={assumirEspaco.bind(null, e.id, e.slug)} className="flex flex-wrap items-center gap-2">
+                    <FormConfirmado
+                      action={assumirEspaco.bind(null, e.id, e.slug)}
+                      className="flex flex-wrap items-center gap-2"
+                      pergunta={{ titulo: `Assumir ${e.nome}?`, texto: "Você vira administrador deste espaço. Fica no registro.", sim: "Sim, assumir" }}
+                    >
                       <button type="submit" className="min-h-11 rounded-full bg-marca-forte px-4 font-medium text-white">
                         Assumir este espaço
                       </button>
                       <span className="text-xs text-suave">Ninguém dentro ainda: você vira administrador (fica registrado).</span>
-                    </form>
+                    </FormConfirmado>
                   ) : (
                     <FormEmergencia id={e.id} slug={e.slug} nome={e.nome} />
                   )}

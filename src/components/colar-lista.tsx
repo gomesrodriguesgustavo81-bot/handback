@@ -1,4 +1,5 @@
 "use client";
+import { useConfirmar } from "./confirmar";
 
 import { useActionState, useState, startTransition } from "react";
 import { lerListaDePessoas } from "@/lib/nomes";
@@ -22,13 +23,16 @@ export function ColarLista({
     return r;
   }, null);
   const lidos = lerListaDePessoas(texto);
+  const { pedir, janela } = useConfirmar();
   const bons = lidos.filter((l) => !l.erro);
   const minusculo = (bons.length === 1 ? umNome : variosNome).toLowerCase();
   return (
     <form
       className="flex flex-col gap-3"
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
+        const n = lidos.filter((l) => !l.erro).length;
+        if (!(await pedir({ titulo: `Cadastrar ${n} ${(n === 1 ? umNome : variosNome).toLowerCase()}?`, sim: "Sim, cadastrar" }))) return;
         const d = new FormData();
         d.set("lista", texto);
         startTransition(() => enviar(d));
@@ -64,6 +68,7 @@ export function ColarLista({
       <Botao type="submit" disabled={enviando || !bons.length}>
         {enviando ? "Cadastrando…" : bons.length ? `Cadastrar ${bons.length} ${minusculo}` : "Nada para cadastrar"}
       </Botao>
+      {janela}
     </form>
   );
 }

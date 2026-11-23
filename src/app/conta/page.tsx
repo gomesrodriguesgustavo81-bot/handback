@@ -2,6 +2,7 @@ import { completarVocabulario } from "@/lib/nomes";
 import { PAPEIS } from "@/lib/frentes";
 import type { Metadata } from "next";
 import { TopoApp } from "@/components/topo-app";
+import { FormConfirmado } from "@/components/confirmar";
 import { Cartao, LinkBotao } from "@/components/ui";
 import { eDonoDaPlataforma, usuarioAtual, minhasEmpresas } from "@/lib/sessao";
 import { criarClienteServidor } from "@/lib/supabase/server";
@@ -80,14 +81,14 @@ export default async function MinhaConta() {
         <Cartao className="flex flex-col gap-3">
           <h2 className="font-semibold">Aparelhos conectados</h2>
           <p className="text-sm text-suave">Perdeu o celular ou entrou num computador que não é seu? Saia de todos os aparelhos de uma vez.</p>
-          <form action={sairDeTodos}>
+          <FormConfirmado action={sairDeTodos} pergunta={{ titulo: "Sair de todos os aparelhos?", texto: "Você vai precisar entrar de novo em cada um, inclusive neste.", sim: "Sim, sair de todos", perigo: true }}>
             <button
               type="submit"
               className="inline-flex min-h-11 items-center rounded-xl border border-erro/40 px-4 text-sm font-medium text-erro hover:bg-erro-fundo"
             >
               Sair de todos os aparelhos
             </button>
-          </form>
+          </FormConfirmado>
         </Cartao>
       </main>
     </>

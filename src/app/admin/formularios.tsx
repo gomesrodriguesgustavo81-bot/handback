@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { Aviso, Botao } from "@/components/ui";
+import { useFormConfirmado } from "@/components/confirmar";
 import { entrarEmEmergencia, mudarSituacao, type EstadoForm } from "./actions";
 
 const SITUACOES = [
@@ -14,8 +15,10 @@ const SITUACOES = [
 /** Situação de cobrança do espaço (por enquanto, todos liberados). */
 export function FormSituacao({ id, situacao, testeAte }: { id: string; situacao: string; testeAte: string | null }) {
   const [estado, acao, enviando] = useActionState<EstadoForm, FormData>(mudarSituacao.bind(null, id), null);
+  const { onSubmit, janela } = useFormConfirmado({ titulo: "Mudar a situação deste espaço?", sim: "Sim, mudar" });
   return (
-    <form action={acao} className="flex flex-wrap items-end gap-2">
+    <form action={acao} onSubmit={onSubmit} className="flex flex-wrap items-end gap-2">
+      {janela}
       <label className="flex min-w-40 flex-1 flex-col gap-1">
         <span className="text-xs font-medium text-suave">Situação</span>
         <select name="situacao" defaultValue={situacao} className="min-h-11 rounded-xl border border-borda bg-cartao px-3 text-sm">
@@ -45,10 +48,12 @@ export function FormSituacao({ id, situacao, testeAte }: { id: string; situacao:
 /** Acesso de emergência: motivo obrigatório; o cliente é avisado por e-mail. */
 export function FormEmergencia({ id, slug, nome }: { id: string; slug: string; nome: string }) {
   const [estado, acao, enviando] = useActionState<EstadoForm, FormData>(entrarEmEmergencia.bind(null, id, slug), null);
+  const { onSubmit, janela } = useFormConfirmado({ titulo: `Entrar em ${nome} por emergência?`, texto: "Vale 4 horas. Quem administra recebe um e-mail com o motivo.", sim: "Sim, entrar", perigo: true });
   return (
     <details className="text-sm">
       <summary className="cursor-pointer font-medium text-erro">Acesso de emergência</summary>
-      <form action={acao} className="mt-2 flex flex-col gap-2 rounded-xl border border-erro/30 bg-erro-fundo p-3">
+      <form action={acao} onSubmit={onSubmit} className="mt-2 flex flex-col gap-2 rounded-xl border border-erro/30 bg-erro-fundo p-3">
+        {janela}
         <p className="text-texto">
           Só para casos graves (abuso, ordem da Justiça, problema sério sem resposta do cliente). Vale por 4 horas. Quem administra{" "}
           <strong>{nome}</strong> recebe um e-mail na hora com o motivo, e tudo fica no registro do espaço.

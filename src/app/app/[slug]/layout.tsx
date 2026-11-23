@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FormConfirmado } from "@/components/confirmar";
 import { Aviso } from "@/components/ui";
 import { sairDoSuporte } from "@/app/admin/actions";
 import { acessoAtivo } from "@/lib/suporte";
@@ -54,11 +55,11 @@ export default async function LayoutEmpresa({
             <strong>Modo {acesso.tipo === "emergencia" ? "emergência" : "suporte"}</strong> até {dataHoraBR(acesso.fim)}. Tudo o que você abrir fica no registro
             deste espaço.
           </span>
-          <form action={sairDoSuporte.bind(null, empresa.id)}>
+          <FormConfirmado action={sairDoSuporte.bind(null, empresa.id)} pergunta={{ titulo: "Sair do suporte agora?", texto: "Você deixa de ver o conteúdo deste espaço.", sim: "Sim, sair" }}>
             <button type="submit" className="min-h-10 rounded-full bg-sobre-acento px-4 font-semibold text-acento">
               Sair do suporte
             </button>
-          </form>
+          </FormConfirmado>
         </div>
       ) : acesso ? (
         <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-acento bg-cartao px-4 py-3 text-sm">

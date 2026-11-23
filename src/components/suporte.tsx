@@ -1,4 +1,5 @@
 "use client";
+import { useConfirmar } from "./confirmar";
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -17,6 +18,7 @@ export function ControleSuporte({
   const [dias, setDias] = useState(3);
   const [pendente, iniciar] = useTransition();
   const [erro, setErro] = useState("");
+  const { pedir, janela } = useConfirmar();
   const fazer = (f: () => Promise<{ ok: boolean; mensagem: string }>) =>
     iniciar(async () => {
       const r = await f();
@@ -37,7 +39,9 @@ export function ControleSuporte({
           <button
             type="button"
             disabled={pendente}
-            onClick={() => fazer(() => cortarSuporte(slug))}
+            onClick={async () => {
+              if (await pedir({ titulo: "Cortar o acesso do suporte agora?", texto: "A equipe do Handback deixa de ver o conteúdo na hora.", sim: "Sim, cortar", perigo: true })) fazer(() => cortarSuporte(slug));
+            }}
             className="min-h-11 rounded-full border border-erro/40 bg-cartao px-4 font-medium text-erro hover:bg-erro-fundo disabled:opacity-60"
           >
             {pendente ? "Cortando…" : "Cortar agora"}
@@ -57,12 +61,15 @@ export function ControleSuporte({
               <option value={7}>7 dias</option>
             </select>
           </label>
-          <Botao type="button" disabled={pendente} onClick={() => fazer(() => liberarSuporte(slug, dias))}>
+          <Botao type="button" disabled={pendente} onClick={async () => {
+              if (await pedir({ titulo: `Liberar o suporte por ${dias === 1 ? "1 dia" : `${dias} dias`}?`, texto: "A equipe do Handback passa a ver as entregas e devolutivas deste espaço. Tudo fica no registro, e você pode cortar quando quiser.", sim: "Sim, liberar" })) fazer(() => liberarSuporte(slug, dias));
+            }}>
             {pendente ? "Liberando…" : "Liberar o acesso de suporte"}
           </Botao>
         </div>
       )}
       {erro ? <Aviso tipo="erro">{erro}</Aviso> : null}
+      {janela}
     </div>
   );
 }

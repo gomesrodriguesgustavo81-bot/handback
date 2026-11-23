@@ -1,4 +1,5 @@
 "use client";
+import { useConfirmar } from "./confirmar";
 
 import { useActionState, useEffect, useState, useTransition, startTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
@@ -64,6 +65,7 @@ export function BotaoAnalisar({
 /** Analisa várias entregas, uma de cada vez, mostrando o andamento. */
 export function AnalisarVarias({ slug, entregas, rotulo }: { slug: string; entregas: { id: string; nome: string }[]; rotulo: string }) {
   const router = useRouter();
+  const { pedir, janela } = useConfirmar();
   const [pendente, iniciar] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; mensagem: string } | null>(null);
   if (!entregas.length && !msg) return null;
@@ -74,17 +76,20 @@ export function AnalisarVarias({ slug, entregas, rotulo }: { slug: string; entre
           type="button"
           variante="secundario"
           disabled={pendente}
-          onClick={() =>
+          onClick={async () => {
+            const n = entregas.length;
+            if (!(await pedir({ titulo: `Analisar ${n === 1 ? "1 entrega" : `${n} entregas`} com a IA?`, texto: "A IA trabalha em segundo plano. Nada é enviado aos alunos: você revisa antes.", sim: "Sim, analisar" }))) return;
             iniciar(async () => {
               const r = await analisarEmSegundoPlano(slug, entregas.map((e) => e.id));
               setMsg(r);
               router.refresh();
-            })
-          }
+            });
+          }}
         >
           {pendente ? "Colocando na fila…" : rotulo}
         </Botao>
       ) : null}
+      {janela}
       {msg ? <Aviso tipo={msg.ok ? "info" : "erro"}>{msg.mensagem}</Aviso> : null}
     </div>
   );
@@ -111,6 +116,7 @@ export function FilaAndando({ quantas }: { quantas: number }) {
 /** Aprova de uma vez as devolutivas prontas do painel. */
 export function AprovarProntas({ slug, etapaId, quantas }: { slug: string; etapaId: string; quantas: number }) {
   const router = useRouter();
+  const { pedir, janela } = useConfirmar();
   const [pendente, iniciar] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; mensagem: string } | null>(null);
   if (!quantas && !msg) return null;
@@ -122,8 +128,8 @@ export function AprovarProntas({ slug, etapaId, quantas }: { slug: string; etapa
           variante="secundario"
           disabled={pendente}
           className="border-marca! text-marca-forte"
-          onClick={() => {
-            if (!window.confirm(`Aprovar as ${quantas} devolutiva(s) prontas do jeito que a IA escreveu?`)) return;
+          onClick={async () => {
+            if (!(await pedir({ titulo: `Aprovar as ${quantas} devolutivas prontas?`, texto: "Do jeito que a IA escreveu, sem editar. Elas ficam prontas para enviar.", sim: "Sim, aprovar" }))) return;
             iniciar(async () => {
               setMsg(await aprovarProntas(slug, etapaId));
               router.refresh();
@@ -133,6 +139,7 @@ export function AprovarProntas({ slug, etapaId, quantas }: { slug: string; etapa
           {pendente ? "Aprovando…" : `Aprovar as ${quantas} prontas sem editar`}
         </Botao>
       ) : null}
+      {janela}
       {msg ? <Aviso tipo={msg.ok ? "info" : "erro"}>{msg.mensagem}</Aviso> : null}
     </div>
   );

@@ -1,4 +1,5 @@
 "use client";
+import { useConfirmar } from "./confirmar";
 
 import { startTransition, useActionState } from "react";
 import { decidirEmail } from "@/app/app/[slug]/entregas/acoes";
@@ -35,6 +36,7 @@ export function DecisaoEmail({
   linkGmail?: string | null;
 }) {
   const [estado, enviar, enviando] = useActionState<Resultado, FormData>(decidirEmail.bind(null, slug, emailId), null);
+  const { pedir, janela } = useConfirmar();
   if (gmail) {
     return (
       <form
@@ -66,11 +68,18 @@ export function DecisaoEmail({
   return (
     <form
       className="flex flex-col gap-2.5"
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
+        const form = e.currentTarget;
         const submissor = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
-        if (submissor?.value === "ignorar" && !window.confirm("Ignorar este e-mail (não é entrega)?")) return;
-        const dados = new FormData(e.currentTarget, submissor);
+        const ignorar = submissor?.value === "ignorar";
+        const ok = await pedir(
+          ignorar
+            ? { titulo: "Ignorar este e-mail?", texto: "Ele não é uma entrega e sai da caixa.", sim: "Sim, ignorar", perigo: true }
+            : { titulo: "Registrar como entrega?", texto: "O e-mail vira a entrega da equipe escolhida.", sim: "Sim, registrar" },
+        );
+        if (!ok) return;
+        const dados = new FormData(form, submissor);
         startTransition(() => enviar(dados));
       }}
     >
@@ -113,6 +122,7 @@ export function DecisaoEmail({
           {enviando ? "Salvando…" : "É entrega"}
         </Botao>
       </div>
+      {janela}
     </form>
   );
 }

@@ -4,12 +4,15 @@ import { useActionState } from "react";
 import { criarEmpresa, type EstadoForm } from "./actions";
 import { Aviso, Botao, Campo } from "@/components/ui";
 import { FRENTES } from "@/lib/frentes";
+import { useFormConfirmado } from "@/components/confirmar";
 
 export function NovaEmpresa() {
   const [estado, acao, enviando] = useActionState<EstadoForm, FormData>(criarEmpresa, null);
+  const { onSubmit, janela } = useFormConfirmado((d) => ({ titulo: `Criar “${String(d.get("nome") || "o espaço")}”?`, texto: "Quem você indicou recebe o convite por e-mail.", sim: "Sim, criar" }));
 
   return (
-    <form action={acao} className="flex flex-col gap-4" key={estado?.ok ? estado.mensagem : "form"}>
+    <form action={acao} onSubmit={onSubmit} className="flex flex-col gap-4" key={estado?.ok ? estado.mensagem : "form"}>
+      {janela}
       <Campo rotulo="Nome do espaço" name="nome" required placeholder="Ex.: Escola Alfa" />
       <Campo
         rotulo="Endereço no Handback"

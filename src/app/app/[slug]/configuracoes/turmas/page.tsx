@@ -54,7 +54,7 @@ export default async function Turmas({ params }: PageProps<"/app/[slug]/configur
       <details className="text-sm">
         <summary className="cursor-pointer font-medium text-marca-forte">+ Criar {vc.espaco.toLowerCase()}</summary>
         <div className="mt-3">
-          <FormAcao acao={criarTurma.bind(null, slug)} textoBotao="Criar" limparAoSalvar>
+          <FormAcao acao={criarTurma.bind(null, slug)} textoBotao="Criar" limparAoSalvar confirmar={{ titulo: "Criar esta turma?", sim: "Sim, criar" }}>
             <div className="grid gap-3 sm:grid-cols-2">
               <Campo rotulo="Nome" name="nome" required placeholder="Ex.: Cálculo II — Manhã" />
               <Escolha

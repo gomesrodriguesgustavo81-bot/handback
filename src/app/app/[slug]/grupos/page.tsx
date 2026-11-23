@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { turmaAtual } from "@/lib/turma";
-import { completarVocabulario, quemEntrega } from "@/lib/nomes";
+import { completarVocabulario, generoDe, quemEntrega } from "@/lib/nomes";
 import { ColarLista } from "@/components/colar-lista";
 import { notFound } from "next/navigation";
 import { FormAcao } from "@/components/form-acao";
+import { FormConfirmado } from "@/components/confirmar";
 import { Cartao, Vazio } from "@/components/ui";
 import { contextoDaEmpresa } from "@/lib/empresa";
 import { criarClienteServidor } from "@/lib/supabase/server";
@@ -70,11 +71,11 @@ export default async function ListaGrupos({ params }: PageProps<"/app/[slug]/gru
                   <span className="text-sm">
                     <strong>{g.nome}</strong> · {g.integrantes.length} {g.integrantes.length === 1 ? "pessoa" : "pessoas"}
                   </span>
-                  <form action={restaurarGrupo.bind(null, slug, g.id)}>
+                  <FormConfirmado action={restaurarGrupo.bind(null, slug, g.id)} pergunta={{ titulo: `Trazer “${g.nome}” de volta?`, texto: "Volta para a lista e passa a receber entregas de novo.", sim: "Sim, trazer de volta" }}>
                     <button type="submit" className="inline-flex min-h-11 items-center rounded-xl border border-borda px-3 text-sm font-medium text-marca-forte hover:bg-fundo">
                       Trazer de volta
                     </button>
-                  </form>
+                  </FormConfirmado>
                 </li>
               ))}
             </ul>
@@ -90,7 +91,7 @@ export default async function ListaGrupos({ params }: PageProps<"/app/[slug]/gru
       ) : podeGerir ? (
         <Cartao className="flex flex-col gap-4 self-start">
           <h2 className="font-semibold">Adicionar {minusc(v.grupo)}</h2>
-          <FormAcao acao={criarGrupo.bind(null, slug)} textoBotao="Adicionar" limparAoSalvar>
+          <FormAcao acao={criarGrupo.bind(null, slug)} textoBotao="Adicionar" limparAoSalvar confirmar={{ titulo: `Adicionar est${generoDe(v.grupo) === "f" ? "a" : "e"} ${minusc(v.grupo)}?`, sim: "Sim, adicionar" }}>
             <CamposGrupo v={v} />
           </FormAcao>
         </Cartao>

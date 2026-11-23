@@ -1,4 +1,5 @@
 "use client";
+import { useConfirmar } from "@/components/confirmar";
 
 import { useEffect, useState } from "react";
 import { SinalSalvo, useSalvar } from "@/components/campo-auto";
@@ -42,6 +43,7 @@ function Celular() {
   const [situacao, setSituacao] = useState<Situacao>("carregando");
   const [erro, setErro] = useState("");
   const [ocupado, setOcupado] = useState(false);
+  const { pedir, janela } = useConfirmar();
 
   useEffect(() => {
     (async () => {
@@ -59,6 +61,7 @@ function Celular() {
   }, []);
 
   async function ativar() {
+    if (!(await pedir({ titulo: "Receber notificações neste aparelho?", texto: "Depois o navegador também pergunta: toque em Permitir.", sim: "Sim, ativar" }))) return;
     setErro("");
     setOcupado(true);
     try {
@@ -84,6 +87,7 @@ function Celular() {
   }
 
   async function desativar() {
+    if (!(await pedir({ titulo: "Parar as notificações neste aparelho?", sim: "Sim, parar", perigo: true }))) return;
     setOcupado(true);
     try {
       const reg = await navigator.serviceWorker.getRegistration("/");
@@ -128,6 +132,7 @@ function Celular() {
         </div>
       ) : null}
       {erro ? <span role="alert" className="text-erro">{erro}</span> : null}
+      {janela}
     </div>
   );
 }
