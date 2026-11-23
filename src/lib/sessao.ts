@@ -49,7 +49,7 @@ export const usuarioAtual = cache(async () => {
     if (precisa && !fim) redirect("/conta/duas-etapas");
     if (precisa && fim) prazoDuasEtapas = String(fim);
   }
-  return { id: s.id, email: s.email, duasEtapas: s.nivel === "aal2", prazoDuasEtapas };
+  return { id: s.id, email: s.email, nome: s.nome, duasEtapas: s.nivel === "aal2", prazoDuasEtapas };
 });
 
 export const eDonoDaPlataforma = cache(async () => {

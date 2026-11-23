@@ -11,6 +11,8 @@ import { completarVocabulario, o, quemEntrega } from "@/lib/nomes";
 import { turmaAtual, turmasDaEmpresa } from "@/lib/turma";
 import { SeletorTurma } from "./seletor-turma";
 import { SoForaDaFolha } from "./so-fora-da-folha";
+import { Saudacao } from "@/components/saudacao";
+import { usuarioAtual } from "@/lib/sessao";
 
 /**
  * Moldura de cada empresa: a turma escolhida, as 3 abas do dia a dia
@@ -22,7 +24,7 @@ export default async function LayoutEmpresa({
   params,
 }: LayoutProps<"/app/[slug]">) {
   const { slug } = await params;
-  const { empresa, podeGerir, podeAvaliar } = await contextoDaEmpresa(slug);
+  const [{ empresa, podeGerir, podeAvaliar }, eu] = await Promise.all([contextoDaEmpresa(slug), usuarioAtual()]);
   const v = completarVocabulario(empresa.vocabulario);
   const [turmas, atual] = await Promise.all([
     turmasDaEmpresa(empresa.id),
@@ -50,6 +52,9 @@ export default async function LayoutEmpresa({
     <div className="flex flex-col gap-4 pb-20 lg:grid lg:grid-cols-[auto_minmax(0,1fr)] lg:items-start lg:gap-8 lg:pb-0 print:block print:pb-0">
       <Navegacao abas={abas} mais={mais} configuracoes={configuracoes} paginasDeConfiguracao={paginasDeConfiguracao} />
       <div className="flex min-w-0 flex-col gap-4">
+      <SoForaDaFolha>
+        <Saudacao nome={eu.nome} email={eu.email} />
+      </SoForaDaFolha>
       {!empresa.ativa ? (
         <Aviso tipo="alerta">
           Est{o(v, "organizacao")} {v.organizacao.toLowerCase()} está bloquead{o(v, "organizacao")}. Fale com o suporte do Handback.

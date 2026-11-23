@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Aviso, Botao } from "@/components/ui";
 import { generoDe, OPCOES_NOMES, plural, USOS, type Modo } from "@/lib/nomes";
 import { concluirPrimeiroAcesso } from "./acoes";
@@ -42,6 +43,7 @@ function Opcao({ marcado, onClick, titulo, texto, extra }: { marcado: boolean; o
 
 export function Assistente({ slug }: { slug: string }) {
   const [passo, setPasso] = useState(1);
+  const router = useRouter();
   const [usoId, setUsoId] = useState(USOS[0].id);
   const [modo, setModo] = useState<Modo>(USOS[0].modo);
   const [nomes, setNomes] = useState<Record<Campo, string>>({ espaco: USOS[0].espaco, grupo: USOS[0].grupo, pessoa: USOS[0].pessoa, etapa: USOS[0].etapa });
@@ -86,7 +88,8 @@ export function Assistente({ slug }: { slug: string }) {
         etapa: valor("etapa"),
         nomeTurma,
       });
-      if (r.ok) setPasso(5);
+      // Pronto: segue direto para as Configurações, com a lista dos primeiros passos.
+      if (r.ok) router.push(`/app/${slug}/configuracoes`);
       else setErro(r.mensagem);
     });
   }

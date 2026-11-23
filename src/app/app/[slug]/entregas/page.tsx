@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { FaltamPassos, passosDoComeco } from "../primeiros-passos";
 import { turmaAtual } from "@/lib/turma";
 import { completarVocabulario, quemEntrega } from "@/lib/nomes";
 import Link from "next/link";
@@ -137,6 +138,7 @@ export default async function PainelDaAula({
   }
   const nav = (
     <>
+      {podeGerir ? <FaltamPassos slug={slug} passos={await passosDoComeco(slug, empresa)} /> : null}
       <NavEntregas
         slug={slug}
         atual="painel"

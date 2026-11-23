@@ -5,6 +5,8 @@ import { notFound } from "next/navigation";
 import { DecisaoEmail } from "@/components/decisao-email";
 import { Dobra } from "@/components/conceito";
 import { EnderecoDaTurma } from "@/components/endereco-turma";
+import { dadosDaMensagem } from "@/lib/mensagem-turma";
+import { marcarMensagemCopiada } from "../../turma-acoes";
 import { enderecoDeRecebimento } from "@/lib/emails/endereco";
 import { Vazio } from "@/components/ui";
 import { contextoDaEmpresa } from "@/lib/empresa";
@@ -69,7 +71,7 @@ export default async function CaixaDeEmails({ params, searchParams }: PageProps<
     supabase.from("organizacoes").select("etiqueta_assunto").eq("id", empresa.id).maybeSingle(),
   ]);
   const endereco = turma ? enderecoDeRecebimento(turma.caixa_token) : null;
-  const etiqueta = `[${caixa?.etiqueta_assunto ?? "ENTREGA"}]`;
+  const mensagem = turma && endereco ? await dadosDaMensagem(supabase, empresa, turma) : null;
   const emails = (data ?? []) as Email[];
   const contagem: Record<Aba, number> = { confirmar: nConfirmar ?? 0, ignorados: nIgnorados ?? 0 };
   const opcoesEtapa = etapas.map((e) => ({ id: e.id, nome: `${v.etapa} ${e.numero}` }));
@@ -81,7 +83,7 @@ export default async function CaixaDeEmails({ params, searchParams }: PageProps<
 
       {endereco ? (
         <Dobra titulo="Endereço para receber as entregas" extra="copiar e mandar para a turma">
-          <EnderecoDaTurma endereco={endereco} etiqueta={etiqueta} exemploAssunto={`${etiqueta} ${v.etapa} 1 - ${v.grupo} Azul`} comTitulo={false} />
+          <EnderecoDaTurma endereco={endereco} dados={mensagem!} comTitulo={false} aoCopiar={marcarMensagemCopiada.bind(null, slug)} />
         </Dobra>
       ) : null}
 

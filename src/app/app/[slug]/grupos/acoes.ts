@@ -337,3 +337,20 @@ export async function removerIntegrante(slug: string, id: string): Promise<void>
   await supabase.from("integrantes").delete().eq("id", id).eq("org_id", empresa.id);
   revalidatePath(`/app/${slug}`, "layout");
 }
+
+/** Apaga várias de uma vez (as do Moodle ficam só escondidas, para poder voltar). */
+export async function apagarGrupos(slug: string, ids: string[]): Promise<{ ok: boolean; mensagem: string }> {
+  const { empresa, podeGerir } = await contextoDaEmpresa(slug);
+  if (!podeGerir) return { ok: false, mensagem: "Só quem administra pode apagar." };
+  const validos = [...new Set(ids)].filter((x) => /^[0-9a-f-]{36}$/i.test(x)).slice(0, 500);
+  if (!validos.length) return { ok: false, mensagem: "Nada selecionado." };
+  const supabase = await criarClienteServidor();
+  const { data: gs } = await supabase.from("grupos").select("id, moodle_id").in("id", validos).eq("org_id", empresa.id);
+  const doMoodle = (gs ?? []).filter((g) => g.moodle_id).map((g) => g.id as string);
+  const meus = (gs ?? []).filter((g) => !g.moodle_id).map((g) => g.id as string);
+  if (doMoodle.length) await supabase.from("grupos").update({ escondido: true, ativo: false }).in("id", doMoodle).eq("org_id", empresa.id);
+  if (meus.length) await supabase.from("grupos").delete().in("id", meus).eq("org_id", empresa.id);
+  revalidatePath(`/app/${slug}`, "layout");
+  const n = doMoodle.length + meus.length;
+  return { ok: n > 0, mensagem: n === 1 ? "1 apagado." : `${n} apagados.` };
+}

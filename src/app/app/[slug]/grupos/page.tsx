@@ -3,13 +3,12 @@ import { turmaAtual } from "@/lib/turma";
 import { completarVocabulario, o, quemEntrega } from "@/lib/nomes";
 import { notFound } from "next/navigation";
 import { FormConfirmado } from "@/components/confirmar";
-import { Vazio } from "@/components/ui";
 import { contextoDaEmpresa } from "@/lib/empresa";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { restaurarGrupo } from "./acoes";
 import { AcoesEquipes } from "./acoes-equipes";
 import { IconeDrive, pastaDaTurmaNoDrive } from "@/lib/pastas-drive";
-import { CartaoGrupo } from "./cartao-grupo";
+import { ListaEquipes } from "./lista-equipes";
 
 export async function generateMetadata({ params }: PageProps<"/app/[slug]/grupos">): Promise<Metadata> {
   const { slug } = await params;
@@ -66,22 +65,13 @@ export default async function ListaGrupos({ params }: PageProps<"/app/[slug]/gru
           cadastros={grupos.map((g) => ({ id: g.id, nome: g.nome, pessoas: g.integrantes.map((p) => ({ id: p.id, nome: p.nome ?? "", email: p.email })) }))}
         />
       ) : null}
-      {!grupos.length ? (
-        <Vazio>Nada cadastrado ainda.{podeGerir ? " Use os botões acima para adicionar." : ""}</Vazio>
-      ) : (
-        <ul className="grid gap-3 lg:grid-cols-2">
-          {grupos.map((g) => (
-            <CartaoGrupo
-              key={g.id}
-              slug={slug}
-              podeGerir={podeGerir}
-              palavra={nomes.um}
-              doMoodle={Boolean(g.moodle_id)}
-              g={{ id: g.id, nome: g.nome, tema: g.tema, ativo: g.ativo, pessoas: g.integrantes }}
-            />
-          ))}
-        </ul>
-      )}
+      <ListaEquipes
+        slug={slug}
+        podeGerir={podeGerir}
+        palavra={nomes.um}
+        varios={nomes.varios}
+        grupos={grupos.map((g) => ({ id: g.id, nome: g.nome, tema: g.tema, ativo: g.ativo, doMoodle: Boolean(g.moodle_id), pessoas: g.integrantes }))}
+      />
       {podeGerir && apagados.length ? (
         <details className="rounded-2xl border border-dashed border-borda p-4">
           <summary className="flex min-h-10 cursor-pointer items-center font-medium text-suave">Apagadas ({apagados.length})</summary>

@@ -35,7 +35,7 @@ export default async function LayoutApp({ children }: LayoutProps<"/app">) {
   });
   return (
     <>
-      <TopoApp email={eu.email} dono={dono} avisos={{ ...avisos, hoje: hojeISO() }} empresas={(await minhasEmpresas()).map((e) => ({ slug: e.slug, nome: e.nome, papel: e.papel ? PAPEIS[e.papel] : "Dono do Handback", palavra: completarVocabulario(e.vocabulario).organizacao, avalia: !e.papel || e.papel === "admin" || e.papel === "avaliador" }))} />
+      <TopoApp email={eu.email} nome={eu.nome} dono={dono} avisos={{ ...avisos, hoje: hojeISO() }} empresas={(await minhasEmpresas()).map((e) => ({ slug: e.slug, nome: e.nome, papel: e.papel ? PAPEIS[e.papel] : "Dono do Handback", palavra: completarVocabulario(e.vocabulario).organizacao, avalia: !e.papel || e.papel === "admin" || e.papel === "avaliador" }))} />
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
         {eu.prazoDuasEtapas ? <LembreteDuasEtapas prazo={eu.prazoDuasEtapas} /> : null}
         {children}

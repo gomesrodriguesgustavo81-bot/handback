@@ -28,11 +28,13 @@ function iniciais(email: string) {
  */
 export function TopoApp({
   email,
+  nome = "",
   dono,
   empresas,
   avisos,
 }: {
   email: string;
+  nome?: string;
   dono: boolean;
   empresas: Empresa[];
   avisos?: { itens: AvisoTela[]; novos: number; hoje: string };
@@ -82,14 +84,15 @@ export function TopoApp({
             onClick={abrirMenu}
             className="flex size-10 items-center justify-center rounded-full bg-acento text-sm font-bold text-sobre-acento transition-transform active:scale-95"
           >
-            {iniciais(email)}
+            {iniciais(nome ? nome.replace(/^(prof\.?|profa\.?)\s+/i, "").replace(/\s+/g, ".") : email)}
           </button>
           {aberto ? (
             <>
               <button type="button" aria-label="Fechar o menu" className="fixed inset-0 z-30 cursor-default" onClick={() => setAberto(false)} />
               <div role="menu" aria-label="Sua conta" className="entra absolute right-0 z-40 mt-2 flex w-72 flex-col gap-0.5 rounded-2xl border border-borda bg-cartao p-2 shadow-lg">
                 <div className="flex flex-col px-3 pt-1 pb-2">
-                  <span className="truncate text-sm font-medium">{email}</span>
+                  {nome ? <span className="truncate font-semibold">{nome}</span> : null}
+                  <span className={`truncate ${nome ? "text-xs text-suave" : "text-sm font-medium"}`}>{email}</span>
                   {empresa ? <span className="truncate text-xs text-suave">Seu papel: {empresa.papel} · {empresa.nome}</span> : null}
                 </div>
                 <Link role="menuitem" href="/conta" onClick={() => setAberto(false)} className={item}>

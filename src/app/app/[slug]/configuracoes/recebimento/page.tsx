@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { Aviso, Cartao } from "@/components/ui";
 import { CampoAuto } from "@/components/campo-auto";
 import { EnderecoDaTurma } from "@/components/endereco-turma";
+import { dadosDaMensagem } from "@/lib/mensagem-turma";
+import { marcarMensagemCopiada } from "../../turma-acoes";
 import { enderecoDeRecebimento } from "@/lib/emails/endereco";
 import { contextoDaEmpresa } from "@/lib/empresa";
 import { criarClienteServidor } from "@/lib/supabase/server";
@@ -25,7 +27,7 @@ export default async function Recebimento({ params }: PageProps<"/app/[slug]/con
     .single();
   const endereco = turma ? enderecoDeRecebimento(turma.caixa_token) : null;
   const etiqueta = `[${config?.etiqueta_assunto ?? "ENTREGA"}]`;
-  const exemploAssunto = `${etiqueta} ${v.etapa} 1 - ${v.grupo} Azul`;
+  const mensagem = turma ? await dadosDaMensagem(supabase, empresa, turma) : null;
 
   return (
     <div className="flex max-w-2xl flex-col gap-4">
@@ -43,7 +45,7 @@ export default async function Recebimento({ params }: PageProps<"/app/[slug]/con
         </p>
       </div>
       {endereco ? (
-        <EnderecoDaTurma endereco={endereco} etiqueta={etiqueta} exemploAssunto={exemploAssunto} />
+        <EnderecoDaTurma endereco={endereco} dados={mensagem!} aoCopiar={marcarMensagemCopiada.bind(null, slug)} />
       ) : (
         <Aviso tipo="alerta">
           O serviço de recebimento de e-mails ainda não foi ligado ao Handback. Quando for, o endereço de cada turma aparece aqui.

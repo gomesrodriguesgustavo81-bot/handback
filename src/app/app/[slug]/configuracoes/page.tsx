@@ -5,6 +5,7 @@ import { contextoDaEmpresa } from "@/lib/empresa";
 import { completarVocabulario, o } from "@/lib/nomes";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { turmasDaEmpresa } from "@/lib/turma";
+import { passosDoComeco, PrimeirosPassos } from "../primeiros-passos";
 
 export const metadata: Metadata = { title: "Configurações" };
 
@@ -81,6 +82,7 @@ export default async function Configuracoes({ params }: PageProps<"/app/[slug]/c
           Valem para {o(vc, "organizacao")} {vc.organizacao.toLowerCase()} inteir{o(vc, "organizacao")}: {empresa.nome}.
         </p>
       </div>
+      <PrimeirosPassos passos={await passosDoComeco(slug, empresa)} />
       {grupos.map((g) => (
         <section key={g.titulo} aria-label={g.titulo} className="flex flex-col gap-1.5">
           <h2 className="px-1 text-xs font-semibold uppercase tracking-wide text-suave">{g.titulo}</h2>

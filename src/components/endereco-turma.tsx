@@ -2,7 +2,17 @@
 
 import { useState } from "react";
 
-function Copiar({ texto, rotulo, principal = false }: { texto: string; rotulo: string; principal?: boolean }) {
+export type AulaDaMensagem = { id: string; rotulo: string; numero: number; prazo: string | null; itens: string[] };
+export type DadosDaMensagem = {
+  etiqueta: string;
+  palavraEtapa: string;
+  quem: string;
+  assinatura: string;
+  aulas: AulaDaMensagem[];
+  daVez: string | null;
+};
+
+function Copiar({ texto, rotulo, principal = false, aoCopiar }: { texto: string; rotulo: string; principal?: boolean; aoCopiar?: () => void }) {
   const [ok, setOk] = useState(false);
   return (
     <button
@@ -11,59 +21,91 @@ function Copiar({ texto, rotulo, principal = false }: { texto: string; rotulo: s
         try {
           await navigator.clipboard.writeText(texto);
           setOk(true);
+          aoCopiar?.();
           setTimeout(() => setOk(false), 2500);
         } catch {
           setOk(false);
         }
       }}
-      className={`inline-flex min-h-11 items-center justify-center rounded-xl px-4 font-medium transition-colors ${
+      className={`inline-flex min-h-12 items-center justify-center rounded-xl px-4 font-semibold transition-colors ${
         principal ? "bg-marca text-sobre-marca hover:bg-marca-forte" : "border border-borda bg-cartao text-texto hover:bg-fundo"
       }`}
     >
-      {ok ? "Copiado ✓" : rotulo}
+      {ok ? (principal ? "Mensagem copiada ✓" : "Copiado ✓") : rotulo}
     </button>
   );
 }
 
+/** A mensagem que o professor cola no WhatsApp, no Moodle ou no e-mail da turma. */
+export function montarMensagemDaTurma(endereco: string, d: DadosDaMensagem, aulaId: string | null): string {
+  const aula = d.aulas.find((a) => a.id === aulaId);
+  const linhas = ["Olá, turma!", ""];
+  if (aula) {
+    linhas.push(aula.prazo ? `A entrega da ${aula.rotulo} vence ${aula.prazo}.` : `Entrega da ${aula.rotulo}.`);
+    if (aula.itens.length) linhas.push("", "O que entregar:", ...aula.itens.map((i) => `• ${i}`));
+    linhas.push("", "Mandem por e-mail para:", endereco, "", `Assunto: ${d.etiqueta} ${d.palavraEtapa} ${aula.numero} - ${d.quem}`);
+  } else {
+    linhas.push(
+      "As entregas são feitas por e-mail, para:",
+      endereco,
+      "",
+      `No assunto, escrevam ${d.etiqueta}, o número d${/a$|ção$/i.test(d.palavraEtapa) ? "a" : "o"} ${d.palavraEtapa.toLowerCase()} e o ${d.quem}. Exemplo:`,
+      `${d.etiqueta} ${d.palavraEtapa} 1 - ${d.quem}`,
+    );
+  }
+  linhas.push("", "Anexem os arquivos ou colem os links (no Google Docs, Slides ou Drive, compartilhem como “qualquer pessoa com o link”). Mandem do e-mail que está no cadastro.");
+  if (d.assinatura) linhas.push("", d.assinatura);
+  return linhas.join("\n");
+}
+
 /**
- * Endereço para onde quem entrega manda os trabalhos, com botão de copiar e
- * uma mensagem pronta para o professor (ou gestor) repassar.
+ * Endereço de entrega da turma com a mensagem pronta: já vem com a aula da
+ * vez, o prazo, o que entregar e o assunto certo. Copiar copia a mensagem inteira.
  */
 export function EnderecoDaTurma({
   endereco,
-  etiqueta,
-  exemploAssunto,
+  dados,
   comTitulo = true,
+  aoCopiar,
 }: {
   endereco: string;
-  etiqueta: string;
-  exemploAssunto: string;
+  dados: DadosDaMensagem;
   comTitulo?: boolean;
+  aoCopiar?: () => void;
 }) {
-  const mensagem = [
-    "Olá! A partir de agora, mandem as entregas por e-mail para:",
-    endereco,
-    "",
-    `No assunto, comecem com ${etiqueta}, o número da etapa e o nome do grupo. Exemplo:`,
-    exemploAssunto,
-    "",
-    "Anexem os arquivos ou colem os links (no Google Docs/Slides, compartilhem como “qualquer pessoa com o link”).",
-    "Usem o e-mail que vocês me passaram no cadastro. Se quiserem, coloquem o meu e-mail em cópia.",
-  ].join("\n");
+  const [aula, setAula] = useState<string | null>(dados.daVez);
+  const mensagem = montarMensagemDaTurma(endereco, dados, aula);
+  const opcoes = [{ id: null as string | null, rotulo: "Geral (sem aula)" }, ...dados.aulas.map((a) => ({ id: a.id as string | null, rotulo: a.rotulo }))];
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1.5">
         {comTitulo ? <span className="text-sm font-medium">Endereço para receber as entregas</span> : null}
         <code className="break-all rounded-xl border border-borda bg-fundo px-3 py-2.5 text-sm">{endereco}</code>
       </div>
+      {dados.aulas.length ? (
+        <label className="flex flex-col gap-1">
+          <span className="text-sm font-medium">Mensagem sobre qual {dados.palavraEtapa.toLowerCase()}?</span>
+          <select
+            value={aula ?? ""}
+            onChange={(e) => setAula(e.target.value || null)}
+            className="min-h-11 w-full rounded-xl border border-borda bg-cartao px-3 text-base text-texto"
+          >
+            {opcoes.map((o) => (
+              <option key={o.id ?? "geral"} value={o.id ?? ""}>
+                {o.rotulo}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+      <pre aria-label="Mensagem para a turma" className="whitespace-pre-wrap break-words rounded-xl border border-borda bg-cartao p-3 font-sans text-sm leading-relaxed">
+        {mensagem}
+      </pre>
       <div className="grid gap-2 sm:grid-cols-2">
-        <Copiar texto={endereco} rotulo="Copiar endereço" principal />
-        <Copiar texto={mensagem} rotulo="Copiar mensagem para a turma" />
+        <Copiar texto={mensagem} rotulo="Copiar mensagem" principal aoCopiar={aoCopiar} />
+        <Copiar texto={endereco} rotulo="Copiar só o endereço" aoCopiar={aoCopiar} />
       </div>
-      <details className="text-sm">
-        <summary className="cursor-pointer font-medium text-marca-forte">Ver a mensagem pronta</summary>
-        <pre className="mt-2 whitespace-pre-wrap break-words rounded-xl bg-fundo p-3 font-sans text-sm leading-relaxed">{mensagem}</pre>
-      </details>
+      <p className="text-xs text-suave">Cole no WhatsApp, no Moodle ou no e-mail da turma.</p>
     </div>
   );
 }
