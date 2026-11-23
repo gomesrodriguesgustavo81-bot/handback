@@ -143,7 +143,7 @@ export function PaginaDeVendas({ idioma }: { idioma: Idioma }) {
         <section className="border-y border-borda bg-cartao">
           <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-14 sm:px-6">
             <h2 className="max-w-2xl text-2xl font-bold tracking-tight sm:text-3xl">{t.dor.titulo}</h2>
-            <ul className="grid gap-4 sm:grid-cols-3">
+            <ul className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               {t.dor.itens.map((i) => (
                 <li key={i.titulo} className="flex flex-col gap-1.5">
                   <h3 className="font-semibold">{i.titulo}</h3>
@@ -157,7 +157,7 @@ export function PaginaDeVendas({ idioma }: { idioma: Idioma }) {
         {/* Como funciona */}
         <section id="como" className="mx-auto flex w-full max-w-6xl scroll-mt-20 flex-col gap-6 px-4 py-16 sm:px-6">
           <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t.como.titulo}</h2>
-          <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <ol className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {t.como.passos.map((p, n) => (
               <li key={p.titulo} className="flex flex-col gap-2 rounded-2xl border border-borda bg-cartao p-5">
                 <span className="flex size-8 items-center justify-center rounded-full bg-marca text-sm font-bold text-sobre-marca">{n + 1}</span>
@@ -171,7 +171,7 @@ export function PaginaDeVendas({ idioma }: { idioma: Idioma }) {
         {/* Para quem */}
         <section className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-16 sm:px-6">
           <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t.paraQuem.titulo}</h2>
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
             {t.paraQuem.itens.map((i) => (
               <li key={i.titulo} className="flex flex-col gap-1 rounded-2xl bg-marca-clara p-4">
                 <h3 className="font-semibold text-marca-forte">{i.titulo}</h3>
@@ -185,7 +185,7 @@ export function PaginaDeVendas({ idioma }: { idioma: Idioma }) {
         <section id="recursos" className="scroll-mt-20 border-y border-borda bg-cartao">
           <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-16 sm:px-6">
             <h2 className="max-w-2xl text-2xl font-bold tracking-tight sm:text-3xl">{t.recursos.titulo}</h2>
-            <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {t.recursos.itens.map((i) => (
                 <li key={i.titulo} className="flex gap-3">
                   <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-marca-clara text-marca-forte">
@@ -210,7 +210,7 @@ export function PaginaDeVendas({ idioma }: { idioma: Idioma }) {
               {t.seguranca.politica}
             </Link>
           </div>
-          <ul className="grid gap-2.5 sm:grid-cols-2">
+          <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
             {t.seguranca.itens.map((i) => (
               <li key={i} className="flex items-start gap-2.5 rounded-xl border border-borda bg-cartao p-3.5">
                 <span className="mt-0.5 text-marca">

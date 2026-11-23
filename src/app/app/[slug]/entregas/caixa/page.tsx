@@ -105,7 +105,7 @@ export default async function CaixaDeEmails({ params, searchParams }: PageProps<
       {!emails.length ? (
         <Vazio>{aba === "confirmar" ? "Tudo em dia. Nada para confirmar." : "Nenhum e-mail ignorado."}</Vazio>
       ) : (
-        <ul className="grid gap-3 md:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {emails.map((m) => {
             const gmail = m.de_email === GMAIL;
             const sugeriu = Boolean(m.grupo_sugerido);

@@ -77,7 +77,7 @@ export function PainelUso({ uso }: { uso: Uso }) {
         <h2 className="font-semibold">Uso dos planos</h2>
         <p className="text-sm text-suave">Números aproximados da plataforma inteira. Os limites são os dos planos grátis; atualize quando mudar de plano.</p>
       </div>
-      <ul className="grid gap-2 sm:grid-cols-2">
+      <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {linhas.map((x) => {
           const n = nivel(x.usado, x.limite);
           const c = COR[n];

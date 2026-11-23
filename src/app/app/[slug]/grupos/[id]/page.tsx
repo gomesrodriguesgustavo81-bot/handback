@@ -51,7 +51,7 @@ export default async function DetalheGrupo({ params }: PageProps<"/app/[slug]/gr
             <CamposGrupo v={v} inicial={{ ...grupo, emails }} editando />
           </FormAcao>
         ) : (
-          <dl className="grid gap-3 text-sm">
+          <dl className="grid grid-cols-1 gap-3 text-sm">
             {grupo.tema ? (
               <div>
                 <dt className="text-suave">Tema ou projeto</dt>

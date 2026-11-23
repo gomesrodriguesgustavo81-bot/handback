@@ -38,7 +38,7 @@ export default async function MinhasEmpresas({ searchParams }: PageProps<"/app">
           </p>
         </Cartao>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {minhas.map((e) => (
             <li key={e.id}>
               <Link href={`/app/${e.slug}`} className="block rounded-2xl border border-borda bg-cartao p-5 hover:border-marca">

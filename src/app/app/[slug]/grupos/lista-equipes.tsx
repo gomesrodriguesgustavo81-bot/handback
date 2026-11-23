@@ -101,7 +101,7 @@ export function ListaEquipes({ slug, grupos, podeGerir, palavra, varios }: { slu
       ) : !visiveis.length ? (
         <p className="py-6 text-center text-sm text-suave">Ninguém com esse nome.</p>
       ) : (
-        <ul className="grid gap-2 lg:grid-cols-2 lg:items-start">
+        <ul className="grid grid-cols-1 gap-2 lg:grid-cols-2 lg:items-start">
           {visiveis.map((g) => (
             <CartaoGrupo
               key={g.id}

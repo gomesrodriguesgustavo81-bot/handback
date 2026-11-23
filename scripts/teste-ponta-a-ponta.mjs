@@ -569,7 +569,7 @@ try {
   confere(/^entregas\+[a-z0-9]{12}@caixa\.handback\.test$/.test(ENDERECO), `endereço de recebimento da empresa (${ENDERECO})`);
   const msgTurma = ana.p.getByLabel("Mensagem para a turma", { exact: true });
   const textoMsg = await msgTurma.innerText();
-  confere(textoMsg.includes(ENDERECO) && /\[ENTREGA\] (Aula|Encontro) 1 - nome da equipe/.test(textoMsg) && textoMsg.includes("Ana Martins"), "mensagem pronta: endereço, assunto certo e o nome de quem manda");
+  confere(textoMsg.includes(ENDERECO) && /\n\[ENTREGA\] (Aula|Encontro) \d+\n/.test(textoMsg) && !/nome d[ao] /.test(textoMsg) && textoMsg.includes("Ana Martins"), "mensagem pronta: endereço, assunto certo e o nome de quem manda");
   confere(await ana.p.getByRole("button", { name: "Copiar só o endereço" }).isVisible(), "dá para copiar só o endereço");
   await ana.ctx.grantPermissions(["clipboard-read", "clipboard-write"], { origin: APP });
   await ana.p.getByRole("button", { name: "Copiar mensagem" }).click();
@@ -594,6 +594,11 @@ try {
   await ana.p.getByRole("dialog", { name: "Criar equipe" }).getByLabel("Nome da equipe").fill("Equipe Roxa");
   await ana.p.getByRole("dialog", { name: "Criar equipe" }).getByRole("button", { name: "Criar equipe", exact: true }).click();
   await ana.p.getByText("“Equipe Roxa” cadastrado").waitFor();
+  await ana.p.goto(`${APP}/app/${SLUG}/configuracoes/recebimento`);
+  {
+    const m = await ana.p.getByLabel("Mensagem para a turma", { exact: true }).innerText();
+    confere(/vence .*\n\nO que entregar:\n• Protótipo navegável\n• Roteiro de teste/.test(m) && /Assunto \(copiem igual\):\n\[ENTREGA\] (Aula|Encontro) 2\n/.test(m), "mensagem já vem com o encontro da vez: prazo, o que entregar e o assunto exato");
+  }
 
   // E3) Chegam e-mails
   confere((await chegaEmail({ id: "<x@x>", assunto: "[ENTREGA] Encontro 2" }, { chave: "errada" })).http === 401, "sem a senha certa, o Handback recusa");
@@ -1620,6 +1625,13 @@ try {
     await ana.p.getByRole("button", { name: "Apagar 2" }).click();
     await ana.p.getByText("2 apagados.").waitFor();
     confere(pediuConfirmacao("Apagar 2 equipes?") && await ana.p.getByText("Nada cadastrado ainda").isVisible(), "selecionar várias e apagar de uma vez (com confirmação)");
+    // Nome e e-mail compridos não alargam a tela do celular
+    sql(`with t as (select t.id, t.org_id from public.turmas t join public.organizacoes o on o.id = t.org_id where o.slug = '${SLUG}' and t.nome = 'Projeto Final'),
+      g as (insert into public.grupos (org_id, turma_id, nome) select org_id, id, 'EquipeComNomeMuitoGrandeSemEspacosQueNaoQuebraNuncaNaTelaDoCelular' from t returning id, org_id, turma_id)
+      insert into public.integrantes (org_id, turma_id, grupo_id, email, nome) select org_id, turma_id, id, 'aluna.com.um.endereco.de.email.muito.comprido.sem.espacos@alunos.universidade.exemplo.edu.br', 'Maria Aparecida dos Santos Albuquerque de Oliveira Figueiredo' from g`);
+    await ana.p.reload();
+    await ana.p.getByRole("button", { name: /EquipeComNomeMuitoGrande/ }).click();
+    await largura(ana.p, "equipes com nomes e e-mails compridos");
     await trocarTurma(ana.p, "Turma A");
   }
 

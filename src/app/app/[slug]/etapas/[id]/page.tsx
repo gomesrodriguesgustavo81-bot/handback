@@ -67,7 +67,7 @@ export default async function DetalheEtapa({ params, searchParams }: PageProps<"
           <h2 className="text-lg font-semibold">
             {v.etapa} {etapa.numero} · {etapa.titulo}
           </h2>
-          <dl className="grid gap-3 text-sm">
+          <dl className="grid grid-cols-1 gap-3 text-sm">
             {etapa.data ? <Item titulo="Data">{dataBR(etapa.data)}</Item> : null}
             <Item titulo="Recebe entregas">
               {etapa.recebe_ate

@@ -23,7 +23,7 @@ export function CamposEtapa({ v, inicial, somenteLeitura = false }: { v: Vocabul
         <Campo rotulo="Título" name="titulo" required defaultValue={inicial?.titulo} readOnly={ro} placeholder="Ex.: Diagnóstico do problema" />
       </div>
       <Campo rotulo={`Data d${artigo(v.etapa)} ${minusc(v.etapa)}`} name="data" type="date" defaultValue={inicial?.data ?? ""} readOnly={ro} />
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Campo rotulo="Recebe entregas de" name="recebe_de" type="date" defaultValue={inicial?.recebe_de ?? ""} readOnly={ro} />
         <Campo
           rotulo="Recebe entregas até"

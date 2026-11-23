@@ -31,7 +31,7 @@ export default async function Turmas({ params }: PageProps<"/app/[slug]/configur
         {turmas.map((t) => (
           <li key={t.id} className="rounded-xl border border-borda p-3">
             <FormAcao acao={salvarTurma.bind(null, slug, t.id)} textoBotao="Salvar">
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Campo rotulo="Nome" name="nome" required defaultValue={t.nome} />
                 <Escolha
                   rotulo="Quem entrega"
@@ -55,7 +55,7 @@ export default async function Turmas({ params }: PageProps<"/app/[slug]/configur
         <summary className="cursor-pointer font-medium text-marca-forte">+ Criar {vc.espaco.toLowerCase()}</summary>
         <div className="mt-3">
           <FormAcao acao={criarTurma.bind(null, slug)} textoBotao="Criar" limparAoSalvar confirmar={{ titulo: "Criar esta turma?", sim: "Sim, criar" }}>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Campo rotulo="Nome" name="nome" required placeholder="Ex.: Cálculo II — Manhã" />
               <Escolha
                 rotulo="Quem entrega"

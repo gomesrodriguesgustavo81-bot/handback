@@ -43,17 +43,17 @@ export function montarMensagemDaTurma(endereco: string, d: DadosDaMensagem, aula
   if (aula) {
     linhas.push(aula.prazo ? `A entrega da ${aula.rotulo} vence ${aula.prazo}.` : `Entrega da ${aula.rotulo}.`);
     if (aula.itens.length) linhas.push("", "O que entregar:", ...aula.itens.map((i) => `• ${i}`));
-    linhas.push("", "Mandem por e-mail para:", endereco, "", `Assunto: ${d.etiqueta} ${d.palavraEtapa} ${aula.numero} - ${d.quem}`);
+    linhas.push("", "Mandem por e-mail para:", endereco, "", "Assunto (copiem igual):", `${d.etiqueta} ${d.palavraEtapa} ${aula.numero}`);
   } else {
     linhas.push(
       "As entregas são feitas por e-mail, para:",
       endereco,
       "",
-      `No assunto, escrevam ${d.etiqueta}, o número d${/a$|ção$/i.test(d.palavraEtapa) ? "a" : "o"} ${d.palavraEtapa.toLowerCase()} e o ${d.quem}. Exemplo:`,
-      `${d.etiqueta} ${d.palavraEtapa} 1 - ${d.quem}`,
+      `No assunto, escrevam ${d.etiqueta} e o número d${/a$|ção$/i.test(d.palavraEtapa) ? "a" : "o"} ${d.palavraEtapa.toLowerCase()}. Por exemplo, para ${/a$|ção$/i.test(d.palavraEtapa) ? "a" : "o"} ${d.palavraEtapa.toLowerCase()} 1:`,
+      `${d.etiqueta} ${d.palavraEtapa} 1`,
     );
   }
-  linhas.push("", "Anexem os arquivos ou colem os links (no Google Docs, Slides ou Drive, compartilhem como “qualquer pessoa com o link”). Mandem do e-mail que está no cadastro.");
+  linhas.push("", "Anexem os arquivos ou colem os links (no Google Docs, Slides ou Drive, compartilhem como “qualquer pessoa com o link”). Mandem do e-mail que está no cadastro (é por ele que o Handback sabe de quem é a entrega).");
   if (d.assinatura) linhas.push("", d.assinatura);
   return linhas.join("\n");
 }
@@ -101,7 +101,7 @@ export function EnderecoDaTurma({
       <pre aria-label="Mensagem para a turma" className="whitespace-pre-wrap break-words rounded-xl border border-borda bg-cartao p-3 font-sans text-sm leading-relaxed">
         {mensagem}
       </pre>
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <Copiar texto={mensagem} rotulo="Copiar mensagem" principal aoCopiar={aoCopiar} />
         <Copiar texto={endereco} rotulo="Copiar só o endereço" aoCopiar={aoCopiar} />
       </div>

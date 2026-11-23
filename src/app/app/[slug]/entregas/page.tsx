@@ -306,7 +306,7 @@ export default async function PainelDaAula({
       {naFila.size ? <FilaAndando quantas={naFila.size} /> : null}
 
       {semAnalise.length || paraRevisar || (paraEnviar.length && gmailEmail) ? (
-        <div className="grid gap-2 sm:max-w-2xl sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 sm:max-w-2xl sm:grid-cols-2">
           <AnalisarVarias
             slug={slug}
             entregas={semAnalise}
@@ -467,7 +467,7 @@ export default async function PainelDaAula({
           })}
         </ul>
       ) : (
-        <ul className="grid gap-2.5 md:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
           {visiveis.map(
             ({ g, e, situacao, feitos, total: itens, conceito }) => {
               const pct = itens ? Math.round((feitos / itens) * 100) : 0;

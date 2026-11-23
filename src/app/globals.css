@@ -157,6 +157,17 @@ body {
   background: var(--fundo);
   color: var(--texto);
   font-family: var(--font-sans);
+  /* Textos compridos (e-mails, links, nomes) quebram a linha em vez de alargar a tela no celular. */
+  overflow-wrap: anywhere;
+}
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+/* Nada pode deixar a página mais larga que a tela (no iPhone isso "afasta" a página toda). */
+html, body {
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 :focus-visible {

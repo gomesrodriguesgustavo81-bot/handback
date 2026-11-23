@@ -80,7 +80,7 @@ export default async function PainelDono() {
 
       {uso ? <PainelUso uso={uso as Uso} /> : null}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_22rem]">
         <section className="flex flex-col gap-3">
           <h2 className="font-semibold">Espaços ({espacos.length})</h2>
           {!gmail || gmail.invalida ? (

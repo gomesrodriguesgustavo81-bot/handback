@@ -104,7 +104,7 @@ export default async function Evolucao({ params, searchParams }: PageProps<"/app
           {!visiveis.length ? (
             <Vazio>Nenhuma neste filtro.</Vazio>
           ) : (
-            <ul className="grid gap-2.5 md:grid-cols-2">
+            <ul className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
               {visiveis.map(({ g, celulas, ev }) => (
                 <li key={g.id} className="flex flex-col gap-3 rounded-2xl border border-borda bg-cartao p-4">
                   <div className="flex items-start justify-between gap-3">

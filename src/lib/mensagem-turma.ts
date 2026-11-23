@@ -23,7 +23,12 @@ export async function dadosDaMensagem(
   ]);
   const hoje = hojeISO();
   const lista = etapas ?? [];
-  const abertas = lista.filter((e) => e.recebe_ate && e.recebe_ate >= hoje).sort((a, b) => (a.recebe_ate! < b.recebe_ate! ? -1 : 1));
+  // A da vez: a aberta de prazo mais próximo; senão a próxima a abrir; senão a de número mais alto.
+  const abertas = lista
+    .filter((e) => e.recebe_ate && e.recebe_ate >= hoje && (!e.recebe_de || e.recebe_de <= hoje))
+    .sort((a, b) => (a.recebe_ate! < b.recebe_ate! ? -1 : 1));
+  const proximas = lista.filter((e) => e.recebe_de && e.recebe_de > hoje).sort((a, b) => (a.recebe_de! < b.recebe_de! ? -1 : 1));
+  const daVez = abertas[0] ?? proximas[0] ?? [...lista].sort((a, b) => b.numero - a.numero)[0];
   const nome = String((eu.user?.user_metadata as { nome?: string } | undefined)?.nome ?? "").trim();
   return {
     etiqueta: `[${cfg?.etiqueta_assunto ?? "ENTREGA"}]`,
@@ -37,6 +42,6 @@ export async function dadosDaMensagem(
       prazo: e.recebe_ate ? prazoEmPalavras(e.recebe_ate) : null,
       itens: (e.entregaveis as string[]) ?? [],
     })),
-    daVez: abertas[0]?.id ?? null,
+    daVez: daVez?.id ?? null,
   };
 }
