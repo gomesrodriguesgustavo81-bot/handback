@@ -7,6 +7,8 @@ import { dataBR, dataHoraBR, passouMaisDe } from "@/lib/textos";
 import { assumirEspaco, mudarStatus } from "./actions";
 import { FormEmergencia, FormSituacao } from "./formularios";
 import { NovaEmpresa } from "./nova-empresa";
+import { PainelUso } from "./painel-uso";
+import type { Uso } from "@/lib/limites";
 
 export const metadata: Metadata = { title: "Administração do Handback" };
 
@@ -33,9 +35,10 @@ type Espaco = {
 /** Lista de espaços e números de uso. O conteúdo de cada espaço só abre com acesso de suporte (ou de emergência). */
 export default async function PainelDono() {
   const supabase = await criarClienteServidor();
-  const [{ data }, { data: gmail }] = await Promise.all([
+  const [{ data }, { data: gmail }, { data: uso }] = await Promise.all([
     supabase.rpc("espacos_da_plataforma"),
     supabase.from("contas_gmail").select("email, invalida").maybeSingle(),
+    supabase.rpc("uso_da_plataforma"),
   ]);
   const espacos = (data ?? []) as Espaco[];
 
@@ -71,6 +74,8 @@ export default async function PainelDono() {
           <dd className="text-2xl font-bold">{espacos.filter((e) => e.acesso_tipo).length}</dd>
         </div>
       </dl>
+
+      {uso ? <PainelUso uso={uso as Uso} /> : null}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
         <section className="flex flex-col gap-3">

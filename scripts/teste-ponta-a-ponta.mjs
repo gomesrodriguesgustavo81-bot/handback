@@ -1007,6 +1007,9 @@ try {
 
   // 7f) Privacidade: o dono não vê o conteúdo; o cliente libera o suporte
   await dono.p.goto(`${APP}/admin`);
+  const painelUso = dono.p.getByRole("region", { name: "Uso dos planos" });
+  confere(await painelUso.getByText("Arquivos das entregas").isVisible() && (await painelUso.getByRole("meter").count()) === 7, "painel de uso mostra os limites dos planos");
+  confere(/\d+ de ~250 · \d+ no mês/.test(await painelUso.locator("li", { hasText: "Análises de IA hoje" }).innerText()), "painel de uso conta as análises de IA");
   const linhaDono = dono.p.locator("li", { hasText: SLUG });
   confere(/entrega\(s\)/.test(await linhaDono.innerText()) && (await linhaDono.innerText()).includes(ANA), "dono vê o espaço na lista, com os números de uso");
   confere(!(await linhaDono.getByRole("link", { name: "Entrar para dar suporte" }).count()), "sem suporte liberado, dono não tem como entrar");

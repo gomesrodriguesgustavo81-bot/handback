@@ -67,7 +67,9 @@ export function tamanhoLegivel(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   const kb = bytes / 1024;
   if (kb < 1024) return `${kb.toFixed(0)} KB`;
-  return `${(kb / 1024).toFixed(1).replace(".", ",")} MB`;
+  const mb = kb / 1024;
+  if (mb < 1024) return `${mb.toFixed(1).replace(".", ",")} MB`;
+  return `${(mb / 1024).toFixed(1).replace(".", ",")} GB`;
 }
 
 /** Nome de arquivo seguro para guardar: sem acentos, espaços ou barras. */

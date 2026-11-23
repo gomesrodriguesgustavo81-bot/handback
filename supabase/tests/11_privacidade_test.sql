@@ -73,12 +73,15 @@ select public.sair_do_suporte(current_setting('t.org')::uuid);
 select pg_temp.confere((select count(*) = 0 from public.entregas where org_id = current_setting('t.org')::uuid), 'dono sai da emergência antes do prazo');
 select pg_temp.como('30000000-0000-0000-0000-00000000000b', 'admin@epsilon.test');
 select pg_temp.erro_contem($$select public.acesso_de_emergencia(current_setting('t.org')::uuid, 'quero ver tudo de todos')$$, 'Só o dono', 'cliente não usa o acesso de emergência');
+select pg_temp.erro_contem($$select public.uso_da_plataforma()$$, 'Só o dono', 'cliente não vê o painel de uso');
 select pg_temp.confere((select string_agg(acao, ',' order by criado_em) from public.atividades
   where org_id = current_setting('t.org')::uuid and acao in ('liberou_suporte', 'cortou_suporte', 'acesso_emergencia')) = 'liberou_suporte,cortou_suporte,acesso_emergencia',
   'o espaço vê no registro: liberou, cortou e a emergência');
 select pg_temp.confere(exists (select 1 from public.atividades where org_id = current_setting('t.org')::uuid and acao = 'acesso_emergencia' and descricao like '%arquivo corrompido%'),
   'o motivo da emergência aparece no registro');
 select pg_temp.como('30000000-0000-0000-0000-00000000000a', 'dono3@handback.test');
+select pg_temp.confere((select (u ->> 'analises_mes')::int >= 1 and (u ->> 'espacos')::int >= 2 and (u ->> 'banco_bytes')::bigint > 0 and u ? 'arquivos_bytes'
+  from (select public.uso_da_plataforma() u) x), 'painel de uso mostra os números da plataforma');
 select pg_temp.erro_contem($$select public.assumir_espaco_vazio(current_setting('t.org')::uuid)$$, 'já tem pessoas', 'dono não assume espaço com pessoas');
 select public.criar_organizacao('Teste do dono', 'teste-do-dono', 'empresa', '');
 select public.assumir_espaco_vazio((select id from public.espacos_da_plataforma() where slug = 'teste-do-dono'));
