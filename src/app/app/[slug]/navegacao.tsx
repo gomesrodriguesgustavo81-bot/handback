@@ -4,12 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
-export type Icone = "entregas" | "aulas" | "equipes" | "relatorios" | "moodle" | "config" | "conta" | "avisos";
+export type Icone = "entregas" | "aulas" | "calendario" | "equipes" | "relatorios" | "moodle" | "config" | "conta" | "avisos";
 export type ItemNav = { href: string; nome: string; icone: Icone };
 
 const TRACOS: Record<Icone | "mais", ReactNode> = {
   entregas: <path d="M4 13h4l2 3h4l2-3h4M4 13l2-8h12l2 8v6H4z" />,
-  aulas: (
+  aulas: <path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM5 17a3 3 0 0 1 3-3h11M9 8h6" />,
+  calendario: (
     <>
       <rect x="4" y="5" width="16" height="15" rx="2" />
       <path d="M8 3v4M16 3v4M4 10h16" />

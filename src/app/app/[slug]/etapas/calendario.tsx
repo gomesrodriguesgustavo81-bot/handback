@@ -10,6 +10,10 @@ export type EtapaNoCalendario = {
   recebe_ate: string | null;
   data: string | null;
   entregaram: number;
+  /** Quantos cadastros a turma desta etapa tem (para "3 de 8 já entregaram"). */
+  grupos?: number;
+  /** Turma da etapa (no calendário de todas as turmas). */
+  turma?: { id: string; nome: string };
 };
 
 type Evento = { etapa: EtapaNoCalendario; tipo: "abre" | "vence" | "aula" };
@@ -27,10 +31,30 @@ const ESTILO: Record<Evento["tipo"], { nome: string; ponto: string; selo: string
 };
 
 /** Mês com o que abre e o que vence em cada dia. Toque num dia para ver o que tem nele. */
-export function Calendario({ slug, etapas, hoje, grupos, palavraEtapa }: { slug: string; etapas: EtapaNoCalendario[]; hoje: string; grupos: number; palavraEtapa: string }) {
+export function Calendario({
+  slug,
+  etapas: todas,
+  hoje,
+  grupos = 0,
+  palavraEtapa,
+  turmas = [],
+  agenda,
+}: {
+  slug: string;
+  etapas: EtapaNoCalendario[];
+  hoje: string;
+  grupos?: number;
+  palavraEtapa: string;
+  /** Com mais de uma, aparece o filtro por turma. */
+  turmas?: { id: string; nome: string }[];
+  /** Link para ligar o Google Agenda. */
+  agenda?: string | null;
+}) {
   const [ano0, mes0] = hoje.split("-").map(Number);
   const [mes, setMes] = useState({ ano: ano0, mes: mes0 - 1 });
   const [dia, setDia] = useState(hoje);
+  const [filtro, setFiltro] = useState<string | null>(null);
+  const etapas = useMemo(() => (filtro ? todas.filter((e) => e.turma?.id === filtro) : todas), [todas, filtro]);
 
   const porDia = useMemo(() => {
     const m = new Map<string, Evento[]>();
@@ -64,6 +88,23 @@ export function Calendario({ slug, etapas, hoje, grupos, palavraEtapa }: { slug:
 
   return (
     <div className="entra flex flex-col gap-3 sm:max-w-md">
+      {turmas.length > 1 ? (
+        <div role="group" aria-label="Turmas" className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
+          {[{ id: null as string | null, nome: "Todas as turmas" }, ...turmas].map((t) => (
+            <button
+              key={t.id ?? "todas"}
+              type="button"
+              aria-pressed={filtro === t.id}
+              onClick={() => setFiltro(t.id)}
+              className={`min-h-10 shrink-0 rounded-full px-3.5 text-sm font-semibold whitespace-nowrap transition-colors ${
+                filtro === t.id ? "bg-marca-forte text-sobre-marca dark:bg-acento dark:text-sobre-acento" : "border border-borda bg-cartao text-texto hover:bg-fundo"
+              }`}
+            >
+              {t.nome}
+            </button>
+          ))}
+        </div>
+      ) : null}
       <div className="flex items-center justify-between">
         <button type="button" aria-label="Mês anterior" onClick={() => mudarMes(-1)} className="flex size-11 items-center justify-center rounded-xl text-xl hover:bg-cartao">
           ‹
@@ -129,11 +170,12 @@ export function Calendario({ slug, etapas, hoje, grupos, palavraEtapa }: { slug:
             >
               <span className="flex min-w-0 flex-col">
                 <span className="font-semibold">{e.etapa.rotulo}</span>
+                {e.etapa.turma && turmas.length > 1 ? <span className="text-xs font-medium text-marca-forte">{e.etapa.turma.nome}</span> : null}
                 <span className="text-xs text-suave">
                   {e.tipo === "abre"
                     ? "Começa a receber entregas"
                     : e.tipo === "vence"
-                      ? `Prazo de entrega${grupos ? ` · ${e.etapa.entregaram} de ${grupos} já entregaram` : ""}`
+                      ? `Prazo de entrega${(e.etapa.grupos ?? grupos) ? ` · ${e.etapa.entregaram} de ${e.etapa.grupos ?? grupos} já entregaram` : ""}`
                       : "Dia marcado"}
                 </span>
               </span>
@@ -144,13 +186,15 @@ export function Calendario({ slug, etapas, hoje, grupos, palavraEtapa }: { slug:
           <p className="text-sm text-suave">Nada neste dia.</p>
         )}
       </section>
-      <p className="flex items-center gap-2.5 rounded-2xl border border-dashed border-borda px-4 py-3 text-sm text-suave">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <rect x="3" y="5" width="18" height="16" rx="2" />
-          <path d="M16 3v4M8 3v4M3 11h18" />
-        </svg>
-        Em breve: ligar ao Google Agenda e avisar os alunos.
-      </p>
+      {agenda ? (
+        <Link href={agenda} className="flex items-center gap-2.5 rounded-2xl border border-dashed border-borda px-4 py-3 text-sm text-suave hover:border-marca hover:text-texto">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <rect x="3" y="5" width="18" height="16" rx="2" />
+            <path d="M16 3v4M8 3v4M3 11h18" />
+          </svg>
+          Quer ver isto no celular? Ligue o Google Agenda ›
+        </Link>
+      ) : null}
     </div>
   );
 }

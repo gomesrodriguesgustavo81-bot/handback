@@ -300,7 +300,7 @@ try {
   await ana.p.waitForURL(new RegExp(`/app/${SLUG}/entregas$`));
   confere(true, "quem tem uma empresa só entra direto nas Entregas");
   const abasAna = (await ana.p.getByRole("navigation", { name: "Seções da empresa" }).getByRole("link").allInnerTexts()).filter(Boolean);
-  confere(abasAna.join("|") === "Entregas|Aulas|Equipes", `só 3 abas, com o vocabulário de escola (${abasAna.join(", ")})`);
+  confere(abasAna.join("|") === "Entregas|Aulas|Calendário|Equipes", `abas do dia a dia, com o vocabulário de escola (${abasAna.join(", ")})`);
   await ana.p.getByRole("button", { name: "Mais" }).click();
   const gavetaMais = ana.p.getByRole("dialog", { name: "Mais opções" });
   confere(await gavetaMais.getByRole("link", { name: "Configurações" }).isVisible() && await gavetaMais.getByRole("link", { name: "Relatórios" }).isVisible(), "celular: barra embaixo; Relatórios e Configurações ficam em “Mais”");
@@ -453,7 +453,7 @@ try {
   await prof.p.goto(`${APP}/app`);
   await prof.p.waitForURL(new RegExp(`/app/${SLUG}/entregas$`));
   const abas = (await prof.p.getByRole("navigation", { name: "Seções da empresa" }).getByRole("link").allInnerTexts()).filter(Boolean);
-  confere(abas.join("|") === "Entregas|Aulas|Equipes" && !(await prof.p.getByRole("link", { name: "Configurações" }).count()), `professor vê as abas certas, sem a engrenagem (${abas.join(", ")})`);
+  confere(abas.join("|") === "Entregas|Aulas|Calendário|Equipes" && !(await prof.p.getByRole("link", { name: "Configurações" }).count()), `professor vê as abas certas, sem a engrenagem (${abas.join(", ")})`);
   confere(await (await menuConta(prof.p)).getByText("Seu papel: Avaliador").isVisible(), "papel de avaliador (no menu da conta)");
   await prof.p.getByRole("button", { name: "Fechar o menu" }).click({ position: { x: 8, y: 400 } });
   await prof.p.getByRole("link", { name: "Aulas", exact: true }).click();
@@ -1218,8 +1218,9 @@ try {
     const [idEtapa, prazoAntigo] = umaEtapa.split("|");
     sql(`update public.etapas set recebe_ate = '${hoje}' where id = '${idEtapa}'`);
     await ana.p.goto(`${APP}/app/${SLUG}/etapas`);
-    await ana.p.getByRole("link", { name: "Calendário" }).click();
-    await ana.p.waitForURL(/ver=calendario/);
+    await ana.p.getByRole("navigation", { name: "Seções da empresa" }).getByRole("link", { name: "Calendário" }).click();
+    await ana.p.waitForURL(/\/calendario$/);
+    confere(await ana.p.getByRole("button", { name: "Todas as turmas" }).isVisible() && await ana.p.getByRole("button", { name: "Turma A", exact: true }).isVisible(), "calendário tem aba própria, com todas as turmas e filtro por turma");
     const diaHoje = ana.p.getByRole("button", { name: /, hoje/ });
     confere((await diaHoje.getAttribute("aria-pressed")) === "true" && /vence/.test(await diaHoje.getAttribute("aria-label")), "calendário abre no dia de hoje, com o prazo marcado");
     const doDia = ana.p.getByRole("region", { name: "Dia escolhido" });
@@ -1230,9 +1231,14 @@ try {
     await ana.p.getByRole("button", { name: "Próximo mês" }).click();
     await doDia.getByText(/Prazo de entrega/).waitFor();
     confere(true, "trocar de mês mantém o dia escolhido");
-    await ana.p.getByRole("link", { name: "Lista" }).click();
-    await ana.p.waitForURL((u) => !u.search.includes("calendario"));
-    confere(!(await ana.p.getByRole("grid").count()), "volta para a lista");
+    confere(await doDia.getByText("Turma A", { exact: true }).isVisible(), "cada prazo mostra de qual turma é");
+    await ana.p.getByRole("button", { name: "Cálculo II", exact: true }).click();
+    await doDia.getByText(/Nada neste dia|Cálculo II/).first().waitFor();
+    confere(!(await doDia.getByText("Turma A", { exact: true }).count()), "filtrar por turma esconde as outras");
+    await ana.p.getByRole("button", { name: "Todas as turmas" }).click();
+    await ana.p.goto(`${APP}/app/${SLUG}/etapas?ver=calendario`);
+    await ana.p.waitForURL(/\/calendario$/);
+    confere(true, "endereço antigo do calendário leva para a aba nova");
     sql(`update public.etapas set recebe_ate = ${prazoAntigo ? `'${prazoAntigo}'` : "null"} where id = '${idEtapa}'`);
   }
 
@@ -1557,7 +1563,7 @@ try {
     await pp.goto(`${APP}/app/${SLUG}/entregas`);
     const lado = pp.getByRole("navigation", { name: "Seções da empresa" });
     const itens = (await lado.getByRole("link").allInnerTexts()).map((x) => x.trim());
-    confere(/^Entregas\|(Aulas|Encontros)\|Equipes\|Relatórios\|Moodle\|Configurações$/.test(itens.join("|")) && !(await pp.getByRole("button", { name: "Mais" }).count()), `computador: menu do lado com tudo à vista (${itens.join(", ")})`);
+    confere(/^Entregas\|(Aulas|Encontros)\|Calendário\|Equipes\|Relatórios\|Moodle\|Configurações$/.test(itens.join("|")) && !(await pp.getByRole("button", { name: "Mais" }).count()), `computador: menu do lado com tudo à vista (${itens.join(", ")})`);
     await pp.screenshot({ path: `${FOTOS}/7e-computador.png` });
     await pc.close();
     await trocarTurma(ana.p, "Turma A");

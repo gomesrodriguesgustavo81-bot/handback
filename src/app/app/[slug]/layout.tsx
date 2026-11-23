@@ -35,6 +35,7 @@ export default async function LayoutEmpresa({
   const abas: ItemNav[] = [
     ...(podeAvaliar ? [{ href: `/app/${slug}/entregas`, nome: "Entregas", icone: "entregas" as const }] : []),
     { href: `/app/${slug}/etapas`, nome: v.etapas, icone: "aulas" },
+    { href: `/app/${slug}/calendario`, nome: "Calendário", icone: "calendario" },
     ...(podeAvaliar ? [{ href: `/app/${slug}/grupos`, nome: entrega.varios, icone: "equipes" as const }] : []),
   ];
   const mais: ItemNav[] = [
