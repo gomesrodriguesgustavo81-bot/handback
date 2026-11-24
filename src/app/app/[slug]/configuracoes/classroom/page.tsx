@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ContaNecessaria } from "@/components/conta-necessaria";
+import { BarraDePassos } from "@/components/passos-do-form";
 import { Aviso } from "@/components/ui";
 import { ErroClassroom, meusCursos } from "@/lib/classroom/cliente";
 import { acessoDoClassroom } from "@/lib/classroom/sincronizar";
@@ -46,6 +47,7 @@ export default async function Classroom({ params }: PageProps<"/app/[slug]/confi
 
   return (
     <div className="flex max-w-xl flex-col gap-4">
+      <BarraDePassos atual={2} total={2} titulo="Escolher a sala" />
       <div>
         <h1 className="text-2xl font-bold">
           Nov{o(vc, "espaco")} {vc.espaco.toLowerCase()} do Google Classroom

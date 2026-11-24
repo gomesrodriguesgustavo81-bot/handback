@@ -13,11 +13,18 @@ export type DadosEtapa = {
   observacoes_ia: string;
 };
 
-/** Campos do formulário de etapa (os mesmos para criar e editar). */
-export function CamposEtapa({ v, inicial, somenteLeitura = false }: { v: Vocabulario; inicial?: Partial<DadosEtapa>; somenteLeitura?: boolean }) {
+/**
+ * Campos do formulário de etapa (os mesmos para criar e editar).
+ * parte: só um pedaço, para o assistente de criar (1 nome e prazo, 2 o que
+ * entregar, 3 detalhes para a IA).
+ */
+export function CamposEtapa({ v, inicial, somenteLeitura = false, parte }: { v: Vocabulario; inicial?: Partial<DadosEtapa>; somenteLeitura?: boolean; parte?: 1 | 2 | 3 }) {
   const ro = somenteLeitura;
+  const mostra = (n: 1 | 2 | 3) => !parte || parte === n;
   return (
     <>
+      {mostra(1) ? (
+      <>
       <div className="grid grid-cols-[6rem_1fr] gap-3">
         <Campo rotulo="Nº" name="numero" type="number" min={1} max={9999} required defaultValue={inicial?.numero} readOnly={ro} />
         <Campo rotulo="Título" name="titulo" required defaultValue={inicial?.titulo} readOnly={ro} placeholder="Ex.: Diagnóstico do problema" />
@@ -34,6 +41,10 @@ export function CamposEtapa({ v, inicial, somenteLeitura = false }: { v: Vocabul
           dica="Vale até 23:59 desse dia. Depois disso, a entrega fica marcada como “com atraso”."
         />
       </div>
+      </>
+      ) : null}
+      {mostra(2) ? (
+      <>
       <AreaTexto
         rotulo="O que deve ser entregue (checklist)"
         name="entregaveis"
@@ -50,6 +61,9 @@ export function CamposEtapa({ v, inicial, somenteLeitura = false }: { v: Vocabul
         readOnly={ro}
         placeholder="O que diferencia uma entrega excelente de uma boa."
       />
+      </>
+      ) : null}
+      {mostra(3) ? (
       <AreaTexto
         rotulo="Observações para a IA (opcional)"
         name="observacoes_ia"
@@ -58,6 +72,7 @@ export function CamposEtapa({ v, inicial, somenteLeitura = false }: { v: Vocabul
         readOnly={ro}
         placeholder="Algo que a IA deve levar em conta nesta análise."
       />
+      ) : null}
     </>
   );
 }

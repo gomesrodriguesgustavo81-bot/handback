@@ -8,6 +8,7 @@ import { completarVocabulario, o } from "@/lib/nomes";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { turmaAtual } from "@/lib/turma";
 import { criarTurma } from "../ajustes/acoes";
+import { BarraDePassos } from "@/components/passos-do-form";
 
 export const metadata: Metadata = { title: "Nova turma" };
 
@@ -52,12 +53,18 @@ export default async function NovaTurma({ params, searchParams }: PageProps<"/ap
 
   return (
     <div className="flex max-w-xl flex-col gap-4">
+      <BarraDePassos atual={origem === "email" ? 2 : 1} total={2} titulo={origem === "email" ? "Nome e quem entrega" : "De onde vêm as entregas"} />
       <div>
         <h1 className="text-2xl font-bold">
           Nov{a} {vc.espaco.toLowerCase()}
         </h1>
-        <p className="text-sm text-suave">De onde vêm as entregas?</p>
+        <p className="text-sm text-suave">{origem === "email" ? "Por e-mail: os alunos mandam para o endereço da turma." : "De onde vêm as entregas? Escolha um."}</p>
       </div>
+      {origem === "email" ? (
+        <Link href={`${base}/nova-turma`} scroll={false} className="self-start text-sm font-medium text-marca-forte hover:underline">
+          ← Escolher outro jeito
+        </Link>
+      ) : (
       <ul className="flex flex-col gap-2.5">
         {opcoes.map((x) => (
           <li key={x.id}>
@@ -79,6 +86,7 @@ export default async function NovaTurma({ params, searchParams }: PageProps<"/ap
           </li>
         ))}
       </ul>
+      )}
 
       {origem === "email" ? (
         <section aria-label={`Nov${a} ${vc.espaco.toLowerCase()} por e-mail`} className="entra flex flex-col gap-3 rounded-2xl border border-borda bg-cartao p-4">

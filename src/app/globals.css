@@ -194,6 +194,9 @@ html, body {
   border-radius: 20px;
 }
 
+/* Assistente (PassosDoForm): o botão de salvar só aparece no último passo */
+form[data-ultimo="nao"] > button[type="submit"] { display: none; }
+
 /* Títulos com a letra da marca */
 h1, h2, .titulo {
   font-family: var(--font-titulo);

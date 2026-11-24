@@ -124,6 +124,18 @@ async function primeiroAcesso(navegador, email, nome) {
   return { ctx, p };
 }
 
+/** Novo ciclo é um assistente de 3 passos: avança até o campo aparecer e preenche. */
+async function campoCiclo(p, rotulo, valor) {
+  const campo = p.getByLabel(rotulo);
+  for (let i = 0; i < 3 && !(await campo.isVisible()); i++) await p.getByRole("button", { name: "Continuar" }).click();
+  await campo.fill(valor);
+}
+/** Vai até o último passo do assistente e salva. */
+async function salvarCiclo(p) {
+  for (let i = 0; i < 3 && (await p.getByRole("button", { name: "Continuar" }).isVisible()); i++) await p.getByRole("button", { name: "Continuar" }).click();
+  await p.getByRole("button", { name: "Salvar" }).click();
+}
+
 /** Troca a turma na caixa do topo e espera a tela mostrar a escolhida. */
 async function trocarTurma(p, nome) {
   await p.locator('select[name="turma"]').selectOption({ label: nome });
@@ -416,13 +428,13 @@ try {
   await ana.p.waitForURL(/\/etapas\/nova$/);
   confere((await ana.p.getByLabel("Nº").inputValue()) === "1", "número da primeira aula sugerido (1)");
   await ana.p.getByLabel("Título").fill("Diagnóstico");
-  await ana.p.getByLabel("Recebe entregas de").fill("2099-12-01");
-  await ana.p.getByLabel("Recebe entregas até").fill("2099-12-07");
-  await ana.p.getByLabel("O que deve ser entregue (checklist)").fill("- Mapa de stakeholders\n\n2. Problema em uma frase");
-  await ana.p.getByLabel("Critérios de qualidade").fill("Clareza e evidências");
+  await campoCiclo(ana.p, "Recebe entregas de", "2099-12-01");
+  await campoCiclo(ana.p, "Recebe entregas até", "2099-12-07");
+  await campoCiclo(ana.p, "O que deve ser entregue (checklist)", "- Mapa de stakeholders\n\n2. Problema em uma frase");
+  await campoCiclo(ana.p, "Critérios de qualidade", "Clareza e evidências");
   await largura(ana.p, "formulário de aula");
   await ana.p.screenshot({ path: `${FOTOS}/6-nova-aula.png`, fullPage: true });
-  await ana.p.getByRole("button", { name: "Salvar" }).click();
+  await salvarCiclo(ana.p);
   await ana.p.getByText("Cadastro salvo.").waitFor();
   confere(
     (await ana.p.getByLabel("O que deve ser entregue (checklist)").inputValue()) === "Mapa de stakeholders\nProblema em uma frase",
@@ -432,7 +444,7 @@ try {
   await ana.p.goto(`${APP}/app/${SLUG}/etapas/nova`);
   await ana.p.getByLabel("Nº").fill("1");
   await ana.p.getByLabel("Título").fill("Outra aula");
-  await ana.p.getByRole("button", { name: "Salvar" }).click();
+  await salvarCiclo(ana.p);
   await ana.p.getByText("Já existe aula com o número 1").waitFor();
   confere((await ana.p.getByLabel("Título").inputValue()) === "Outra aula", "erro não apaga o que foi digitado");
 
@@ -617,9 +629,9 @@ try {
   await ana.p.goto(`${APP}/app/${SLUG}/etapas/nova`);
   await ana.p.getByLabel("Nº").fill("2");
   await ana.p.getByLabel("Título").fill("Protótipo");
-  await ana.p.getByLabel("Recebe entregas até").fill("2099-12-31");
-  await ana.p.getByLabel("O que deve ser entregue (checklist)").fill("Protótipo navegável\nRoteiro de teste");
-  await ana.p.getByRole("button", { name: "Salvar" }).click();
+  await campoCiclo(ana.p, "Recebe entregas até", "2099-12-31");
+  await campoCiclo(ana.p, "O que deve ser entregue (checklist)", "Protótipo navegável\nRoteiro de teste");
+  await salvarCiclo(ana.p);
   await ana.p.getByText("Cadastro salvo.").waitFor();
   await ana.p.goto(`${APP}/app/${SLUG}/grupos`);
   await ana.p.getByRole("button", { name: "+ Criar equipe" }).click();
@@ -1043,10 +1055,10 @@ try {
   await ana.p.goto(`${APP}/app/${SLUG}/etapas/nova`);
   confere((await ana.p.getByLabel("Nº").inputValue()) === "1", "numeração das etapas é por turma");
   await ana.p.getByLabel("Título").fill("Derivadas");
-  await ana.p.getByLabel("Recebe entregas de").fill("2099-12-01");
-  await ana.p.getByLabel("Recebe entregas até").fill("2099-12-07");
-  await ana.p.getByLabel("O que deve ser entregue (checklist)").fill("Lista de exercícios");
-  await ana.p.getByRole("button", { name: "Salvar" }).click();
+  await campoCiclo(ana.p, "Recebe entregas de", "2099-12-01");
+  await campoCiclo(ana.p, "Recebe entregas até", "2099-12-07");
+  await campoCiclo(ana.p, "O que deve ser entregue (checklist)", "Lista de exercícios");
+  await salvarCiclo(ana.p);
   await ana.p.getByText("Cadastro salvo.").waitFor();
   const naTurma2 = await chegaEmail({ id: `<t2-${sufixo}@aluno>`, assunto: "[ENTREGA] Encontro 1", de: "a1@aluno.test" }, { para: ENDERECO2 });
   confere(naTurma2.ok === true && naTurma2.status === "entrega", `e-mail no endereço da turma 2 vira entrega da Bia nessa turma (${naTurma2.status ?? naTurma2.motivo})`);
