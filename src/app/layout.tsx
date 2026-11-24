@@ -1,10 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Bricolage_Grotesque, Inter } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
-// Letras da marca: Bricolage Grotesque nos títulos e na marca, Inter no texto.
-const titulo = Bricolage_Grotesque({ subsets: ["latin"], weight: ["600", "700", "800"], variable: "--fonte-titulo", display: "swap" });
-const texto = Inter({ subsets: ["latin"], variable: "--fonte-texto", display: "swap" });
+// Letra da marca: Plus Jakarta Sans (arredondada e fácil de ler) nos títulos e no texto.
+const texto = Plus_Jakarta_Sans({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], variable: "--fonte-texto", display: "swap" });
 
 export const metadata: Metadata = {
   title: { default: "Handback", template: "%s · Handback" },
@@ -17,8 +16,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f4f7f5" },
-    { media: "(prefers-color-scheme: dark)", color: "#0b1715" },
+    { media: "(prefers-color-scheme: light)", color: "#f5f7fb" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b1220" },
   ],
 };
 
@@ -26,7 +25,7 @@ const TEMA = `try{var m=document.cookie.match(/(?:^|; )hb_tema=(claro|escuro)/);
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="pt-BR" suppressHydrationWarning className={`h-full antialiased ${titulo.variable} ${texto.variable}`}>
+    <html lang="pt-BR" suppressHydrationWarning className={`h-full antialiased ${texto.variable}`}>
       <head>
         {/* Aplica o tema escolhido (claro/escuro) antes de desenhar a tela, para não piscar. */}
         <script dangerouslySetInnerHTML={{ __html: TEMA }} />

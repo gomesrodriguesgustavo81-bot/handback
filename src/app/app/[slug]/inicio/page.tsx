@@ -120,56 +120,92 @@ export default async function Inicio({ params, searchParams }: PageProps<"/app/[
   const dias = Array.from({ length: 7 }, (_, i) => maisDias(hoje, i));
   const comPrazo = new Set(prazosVisiveis.map((p) => String(p.recebe_ate)));
   const chip = (ativo: boolean) =>
-    `toque inline-flex min-h-9 items-center rounded-full px-3 text-[13px] font-semibold ${ativo ? "bg-marca text-sobre-marca" : "border border-borda bg-cartao text-texto"}`;
+    `toque inline-flex min-h-9 items-center rounded-full px-3.5 text-[13px] font-semibold ${ativo ? "bg-marca text-sobre-marca" : "bg-cartao text-texto shadow-cartao"}`;
+  const [primeiro, ...resto] = visiveis;
 
   return (
-    <div className="flex max-w-2xl flex-col gap-4">
-      <h1 className="text-2xl font-bold tracking-tight">O que fazer agora</h1>
+    <div className="flex max-w-2xl flex-col gap-5">
+      <h1 className="text-[26px] font-extrabold leading-tight tracking-tight sm:text-3xl">
+        {visiveis.length ? (
+          <>
+            Você tem{" "}
+            <span className="text-marca">
+              {visiveis.length} {plural(visiveis.length, "coisa", "coisas")}
+            </span>{" "}
+            para fazer
+          </>
+        ) : (
+          <>Tudo em dia{escolhida ? " nesta turma" : ""} 🎉</>
+        )}
+      </h1>
       {turmas.length > 1 ? (
-        <nav aria-label="Filtrar por turma" className="flex flex-wrap gap-1.5">
-          <Link href={`/app/${slug}/inicio`} scroll={false} className={chip(!escolhida)} aria-current={!escolhida ? "page" : undefined}>
+        <nav aria-label="Filtrar por turma" className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
+          <Link href={`/app/${slug}/inicio`} scroll={false} className={`${chip(!escolhida)} shrink-0`} aria-current={!escolhida ? "page" : undefined}>
             Todas
           </Link>
           {turmas.map((t) => (
-            <Link key={t.id} href={`/app/${slug}/inicio?turma=${t.id}`} scroll={false} className={chip(escolhida?.id === t.id)} aria-current={escolhida?.id === t.id ? "page" : undefined}>
+            <Link key={t.id} href={`/app/${slug}/inicio?turma=${t.id}`} scroll={false} className={`${chip(escolhida?.id === t.id)} shrink-0`} aria-current={escolhida?.id === t.id ? "page" : undefined}>
               {t.nome}
             </Link>
           ))}
         </nav>
       ) : null}
 
-      {visiveis.length ? (
-        <ul aria-label="Para fazer" className="flex flex-col gap-2">
-          {visiveis.map((i) => (
-            <li key={i.chave}>
-              <Link href={i.href} transitionTypes={["nav-forward"]} className="toque flex min-h-16 items-center gap-3 rounded-2xl border border-borda bg-cartao px-3 py-2.5 hover:border-marca">
-                <span className={`flex h-11 min-w-11 shrink-0 items-center justify-center rounded-xl px-1.5 text-[15px] font-extrabold ${CORES[i.cor]}`}>{i.numero}</span>
+      {primeiro ? (
+        <ul aria-label="Para fazer" className="flex flex-col gap-2.5">
+          {/* O primeiro da fila ganha destaque: é o próximo passo. */}
+          <li>
+            <Link
+              href={primeiro.href}
+              transitionTypes={["nav-forward"]}
+              className="toque flex flex-col gap-4 rounded-[22px] bg-cartao p-4 shadow-cartao ring-1 ring-borda/60 hover:ring-marca"
+            >
+              <span className="flex items-center gap-3">
+                <span className={`flex size-12 shrink-0 items-center justify-center rounded-2xl text-lg font-extrabold ${CORES[primeiro.cor]}`}>{primeiro.numero}</span>
                 <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="font-semibold">{i.titulo}</span>
-                  <span className="truncate text-[13px] text-suave">{i.onde}</span>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-marca">Próximo passo</span>
+                  <span className="text-[17px] font-bold leading-snug">{primeiro.numero === "!" ? primeiro.titulo : `${primeiro.numero} ${primeiro.titulo}`}</span>
+                  <span className="truncate text-[13px] text-suave">{primeiro.onde}</span>
                 </span>
-                <span className="shrink-0 text-sm font-semibold text-marca-forte">{i.acao} ›</span>
+              </span>
+              <span className={`flex min-h-12 items-center justify-center rounded-2xl text-[15px] font-bold ${primeiro.cor === "erro" ? "bg-erro text-white" : "bg-marca text-sobre-marca"}`}>
+                {primeiro.acao} agora
+              </span>
+            </Link>
+          </li>
+          {resto.map((i) => (
+            <li key={i.chave}>
+              <Link href={i.href} transitionTypes={["nav-forward"]} className="toque flex min-h-16 items-center gap-3 rounded-[18px] bg-cartao px-3.5 py-2.5 shadow-cartao ring-1 ring-borda/60 hover:ring-marca">
+                <span className={`flex h-10 min-w-10 shrink-0 items-center justify-center rounded-xl px-1.5 text-sm font-extrabold ${CORES[i.cor]}`}>{i.numero}</span>
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="font-semibold leading-snug">{i.titulo}</span>
+                  <span className="truncate text-xs text-suave">{i.onde}</span>
+                </span>
+                <span className="shrink-0 text-sm font-semibold text-marca">{i.acao} ›</span>
               </Link>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="rounded-2xl border border-dashed border-borda p-6 text-center text-suave">Tudo em dia{escolhida ? " nesta turma" : ""}.</p>
+        <p className="rounded-[22px] bg-cartao p-6 text-center text-suave shadow-cartao">Nada esperando por você agora. Quando chegar algo, aparece aqui.</p>
       )}
 
-      <section aria-label="Esta semana" className="flex flex-col gap-3 rounded-2xl border border-borda bg-cartao p-4">
+      <section aria-label="Esta semana" className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="font-semibold">Esta semana</h2>
-          <Link href={`/app/${slug}/calendario`} className="text-sm font-semibold text-marca-forte hover:underline">
+          <h2 className="text-[15px] font-bold">Esta semana</h2>
+          <Link href={`/app/${slug}/calendario`} className="text-sm font-semibold text-marca hover:underline">
             Calendário ›
           </Link>
         </div>
-        <div className="grid grid-cols-7 gap-1 text-center">
+        <div className="grid grid-cols-7 gap-1.5 text-center">
           {dias.map((d, i) => (
-            <span key={d} className={`flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-[11px] ${i === 0 ? "bg-marca text-sobre-marca" : "text-suave"}`}>
+            <span
+              key={d}
+              className={`flex flex-col items-center gap-0.5 rounded-2xl py-2 text-[11px] ${i === 0 ? "bg-marca text-sobre-marca" : "bg-cartao text-suave shadow-cartao"} ${comPrazo.has(d) && i > 0 ? "shadow-[inset_0_-3px_0_var(--erro)]" : ""}`}
+            >
               {SEMANA[new Date(`${d}T12:00:00Z`).getUTCDay()]}
               <b className={`text-[15px] ${i === 0 ? "" : "text-texto"}`}>{Number(d.slice(8))}</b>
-              <span aria-hidden className={`size-1.5 rounded-full ${comPrazo.has(d) ? (i === 0 ? "bg-acento" : "bg-alerta") : "bg-transparent"}`} />
+              {comPrazo.has(d) && i === 0 ? <span aria-hidden className="size-1.5 rounded-full bg-sobre-marca" /> : null}
             </span>
           ))}
         </div>
@@ -177,11 +213,11 @@ export default async function Inicio({ params, searchParams }: PageProps<"/app/[
           <ul className="flex flex-col gap-1 text-sm">
             {prazosVisiveis.map((p) => (
               <li key={p.id}>
-                <Link href={ir(p.turma_id, `etapas/${p.id}`)} className="hover:underline">
-                  <b className="text-alerta">
+                <Link href={ir(p.turma_id, `etapas/${p.id}`)} className="text-suave hover:underline">
+                  <b className="text-erro">
                     {SEMANA[new Date(`${p.recebe_ate}T12:00:00Z`).getUTCDay()]} {Number(String(p.recebe_ate).slice(8))}
                   </b>{" "}
-                  · prazo {v.etapa} {p.numero} · {p.titulo} <span className="text-suave">· {nomeDa.get(p.turma_id)?.nome}</span>
+                  · prazo {v.etapa} {p.numero} · <span className="text-texto">{p.titulo}</span> · {nomeDa.get(p.turma_id)?.nome}
                 </Link>
               </li>
             ))}

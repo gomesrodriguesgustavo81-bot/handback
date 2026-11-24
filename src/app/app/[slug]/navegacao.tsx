@@ -134,7 +134,7 @@ export function Navegacao({ abas, grupos }: { abas: ItemNav[]; grupos: GrupoNav[
       aria-current={ativa(a) ? "page" : undefined}
       title={recolhido ? a.nome : undefined}
       className={`toque flex min-h-11 items-center gap-3 rounded-xl px-3 text-[15px] transition-colors ${
-        ativa(a) ? "bg-acento/40 font-semibold text-texto dark:bg-marca-clara" : "font-medium text-suave hover:bg-cartao hover:text-texto"
+        ativa(a) ? "bg-marca-clara font-semibold text-marca-forte" : "font-medium text-suave hover:bg-cartao hover:text-texto"
       }`}
     >
       <span className="shrink-0">
@@ -194,7 +194,7 @@ export function Navegacao({ abas, grupos }: { abas: ItemNav[]; grupos: GrupoNav[
       {mostrarBarra ? (
         <nav
           aria-label="Seções da empresa"
-          className="fixed inset-x-0 bottom-0 z-30 border-t border-borda bg-cartao/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden print:hidden"
+          className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-30 rounded-[22px] bg-barra shadow-lg lg:hidden print:hidden"
           style={{ viewTransitionName: "barra-de-baixo" }}
         >
           <ul className="mx-auto flex max-w-xl">
@@ -203,15 +203,15 @@ export function Navegacao({ abas, grupos }: { abas: ItemNav[]; grupos: GrupoNav[
                 <Link
                   href={a.href}
                   aria-current={ativa(a) ? "page" : undefined}
-                  className={`toque flex min-h-16 flex-col items-center justify-center gap-0.5 text-xs ${ativa(a) ? "font-bold text-texto" : "font-medium text-suave"}`}
+                  className={`toque flex min-h-16 flex-col items-center justify-center gap-0.5 text-xs ${ativa(a) ? "font-bold text-white" : "font-medium text-barra-texto"}`}
                 >
                   <span className="relative flex h-7 w-14 items-center justify-center">
                     {ativa(a) ? (
                       <ViewTransition name="pilula-da-barra" share="pilula" default="none">
-                        <span aria-hidden className="absolute inset-0 rounded-full bg-acento" />
+                        <span aria-hidden className="absolute inset-0 rounded-full bg-white/15" />
                       </ViewTransition>
                     ) : null}
-                    <span className={`relative ${ativa(a) ? "text-sobre-acento" : ""}`}>
+                    <span className="relative">
                       <Desenho icone={a.icone} />
                     </span>
                   </span>
@@ -226,15 +226,15 @@ export function Navegacao({ abas, grupos }: { abas: ItemNav[]; grupos: GrupoNav[
                   aria-expanded={aberto}
                   aria-haspopup="dialog"
                   onClick={() => setAberto(true)}
-                  className={`toque flex min-h-16 w-full flex-col items-center justify-center gap-0.5 text-xs ${maisAtivo ? "font-bold text-texto" : "font-medium text-suave"}`}
+                  className={`toque flex min-h-16 w-full flex-col items-center justify-center gap-0.5 text-xs ${maisAtivo ? "font-bold text-white" : "font-medium text-barra-texto"}`}
                 >
                   <span className="relative flex h-7 w-14 items-center justify-center">
                     {maisAtivo ? (
                       <ViewTransition name="pilula-da-barra" share="pilula" default="none">
-                        <span aria-hidden className="absolute inset-0 rounded-full bg-acento" />
+                        <span aria-hidden className="absolute inset-0 rounded-full bg-white/15" />
                       </ViewTransition>
                     ) : null}
-                    <span className={`relative ${maisAtivo ? "text-sobre-acento" : ""}`}>
+                    <span className="relative">
                       <Desenho icone="mais" />
                     </span>
                   </span>

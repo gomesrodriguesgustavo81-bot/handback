@@ -332,7 +332,7 @@ try {
   confere(await ana.p.getByText(/^(Bom dia|Boa tarde|Boa noite), Ana!$/).isVisible(), "no topo, a saudação pelo horário com o nome da pessoa");
   await ana.p.goto(`${APP}/app`);
   await ana.p.waitForURL(new RegExp(`/app/${SLUG}/inicio$`));
-  confere(await ana.p.getByRole("heading", { name: "O que fazer agora" }).isVisible(), "quem tem uma empresa só entra direto no Início (o que fazer agora)");
+  confere(await ana.p.getByRole("heading", { level: 1, name: /para fazer|Tudo em dia/ }).isVisible(), "quem tem uma empresa só entra direto no Início (o que fazer agora)");
   const abasAna = (await ana.p.getByRole("navigation", { name: "Seções da empresa" }).getByRole("link").allInnerTexts()).filter(Boolean);
   confere(abasAna.join("|") === "Início|Entregas|Aulas|Equipes", `abas do dia a dia, com o vocabulário de escola (${abasAna.join(", ")})`);
   await ana.p.getByRole("button", { name: "Mais" }).click();
@@ -1721,8 +1721,10 @@ try {
 
   // 7l3) Início: cada item leva para uma página que existe (o ciclo certo, já na turma certa)
   {
-    await ana.p.goto(`${APP}/app/${SLUG}/inicio`);
+    await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
     const turmaAntes = await ana.p.locator('select[name="turma"]').inputValue();
+    await ana.p.goto(`${APP}/app/${SLUG}/inicio`);
+    confere(!(await ana.p.locator('select[name="turma"]').count()), "início: sem o seletor de turma (lá aparecem todas)");
     const links = await ana.p.getByRole("list", { name: "Para fazer" }).getByRole("link").evaluateAll((as) => as.map((a) => [a.textContent.trim(), a.getAttribute("href")]));
     const quebrados = [];
     for (const [nome, href] of links) {

@@ -6,7 +6,7 @@ import { dataHoraBR } from "@/lib/textos";
  * Peças dos relatórios. A folha é sempre "papel" (fundo branco), mesmo no
  * tema escuro, porque é o que vai para a impressora ou para o PDF.
  */
-const COR: Record<Conceito, string> = { RUIM: "#b5482b", REGULAR: "#e39a62", BOM: "#5fae9f", EXCELENTE: "#14574f" };
+const COR: Record<Conceito, string> = { RUIM: "#b5482b", REGULAR: "#e39a62", BOM: "#5fae9f", EXCELENTE: "#1e40c0" };
 const TEXTO_SOBRE: Record<Conceito, string> = { RUIM: "#ffffff", REGULAR: "#0e2b28", BOM: "#0e2b28", EXCELENTE: "#ffffff" };
 const NOME: Record<Conceito, string> = { RUIM: "Ruim", REGULAR: "Regular", BOM: "Bom", EXCELENTE: "Excelente" };
 const ORDEM: Conceito[] = ["RUIM", "REGULAR", "BOM", "EXCELENTE"];
@@ -21,17 +21,16 @@ export function Folha({ children }: { children: ReactNode }) {
 
 export function Cabecalho({ antes, titulo, depois }: { antes: string; titulo: string; depois?: ReactNode }) {
   return (
-    <header className="flex items-start justify-between gap-4 border-b-2 border-[#c6f15a] pb-3">
+    <header className="flex items-start justify-between gap-4 border-b-2 border-[#2f5bea] pb-3">
       <div className="flex min-w-0 flex-col gap-0.5">
         <span className="text-xs text-[#4b605d]">{antes}</span>
         <h1 className="titulo text-2xl font-extrabold tracking-tight text-[#0e2b28]">{titulo}</h1>
         {depois ? <span className="text-xs text-[#4b605d]">{depois}</span> : null}
       </div>
       <svg width="34" height="34" viewBox="0 0 48 48" fill="none" aria-hidden className="shrink-0">
-        <circle cx="24" cy="24" r="22" fill="#c6f15a" />
-        <path d="M34 18a11 11 0 1 0 1.5 9" stroke="#0e3b37" strokeWidth="4" strokeLinecap="round" />
-        <path d="M35 10v8.5h-8.5" stroke="#0e3b37" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M18.5 24.5l4 4 7.5-8.5" stroke="#0e3b37" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+        <rect width="48" height="48" rx="13.5" fill="#2f5bea" />
+        <path d="M13.5 13.5h21a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3h-12l-6 4.5v-4.5h-3a3 3 0 0 1-3-3v-12a3 3 0 0 1 3-3z" fill="#ffffff" />
+        <path d="M18 22.5l4.5 4.5 7.5-7.5" stroke="#2f5bea" strokeWidth="3.3" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     </header>
   );
@@ -41,7 +40,7 @@ export function Numeros({ itens }: { itens: { rotulo: string; valor: string; det
   return (
     <div className={`grid gap-2.5 ${itens.length === 4 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-1 sm:grid-cols-3"}`}>
       {itens.map((i) => (
-        <div key={i.rotulo} className="sem-quebra flex flex-col gap-0.5 rounded-xl bg-[#f4f7f5] px-3 py-2.5">
+        <div key={i.rotulo} className="sem-quebra flex flex-col gap-0.5 rounded-xl bg-[#f5f7fb] px-3 py-2.5">
           <span className="text-xs text-[#4b605d]">{i.rotulo}</span>
           <strong className="text-lg">{i.valor}</strong>
           {i.detalhe ? <span className="text-xs text-[#4b605d]">{i.detalhe}</span> : null}
@@ -85,9 +84,9 @@ export function GraficoEvolucao({ celulas, etapas, palavra }: { celulas: Celula[
           <line x1={esq} x2={L} y1={y[k]} y2={y[k]} stroke="#e8eeec" />
         </g>
       ))}
-      {pts.length > 1 ? <polyline points={pts.map((p) => `${p.x},${p.y}`).join(" ")} fill="none" stroke="#14574f" strokeWidth="2" strokeLinejoin="round" /> : null}
+      {pts.length > 1 ? <polyline points={pts.map((p) => `${p.x},${p.y}`).join(" ")} fill="none" stroke="#2f5bea" strokeWidth="2" strokeLinejoin="round" /> : null}
       {pts.map((p) => (
-        <circle key={p.i} cx={p.x} cy={p.y} r="5" fill="#14574f" stroke="#ffffff" strokeWidth="2">
+        <circle key={p.i} cx={p.x} cy={p.y} r="5" fill="#2f5bea" stroke="#ffffff" strokeWidth="2">
           <title>{`${palavra} ${etapas[p.i].numero}: ${NOME[p.c]}`}</title>
         </circle>
       ))}

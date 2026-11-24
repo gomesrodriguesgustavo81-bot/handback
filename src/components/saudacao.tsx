@@ -21,7 +21,7 @@ export function Saudacao({ nome, email }: { nome: string; email: string }) {
   }, []);
   const quem = primeiroNome(nome, email);
   return (
-    <p className="min-h-7 text-lg font-bold tracking-tight print:hidden" aria-live="off">
+    <p className="min-h-6 text-[15px] font-medium text-suave print:hidden" aria-live="off">
       {periodo ? `${periodo}${quem ? `, ${quem}` : ""}!` : " "}
     </p>
   );

@@ -54,11 +54,11 @@ function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-// Cores da identidade "Volta": verde-escuro, verde-limão e fundo verde-acinzentado.
-const C = { fundo: "#f4f7f5", cartao: "#ffffff", texto: "#0e2b28", suave: "#4b605d", borda: "#d9e3e0", linha: "#e8eeec", marca: "#14574f", limao: "#c6f15a" };
+// Cores da identidade "Céu": azul, branco e fundo azul bem claro.
+const C = { fundo: "#f5f7fb", cartao: "#ffffff", texto: "#0f1a33", suave: "#5a6478", borda: "#e1e6f0", linha: "#eef1f6", marca: "#2f5bea", limao: "#e8eefd" };
 
 const COR_CONCEITO: Record<string, [string, string]> = {
-  EXCELENTE: ["#e7fbb8", "#2f4500"],
+  EXCELENTE: ["#e2f6ec", "#12704a"],
   BOM: ["#e3edfb", "#1d4f91"],
   REGULAR: ["#fdf0d9", "#8a5300"],
   RUIM: ["#fbe3e1", "#9b2c23"],
@@ -67,8 +67,8 @@ const COR_ITEM = { ENTREGUE: ["#dcf2e6", "#1f6b45", "✓"], PARCIAL: ["#fdf0d9",
 
 /** Versão bonita (HTML em tabelas, que funciona no Gmail, Outlook e celular). */
 export function htmlDoEnvio(d: DadosEnvio): string {
-  const fonte = "font-family:Inter,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;";
-  const titulo = "font-family:'Bricolage Grotesque',Inter,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;";
+  const fonte = "font-family:'Plus Jakarta Sans',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;";
+  const titulo = "font-family:'Plus Jakarta Sans',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;";
   const site = d.site && /^https?:\/\/[^\s"'<>]+$/.test(d.site) ? d.site.replace(/\/$/, "") : "";
   const marca = site
     ? `<img src="${esc(site)}/email/handback.png" width="100" height="24" alt="handback" style="display:block;border:0;height:24px;width:100px;">`
@@ -108,7 +108,7 @@ export function htmlDoEnvio(d: DadosEnvio): string {
 <body style="margin:0;padding:0;background:${C.fundo};">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${C.fundo};"><tr><td align="center" style="padding:24px 12px;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:${C.cartao};border:1px solid ${C.borda};border-radius:18px;overflow:hidden;">
-    <tr><td style="height:6px;line-height:6px;font-size:0;background:${C.limao};">&nbsp;</td></tr>
+    <tr><td style="height:6px;line-height:6px;font-size:0;background:${C.marca};">&nbsp;</td></tr>
     <tr><td style="padding:22px 28px 8px;">
       <p style="margin:0;${fonte}font-size:13px;color:${C.suave};">${empresa ? `${empresa} · ` : ""}${esc(d.etapa)}</p>
       <h1 style="margin:4px 0 0;${titulo}font-size:24px;font-weight:800;letter-spacing:-0.02em;line-height:1.25;color:${C.texto};">Devolutiva para ${esc(d.grupo)}</h1>
@@ -204,7 +204,7 @@ export function montarAviso(
 ): { raw: string; para: string[] } {
   const para = dados.para.map((x) => x.trim().toLowerCase()).filter((x) => EMAIL.test(x));
   if (!para.length) throw new Error("Ninguém para avisar.");
-  const fonte = "font-family:Inter,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;";
+  const fonte = "font-family:'Plus Jakarta Sans',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;";
   const site = dados.site && /^https?:\/\/[^\s"'<>]+$/.test(dados.site) ? dados.site.replace(/\/$/, "") : "";
   const marca = site
     ? `<img src="${esc(site)}/email/handback.png" width="120" height="29" alt="handback" style="display:block;border:0;height:29px;width:120px;">`
@@ -213,7 +213,7 @@ export function montarAviso(
 <body style="margin:0;padding:0;background:${C.fundo};">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${C.fundo};"><tr><td align="center" style="padding:24px 12px;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:${C.cartao};border:1px solid ${C.borda};border-radius:18px;overflow:hidden;">
-    <tr><td style="height:6px;line-height:6px;font-size:0;background:${C.limao};">&nbsp;</td></tr>
+    <tr><td style="height:6px;line-height:6px;font-size:0;background:${C.marca};">&nbsp;</td></tr>
     <tr><td style="padding:24px 28px 0;">${marca}</td></tr>
     <tr><td style="padding:16px 28px 8px;">
       <h1 style="margin:0 0 12px;${fonte}font-size:22px;line-height:1.3;color:${C.texto};">${esc(dados.titulo)}</h1>

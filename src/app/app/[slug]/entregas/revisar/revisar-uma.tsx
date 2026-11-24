@@ -57,7 +57,7 @@ export function RevisarUma({
   };
 
   return (
-    <div className="flex flex-col gap-3 pb-32 lg:pb-0">
+    <div className="flex flex-col gap-3 pb-40 lg:pb-0">
       {checklist.length ? (
         <section aria-label="Checklist" className="flex flex-col gap-1 rounded-2xl border border-borda bg-cartao p-3 text-sm">
           {checklist.map((c, i) => (
@@ -138,7 +138,7 @@ export function RevisarUma({
       {erro ? <Aviso tipo="erro">{erro}</Aviso> : null}
 
       {/* No celular, os botões ficam presos em cima da barra de baixo, sempre à mão. */}
-      <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-20 border-t border-borda bg-cartao/95 px-4 py-2.5 backdrop-blur lg:static lg:rounded-2xl lg:border">
+      <div className="fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 rounded-2xl border border-borda bg-cartao/95 px-4 py-2.5 shadow-lg backdrop-blur lg:static lg:shadow-none">
         <div className="mx-auto flex max-w-xl gap-2">
           {pularHref ? (
             <Link href={pularHref} className="inline-flex min-h-12 items-center justify-center rounded-xl border border-borda px-4 font-semibold">

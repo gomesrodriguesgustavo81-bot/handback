@@ -78,7 +78,7 @@ export default async function LayoutEmpresa({
     : [];
 
   return (
-    <div className="flex flex-col gap-4 pb-20 lg:grid lg:grid-cols-[auto_minmax(0,1fr)] lg:items-start lg:gap-8 lg:pb-0 print:block print:pb-0">
+    <div className="flex flex-col gap-4 pb-28 lg:grid lg:grid-cols-[auto_minmax(0,1fr)] lg:items-start lg:gap-8 lg:pb-0 print:block print:pb-0">
       <Navegacao abas={abas} grupos={grupos} />
       <div className="flex min-w-0 flex-col gap-4">
       <SoForaDaFolha>
@@ -123,7 +123,7 @@ export default async function LayoutEmpresa({
       ) : null}
       <div className="contents print:hidden">
       {ativas.length > 1 || podeGerir ? (
-        <SoForaDaFolha>
+        <SoForaDaFolha foraDoInicio>
           <SeletorTurma
             slug={slug}
             rotulo={v.espaco}

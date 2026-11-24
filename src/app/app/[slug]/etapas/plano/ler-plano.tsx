@@ -101,7 +101,7 @@ export function LerPlano({ slug, palavraEtapa, palavraEtapas }: { slug: string; 
         ))}
       </ol>
       {erro ? <Aviso tipo="erro">{erro}</Aviso> : null}
-      <div className="sticky bottom-20 z-20 flex flex-col gap-2 rounded-2xl border border-borda bg-cartao p-3 shadow-lg sm:flex-row lg:bottom-4">
+      <div className="sticky bottom-24 z-20 flex flex-col gap-2 rounded-2xl border border-borda bg-cartao p-3 shadow-lg sm:flex-row lg:bottom-4">
         <Botao type="button" variante="secundario" onClick={() => setLinhas(null)} disabled={criando}>
           Voltar
         </Botao>

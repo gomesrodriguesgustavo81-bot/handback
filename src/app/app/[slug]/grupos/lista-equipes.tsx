@@ -122,7 +122,7 @@ export function ListaEquipes({ slug, grupos, podeGerir, palavra, varios }: { slu
       )}
 
       {selecionando && selecionados.length ? (
-        <div className="sticky bottom-20 z-20 flex items-center justify-between gap-3 rounded-2xl border border-borda bg-cartao px-4 py-3 shadow-lg lg:bottom-4">
+        <div className="sticky bottom-24 z-20 flex items-center justify-between gap-3 rounded-2xl border border-borda bg-cartao px-4 py-3 shadow-lg lg:bottom-4">
           <span className="text-sm font-semibold">
             {selecionados.length} {selecionados.length === 1 ? "selecionada" : "selecionadas"}
           </span>
