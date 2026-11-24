@@ -46,11 +46,11 @@ export default async function Inicio({ params, searchParams }: PageProps<"/app/[
   const [{ data: entregas }, { data: pendentes }, { data: prazos }, { data: gmail }, { data: google }, { data: moodle }] = await Promise.all([
     supabase
       .from("entregas")
-      .select("id, etapas!inner(turma_id), analises(status, enviada_em, moodle_enviada_em, classroom_enviada_em)")
+      .select("id, etapas!inner(id, turma_id, numero, titulo), analises(status, enviada_em, moodle_enviada_em, classroom_enviada_em)")
       .eq("org_id", empresa.id)
       .eq("status", "recebida")
       .limit(5000),
-    supabase.from("classroom_pendentes").select("etapas!inner(turma_id)").eq("org_id", empresa.id).limit(5000),
+    supabase.from("classroom_pendentes").select("etapas!inner(id, turma_id, numero, titulo)").eq("org_id", empresa.id).limit(5000),
     supabase
       .from("etapas")
       .select("id, numero, titulo, recebe_ate, turma_id")
@@ -70,24 +70,25 @@ export default async function Inicio({ params, searchParams }: PageProps<"/app/[
   };
   const ir = (turma: string, para: string) => `/app/${slug}/ir?turma=${turma}&para=${encodeURIComponent(`/app/${slug}/${para}`)}`;
 
-  // Contas por turma.
-  type Conta = { semAnalise: number; revisar: number; enviar: number; erro: number; esperando: number };
-  const porTurma = new Map<string, Conta>();
-  const conta = (id: string) => porTurma.get(id) ?? (porTurma.set(id, { semAnalise: 0, revisar: 0, enviar: 0, erro: 0, esperando: 0 }), porTurma.get(id)!);
+  // Contas por ciclo (cada item leva direto para o ciclo certo).
+  type Ciclo = { id: string; turma_id: string; numero: number; titulo: string };
+  type Conta = { ciclo: Ciclo; semAnalise: number; revisar: number; enviar: number; erro: number; esperando: number };
+  const porCiclo = new Map<string, Conta>();
+  const conta = (c: Ciclo) => porCiclo.get(c.id) ?? (porCiclo.set(c.id, { ciclo: c, semAnalise: 0, revisar: 0, enviar: 0, erro: 0, esperando: 0 }), porCiclo.get(c.id)!);
   for (const e of entregas ?? []) {
-    const turma = (e.etapas as unknown as { turma_id: string }).turma_id;
-    if (!nomeDa.has(turma)) continue;
+    const ciclo = e.etapas as unknown as Ciclo;
+    if (!nomeDa.has(ciclo.turma_id)) continue;
     const bruto = e.analises as unknown;
     const a = (Array.isArray(bruto) ? bruto[0] : bruto) as { status: string; enviada_em: string | null; moodle_enviada_em: string | null; classroom_enviada_em: string | null } | null;
-    const c = conta(turma);
+    const c = conta(ciclo);
     if (!a) c.semAnalise++;
     else if (a.status === "pronta") c.revisar++;
     else if (a.status === "erro") c.erro++;
     else if (a.status === "aprovada" && !a.enviada_em && !a.moodle_enviada_em && !a.classroom_enviada_em) c.enviar++;
   }
   for (const p of pendentes ?? []) {
-    const turma = (p.etapas as unknown as { turma_id: string }).turma_id;
-    if (nomeDa.has(turma)) conta(turma).esperando++;
+    const ciclo = p.etapas as unknown as Ciclo;
+    if (nomeDa.has(ciclo.turma_id)) conta(ciclo).esperando++;
   }
 
   const itens: Item[] = [];
@@ -99,17 +100,20 @@ export default async function Inicio({ params, searchParams }: PageProps<"/app/[
   for (const nome of contasComProblema) {
     itens.push({ chave: `conta-${nome}`, turma: null, numero: "!", titulo: `${nome} pediu para conectar de novo`, onde: "Contas conectadas", acao: "Conectar", href: `/app/${slug}/contas`, cor: "erro" });
   }
-  for (const [turma, c] of porTurma) {
+  const ordenados = [...porCiclo.values()].sort((x, y) => origem(x.ciclo.turma_id).localeCompare(origem(y.ciclo.turma_id)) || x.ciclo.numero - y.ciclo.numero);
+  for (const c of ordenados) {
+    const { id, turma_id: turma, numero } = c.ciclo;
+    const onde = `${origem(turma)} · ${v.etapa} ${numero}`;
     if (c.semAnalise)
-      itens.push({ chave: `${turma}-a`, turma, numero: String(c.semAnalise), titulo: `${plural(c.semAnalise, "entrega", "entregas")} para analisar`, onde: origem(turma), acao: "Analisar", href: ir(turma, "entregas"), cor: "marca" });
+      itens.push({ chave: `${id}-a`, turma, numero: String(c.semAnalise), titulo: `${plural(c.semAnalise, "entrega", "entregas")} para analisar`, onde, acao: "Analisar", href: ir(turma, `entregas?etapa=${id}`), cor: "marca" });
     if (c.revisar)
-      itens.push({ chave: `${turma}-r`, turma, numero: String(c.revisar), titulo: `${plural(c.revisar, "devolutiva", "devolutivas")} para aprovar`, onde: origem(turma), acao: "Revisar", href: ir(turma, "entregas/revisar"), cor: "marca" });
+      itens.push({ chave: `${id}-r`, turma, numero: String(c.revisar), titulo: `${plural(c.revisar, "devolutiva", "devolutivas")} para aprovar`, onde, acao: "Revisar", href: ir(turma, `entregas/revisar?etapa=${id}`), cor: "marca" });
     if (c.enviar)
-      itens.push({ chave: `${turma}-e`, turma, numero: String(c.enviar), titulo: `${plural(c.enviar, "devolutiva aprovada", "devolutivas aprovadas")} sem enviar`, onde: origem(turma), acao: "Enviar", href: ir(turma, "entregas"), cor: "marca" });
+      itens.push({ chave: `${id}-e`, turma, numero: String(c.enviar), titulo: `${plural(c.enviar, "devolutiva aprovada", "devolutivas aprovadas")} sem enviar`, onde, acao: "Enviar", href: ir(turma, `entregas?etapa=${id}&filtro=aprovadas`), cor: "marca" });
     if (c.erro)
-      itens.push({ chave: `${turma}-x`, turma, numero: String(c.erro), titulo: `${plural(c.erro, "análise falhou", "análises falharam")}`, onde: origem(turma), acao: "Ver", href: ir(turma, "entregas"), cor: "erro" });
+      itens.push({ chave: `${id}-x`, turma, numero: String(c.erro), titulo: `${plural(c.erro, "análise falhou", "análises falharam")}`, onde, acao: "Ver", href: ir(turma, `entregas?etapa=${id}`), cor: "erro" });
     if (c.esperando)
-      itens.push({ chave: `${turma}-p`, turma, numero: String(c.esperando), titulo: `${plural(c.esperando, "arquivo esperando", "arquivos esperando")} no Drive dos alunos`, onde: origem(turma), acao: "Trazer", href: ir(turma, "etapas"), cor: "alerta" });
+      itens.push({ chave: `${id}-p`, turma, numero: String(c.esperando), titulo: `${plural(c.esperando, "arquivo esperando", "arquivos esperando")} no Drive dos alunos`, onde, acao: "Trazer", href: ir(turma, `etapas/${id}`), cor: "alerta" });
   }
   const visiveis = itens.filter((i) => !escolhida || i.turma === null || i.turma === escolhida.id);
   const prazosVisiveis = (prazos ?? []).filter((p) => nomeDa.has(p.turma_id) && (!escolhida || p.turma_id === escolhida.id));

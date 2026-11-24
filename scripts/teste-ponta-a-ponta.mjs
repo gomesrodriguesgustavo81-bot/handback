@@ -1719,6 +1719,20 @@ try {
     confere(pediuConfirmacao("Desconectar o Google Classroom?"), "classroom: desconectar pede confirmação");
   }
 
+  // 7l3) Início: cada item leva para uma página que existe (o ciclo certo, já na turma certa)
+  {
+    await ana.p.goto(`${APP}/app/${SLUG}/inicio`);
+    const links = await ana.p.getByRole("list", { name: "Para fazer" }).getByRole("link").evaluateAll((as) => as.map((a) => [a.textContent.trim(), a.getAttribute("href")]));
+    const quebrados = [];
+    for (const [nome, href] of links) {
+      const r = await ana.p.request.get(`${APP}${href}`);
+      if (r.status() !== 200 || /Página não encontrada/.test(await r.text())) quebrados.push(`${nome} (${r.status()})`);
+    }
+    confere(links.length > 0 && !quebrados.length, `início: todos os ${links.length} itens abrem a página certa${quebrados.length ? ` — quebrados: ${quebrados.join("; ")}` : ""}`);
+    const revisar = links.find(([nome]) => /para aprovar/.test(nome));
+    confere(!revisar || /entregas%2Frevisar%3Fetapa%3D/.test(revisar[1]), "início: “devolutivas para aprovar” abre a revisão do ciclo certo");
+  }
+
   // 7m) Equipes: adicionar pessoa (sozinha ou numa equipe) e criar equipe juntando quem está sozinho
   {
     await ana.p.goto(`${APP}/app/${SLUG}/configuracoes/turmas`);
