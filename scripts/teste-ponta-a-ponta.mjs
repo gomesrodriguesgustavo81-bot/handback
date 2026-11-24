@@ -803,6 +803,7 @@ try {
   });
   confere(dobra.devolutiva < dobra.alto && dobra.checklist < dobra.alto, `conceito, devolutiva e checklist aparecem sem rolar (${JSON.stringify(dobra)})`);
   confere(await ana.p.getByRole("button", { name: "Aprovar devolutiva" }).isVisible(), "botão Aprovar sempre visível no rodapé");
+  confere(await ana.p.getByRole("button", { name: "Analisar de novo" }).isVisible(), "“Analisar de novo” fica à vista, fora dos detalhes");
   await ana.p.getByText("Detalhes da análise").click();
   confere(await ana.p.getByText(/gemini-flash-latest/).isVisible(), "mostra o modelo usado");
   await largura(ana.p, "análise e devolutiva");
@@ -889,8 +890,8 @@ try {
   // Professor vê a análise interna; falha da IA aparece com mensagem clara.
   await prof.p.goto(`${APP}/app/${SLUG}/entregas`);
   await prof.p.getByRole("link", { name: /Equipe Roxa/ }).click();
-  await prof.p.getByText("Análise interna").click();
-  confere(await prof.p.getByText(/Pontos fortes/).isVisible(), "professor lê a análise interna");
+  await prof.p.getByText("Análise interna").waitFor();
+  confere(await prof.p.getByText(/^O que foi bem$|Pontos fortes/).first().isVisible(), "professor lê a análise interna (já aberta, em partes)");
   await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
   await ana.p.getByText("Registrar entrega à mão").click();
   await ana.p.getByLabel("Equipe", { exact: true }).selectOption({ label: "Equipe Roxa" });

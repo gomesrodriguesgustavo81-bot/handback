@@ -29,30 +29,37 @@ export function BotaoAnalisar({
   entregaId,
   texto = "Analisar com IA",
   variante = "primario",
+  confirmar,
+  className = "",
 }: {
   slug: string;
   entregaId: string;
   texto?: string;
   variante?: "primario" | "secundario";
+  /** Pergunta antes (ex.: analisar de novo apaga edições não aprovadas). */
+  confirmar?: { titulo: string; texto: string; sim: string };
+  className?: string;
 }) {
   const router = useRouter();
+  const { pedir, janela } = useConfirmar();
   const [pendente, iniciar] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; mensagem: string } | null>(null);
   const segundos = useSegundos(pendente);
   return (
-    <div className="flex flex-col gap-2">
+    <div className={`flex flex-col gap-2 ${className}`}>
       <Botao
         type="button"
         variante={variante}
         disabled={pendente}
-        onClick={() =>
+        onClick={async () => {
+          if (confirmar && !(await pedir({ ...confirmar, perigo: false }))) return;
           iniciar(async () => {
             setMsg(null);
             const r = await analisarComIA(slug, entregaId);
             setMsg(r);
             router.refresh();
-          })
-        }
+          });
+        }}
       >
         {pendente ? (
           <>
@@ -63,6 +70,7 @@ export function BotaoAnalisar({
           texto
         )}
       </Botao>
+      {janela}
       {pendente ? <p className="text-xs text-suave">A IA lê os arquivos e escreve a análise. Costuma levar de 20 segundos a 2 minutos.</p> : null}
       {msg && !msg.ok ? <Aviso tipo="erro">{msg.mensagem}</Aviso> : null}
     </div>

@@ -15,6 +15,8 @@ import { notaDoConceito } from "@/lib/moodle/cliente";
 import { contextoDaEmpresa } from "@/lib/empresa";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { dataHoraBR, minusc, passouMaisDe, tamanhoLegivel } from "@/lib/textos";
+import { partesDaAnalise, type TipoParte } from "@/lib/analise-interna";
+import type { ReactNode } from "react";
 
 export const metadata: Metadata = { title: "Folha da equipe" };
 // A análise com IA roda a partir desta página e pode levar alguns minutos.
@@ -247,14 +249,8 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
   const detalhes = (
     <>
       {temResultado ? (
-        <Dobra titulo="Análise interna" extra="só quem avalia vê">
-          {a.justificativa ? (
-            <div>
-              <p className="font-semibold">Por que {a.conceito_ia}</p>
-              <p className="whitespace-pre-line text-suave">{a.justificativa}</p>
-            </div>
-          ) : null}
-          <p className="whitespace-pre-line leading-relaxed">{a.analise_interna || "—"}</p>
+        <Dobra titulo="Análise interna" extra="só quem avalia vê" aberta>
+          <AnaliseInterna conceito={a.conceito_ia} justificativa={a.justificativa} texto={a.analise_interna} />
         </Dobra>
       ) : null}
 
@@ -280,11 +276,15 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
       </Dobra>
 
       <Dobra titulo={entrega.origem === "email" ? "E-mail recebido" : entrega.origem === "moodle" ? "Enviada no Moodle" : entrega.origem === "classroom" ? "Enviada no Classroom" : "Registro à mão"}>
-        <p className="break-words text-xs text-suave">
-          {entrega.origem === "email" ? "De" : "Por"}: {entrega.remetente || "—"} · {dataHoraBR(entrega.enviada_em)}
-        </p>
-        {entrega.origem === "email" ? <p className="break-words font-semibold">{entrega.assunto || "(sem assunto)"}</p> : null}
-        <p className="max-h-72 overflow-auto whitespace-pre-line break-words leading-relaxed">{entrega.comentario || "(sem texto)"}</p>
+        <CartaoEmail
+          remetente={entrega.remetente}
+          quando={dataHoraBR(entrega.enviada_em)}
+          assunto={entrega.origem === "email" ? entrega.assunto || "(sem assunto)" : null}
+          texto={entrega.comentario}
+          anexos={entrega.arquivos_entrega.length}
+          links={entrega.links.length}
+          porEmail={entrega.origem === "email"}
+        />
       </Dobra>
 
       <Dobra titulo="Detalhes da análise">
@@ -302,12 +302,7 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
           </ul>
         ) : null}
         {temResultado && a.erro ? <Aviso tipo="alerta">A última reanálise falhou ({a.erro}); este é o resultado anterior.</Aviso> : null}
-        {temResultado && a.status !== "aprovada" && !substituida ? (
-          <>
-            <p className="text-suave">Analisar de novo troca o conceito e a devolutiva pelos novos (edições não aprovadas se perdem).</p>
-            <BotaoAnalisar slug={slug} entregaId={entrega.id} texto="Analisar de novo" variante="secundario" />
-          </>
-        ) : null}
+
         {envios.length > 1 ? (
           <div>
             <p className="font-semibold">Todos os envios desta entrega</p>
@@ -389,6 +384,22 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
             </Link>
           ) : null}
         </Aviso>
+      ) : null}
+
+      {temResultado && a.status !== "aprovada" && !substituida ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-borda bg-cartao px-4 py-2.5">
+          <span className="text-[13px] text-suave">
+            Analisada por IA{a.concluida_em ? ` em ${dataHoraBR(a.concluida_em)}` : ""}. Não ficou bom?
+          </span>
+          <BotaoAnalisar
+            slug={slug}
+            entregaId={entrega.id}
+            texto="Analisar de novo"
+            variante="secundario"
+            className="shrink-0"
+            confirmar={{ titulo: "Analisar de novo?", texto: "A IA lê tudo outra vez. O conceito e a devolutiva são trocados pelos novos, e o que você editou sem aprovar se perde.", sim: "Sim, analisar de novo" }}
+          />
+        </div>
       ) : null}
 
       {temResultado ? (
@@ -538,5 +549,109 @@ function LinhaArquivo({
         <span className="shrink-0 rounded-[10px] border border-borda px-3 py-2 text-[13px] font-semibold text-texto">Abrir</span>
       </a>
     </li>
+  );
+}
+
+const ESTILO_PARTE: Record<TipoParte, { cor: string; icone: ReactNode }> = {
+  fortes: { cor: "bg-ok-fundo text-ok", icone: <path d="M5 12l4 4 10-10" /> },
+  lacunas: { cor: "bg-alerta-fundo text-alerta", icone: <path d="M12 7v6M12 17h.01" /> },
+  riscos: { cor: "bg-erro-fundo text-erro", icone: <path d="M12 4l9 16H3zM12 10v4M12 17h.01" /> },
+  fazer: { cor: "bg-marca-clara text-marca-forte", icone: <path d="M5 12h14M13 6l6 6-6 6" /> },
+  outro: { cor: "bg-neutro-fundo text-neutro", icone: <path d="M6 12h12" /> },
+};
+const NOME_CONCEITO: Record<string, string> = { EXCELENTE: "Excelente", BOM: "Bom", REGULAR: "Regular", RUIM: "Ruim" };
+
+/** Análise interna em partes curtas: por que o conceito, o que foi bem, o que faltou, riscos e o que fazer. */
+function AnaliseInterna({ conceito, justificativa, texto }: { conceito: string | null; justificativa: string; texto: string }) {
+  const partes = partesDaAnalise(texto);
+  return (
+    <div className="flex flex-col gap-3">
+      {justificativa ? (
+        <div className="flex flex-col gap-1.5 rounded-xl bg-fundo px-3 py-2.5">
+          <span className="flex items-center gap-2 text-[13px] font-semibold">
+            A IA deu <SeloConceito conceito={conceito} /> {conceito && NOME_CONCEITO[conceito] ? "porque:" : ""}
+          </span>
+          <p className="leading-relaxed">{justificativa}</p>
+        </div>
+      ) : null}
+      {partes ? (
+        <ul className="flex flex-col gap-3">
+          {partes.map((p) => (
+            <li key={p.titulo} className="flex gap-3">
+              <span aria-hidden className={`flex size-8 shrink-0 items-center justify-center rounded-full ${ESTILO_PARTE[p.tipo].cor}`}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  {ESTILO_PARTE[p.tipo].icone}
+                </svg>
+              </span>
+              <div className="flex min-w-0 flex-col gap-0.5 pt-1">
+                <b className="text-[13px]">{p.titulo}</b>
+                {p.itens.length === 1 ? (
+                  <p className="leading-relaxed text-texto/90">{p.itens[0]}</p>
+                ) : (
+                  <ul className="list-disc pl-4 leading-relaxed text-texto/90">
+                    {p.itens.map((x, i) => (
+                      <li key={i}>{x}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="whitespace-pre-line leading-relaxed">{texto || "—"}</p>
+      )}
+    </div>
+  );
+}
+
+/** O e-mail (ou registro) como ele chegou: quem mandou, quando, assunto, texto e anexos. */
+function CartaoEmail({
+  remetente,
+  quando,
+  assunto,
+  texto,
+  anexos,
+  links,
+  porEmail,
+}: {
+  remetente: string;
+  quando: string;
+  assunto: string | null;
+  texto: string;
+  anexos: number;
+  links: number;
+  porEmail: boolean;
+}) {
+  const m = (remetente || "").match(/^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/);
+  const nome = m?.[1]?.trim() || "";
+  const email = m?.[2] ?? remetente ?? "";
+  const quem = nome || email || "—";
+  const inicial = (quem.replace(/[^\p{L}]/gu, "")[0] ?? "?").toUpperCase();
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-3">
+        <span aria-hidden className="flex size-10 shrink-0 items-center justify-center rounded-full bg-marca-clara font-bold text-marca-forte">
+          {inicial}
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col">
+          <b className="truncate text-[15px]">{quem}</b>
+          {nome && email ? <span className="truncate text-xs text-suave">{email}</span> : !porEmail ? <span className="text-xs text-suave">registrou</span> : null}
+        </span>
+        <span className="shrink-0 text-xs text-suave">{quando}</span>
+      </div>
+      {assunto ? <p className="break-words text-base font-bold">{assunto}</p> : null}
+      <div className="max-h-72 overflow-auto rounded-xl bg-fundo px-3 py-2.5">
+        <p className="whitespace-pre-line break-words leading-relaxed">{texto || <span className="text-suave">(sem texto)</span>}</p>
+      </div>
+      {anexos || links ? (
+        <p className="flex items-center gap-1.5 text-[13px] text-suave">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M21 11l-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 7" />
+          </svg>
+          {[anexos ? `${anexos} ${anexos === 1 ? "anexo" : "anexos"}` : "", links ? `${links} ${links === 1 ? "link" : "links"}` : ""].filter(Boolean).join(" · ")} — veja em “Arquivos da entrega”
+        </p>
+      ) : null}
+    </div>
   );
 }
