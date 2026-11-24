@@ -1554,6 +1554,123 @@ try {
     confere(pediuConfirmacao("Conectar seu Google Drive?") && pediuConfirmacao("Guardar os arquivos no seu Drive?") && pediuConfirmacao("Levar também os arquivos antigos?") && pediuConfirmacao("Desconectar o Google Drive?"), "drive: conectar, ligar, levar e desconectar pedem confirmação");
   }
 
+  // 7l2) Google Classroom: liga a turma, traz alunos, tarefas e entregas; arquivos escolhidos; publicar e lançar nota
+  {
+    const GOOGLE = process.env.HANDBACK_GOOGLE_BASE.replace(/\/$/, "");
+    const classroomFalso = async () => (await fetch(`${GOOGLE}/__classroom`)).json();
+    const anaId = sql(`select id from auth.users where email = '${ANA}'`);
+    const daOrg = `(select id from public.organizacoes where slug = '${SLUG}')`;
+    await ana.p.goto(`${APP}/app/${SLUG}/configuracoes/turmas`);
+    await ana.p.locator("summary", { hasText: "+ Criar turma" }).click();
+    const formC = ana.p.locator("details", { hasText: "+ Criar turma" });
+    await formC.getByLabel("Nome").fill("Cálculo");
+    await formC.getByRole("button", { name: "Criar" }).click();
+    await ana.p.getByText("“Cálculo” criada").waitFor();
+    await trocarTurma(ana.p, "Cálculo");
+    await ana.p.goto(`${APP}/app/${SLUG}/configuracoes`);
+    await ana.p.getByRole("link", { name: /^Google Classroom/ }).click();
+    await ana.p.getByRole("heading", { name: "Google Classroom", exact: true }).waitFor();
+    await largura(ana.p, "classroom: conectar");
+    await ana.p.screenshot({ path: `${FOTOS}/52-classroom-conectar.png`, fullPage: true });
+    await Promise.all([ana.p.waitForEvent("popup"), ana.p.getByRole("link", { name: "Conectar Google Classroom" }).click()]);
+    await ana.p.getByRole("region", { name: "Sua conta Google" }).getByText("professora@gmail.test").waitFor();
+    confere(sql(`select count(*) from public.conexoes_google where user_id = '${anaId}' and servico = 'classroom'`) === "1", "classroom: cada professor conecta a própria conta");
+    const escolher = ana.p.getByRole("region", { name: "Escolher a turma do Classroom" });
+    await escolher.getByText("Turma 2026").waitFor();
+    confere((await escolher.getByRole("radio").count()) === 2 && (await escolher.getByRole("radio").first().isChecked()), "classroom: mostra as turmas do Classroom do professor para escolher");
+    await largura(ana.p, "classroom: escolher a turma");
+    await ana.p.screenshot({ path: `${FOTOS}/53-classroom-escolher.png`, fullPage: true });
+    await escolher.getByRole("button", { name: "Ligar esta turma" }).click();
+    const ligadaC = ana.p.getByRole("region", { name: "Turma do Classroom" });
+    await ligadaC.getByText(/1 tarefa virou \S+ e 2 entregas chegaram \(1 arquivo espera/).waitFor({ timeout: 30000 });
+    confere(pediuConfirmacao("Conectar seu Google Classroom?") && pediuConfirmacao("Ligar ao Classroom?"), "classroom: conectar e ligar pedem confirmação");
+    const daCalculo = `from public.integrantes i join public.turmas t on t.id = i.turma_id where t.nome = 'Cálculo' and t.org_id = ${daOrg}`;
+    confere(sql(`select count(*) ${daCalculo}`) === "3" && sql(`select count(distinct i.grupo_id) ${daCalculo}`) === "3", "classroom: os 3 alunos entraram, cada um no seu cadastro");
+    await largura(ana.p, "classroom: ligada");
+    await ana.p.screenshot({ path: `${FOTOS}/54-classroom-ligada.png`, fullPage: true });
+
+    // Tarefa criada à mão no Classroom: vira ciclo; o arquivo do Drive do aluno espera o professor escolher
+    const etapaC = sql(`select e.id from public.etapas e where e.org_id = ${daOrg} and e.classroom_tarefa = '501'`);
+    confere(sql(`select titulo || '|' || recebe_ate from public.etapas where id = '${etapaC}'`) === "Lista 1 · Limites|2099-03-09", "classroom: a tarefa virou ciclo com o mesmo nome e o prazo no horário de Brasília");
+    await ana.p.goto(`${APP}/app/${SLUG}/etapas/${etapaC}`);
+    const cartaoC = ana.p.getByRole("region", { name: "Google Classroom" });
+    await cartaoC.getByText("Tarefa do Classroom").waitFor();
+    confere(await cartaoC.getByText("1 arquivo está no Drive dos alunos").isVisible(), "classroom: avisa que o arquivo do aluno está esperando");
+    await largura(ana.p, "classroom: ciclo");
+    await ana.p.screenshot({ path: `${FOTOS}/55-classroom-ciclo.png`, fullPage: true });
+    await cartaoC.getByRole("button", { name: "Trazer os arquivos dos alunos" }).click();
+    const janelaG = ana.p.getByRole("dialog", { name: "Escolher arquivos" });
+    await janelaG.getByRole("button", { name: "Marcar todos" }).click();
+    await janelaG.getByRole("button", { name: "Selecionar" }).click();
+    await cartaoC.getByText("1 arquivo chegou. Já dá para analisar.").waitFor({ timeout: 30000 });
+    confere(
+      sql(`select count(*) from public.classroom_pendentes where etapa_id = '${etapaC}'`) === "0" &&
+        sql(`select count(*) from public.arquivos_entrega a join public.entregas e on e.id = a.entrega_id where e.etapa_id = '${etapaC}' and a.nome = 'Ana - Lista 1.pdf'`) === "1",
+      "classroom: o arquivo escolhido chega na entrega",
+    );
+    await ana.p.goto(`${APP}/app/${SLUG}/entregas?etapa=${etapaC}`);
+    await ana.p.getByRole("link", { name: /Bruno Lima/ }).waitFor();
+    await ana.p.getByRole("link", { name: /Ana Souza/ }).click();
+    await ana.p.waitForURL(/\/entregas\/[0-9a-f-]{36}$/);
+    confere(await ana.p.getByText(/recebida .* pelo Google Classroom/).isVisible() && await ana.p.getByText("Ana - Lista 1.pdf").first().isVisible(), "classroom: a entrega mostra que veio do Classroom, com o arquivo");
+    await ana.p.getByRole("button", { name: "Analisar com IA" }).click();
+    await ana.p.getByRole("button", { name: "Aprovar devolutiva" }).waitFor({ timeout: 60000 });
+    await ana.p.getByRole("button", { name: "Aprovar devolutiva" }).click();
+    await ana.p.getByText(/o Google não deixa o Handback lançar nota nela/).waitFor();
+    confere(!(await ana.p.getByRole("button", { name: "Devolver no Classroom" }).count()), "classroom: tarefa criada à mão não oferece lançar nota (o Google não deixa)");
+
+    // Ciclo criado no Handback e publicado no Classroom: aí dá para lançar a nota
+    const turmaC = sql(`select id from public.turmas where nome = 'Cálculo' and org_id = ${daOrg}`);
+    const etapa2 = sql(`insert into public.etapas (org_id, turma_id, numero, titulo, data, recebe_ate, entregaveis) values (${daOrg}, '${turmaC}', 2, 'Lista 2 · Derivadas', '2099-04-10', '2099-04-10', '{Exercícios 1 a 5}') returning id`).split("\n")[0];
+    await ana.p.goto(`${APP}/app/${SLUG}/etapas/${etapa2}`);
+    const cartao2 = ana.p.getByRole("region", { name: "Google Classroom" });
+    await cartao2.getByRole("button", { name: "Publicar no Classroom" }).click();
+    await cartao2.getByText("Tarefa publicada pelo Handback").waitFor({ timeout: 30000 });
+    const criada = Object.values((await classroomFalso())["111"].tarefas).find((t) => t.title === "Lista 2 · Derivadas");
+    confere(
+      Boolean(criada?.associatedWithDeveloper) && criada.maxPoints === 10 && criada.dueDate.day === 11 && criada.dueTime.hours === 2 && /Exercícios 1 a 5/.test(criada.description),
+      "classroom: publicar cria a tarefa lá (prazo 23:59 de Brasília, nota até 10, o que entregar)",
+    );
+    confere(pediuConfirmacao("Publicar no Classroom?") && sql(`select classroom_nosso from public.etapas where id = '${etapa2}'`) === "t", "classroom: publicar pede confirmação e marca o ciclo como do Handback");
+    await fetch(`${GOOGLE}/__classroom/entregar`, { method: "POST", body: JSON.stringify({ curso: "111", tarefa: criada.id, aluno: "u3", arquivo: "Carla - Lista 2.pdf" }) });
+    sql(`update public.turmas set classroom_buscado_em = null where id = '${turmaC}'`);
+    await ana.p.goto(`${APP}/app/${SLUG}/configuracoes/classroom`);
+    await ana.p.getByRole("button", { name: "Buscar agora" }).click();
+    await ana.p.getByText("Pronto: 3 alunos, 2 tarefas e 1 entrega nova.").waitFor({ timeout: 30000 });
+    confere(true, "classroom: Buscar agora traz a entrega nova");
+    await ana.p.goto(`${APP}/app/${SLUG}/etapas/${etapa2}`);
+    await cartao2.getByRole("button", { name: "Trazer os arquivos dos alunos" }).click();
+    await janelaG.getByRole("button", { name: "Marcar todos" }).click();
+    await janelaG.getByRole("button", { name: "Selecionar" }).click();
+    await cartao2.getByText("1 arquivo chegou. Já dá para analisar.").waitFor({ timeout: 30000 });
+    await ana.p.goto(`${APP}/app/${SLUG}/entregas?etapa=${etapa2}`);
+    await ana.p.getByRole("link", { name: /Carla Dias/ }).click();
+    await ana.p.waitForURL(/\/entregas\/[0-9a-f-]{36}$/);
+    await ana.p.getByRole("button", { name: "Analisar com IA" }).click();
+    await ana.p.getByRole("button", { name: "Aprovar devolutiva" }).waitFor({ timeout: 60000 });
+    await ana.p.getByRole("button", { name: "Aprovar devolutiva" }).click();
+    await ana.p.getByRole("button", { name: "Devolver no Classroom" }).waitFor();
+    await largura(ana.p, "classroom: devolver");
+    await ana.p.screenshot({ path: `${FOTOS}/56-classroom-devolver.png`, fullPage: true });
+    await ana.p.getByRole("button", { name: "Devolver no Classroom" }).click();
+    const lancou = await ana.p.getByText(/^Nota [\d,]+ lançada no Classroom\.$/).innerText({ timeout: 30000 });
+    const envioCarla = (await classroomFalso())["111"].tarefas[criada.id].envios[`env-${criada.id}-u3`];
+    confere(
+      envioCarla.state === "RETURNED" && envioCarla.assignedGrade > 0 && lancou.includes(String(envioCarla.assignedGrade).replace(".", ",")),
+      `classroom: a nota vai para o Classroom e o trabalho volta para o aluno (${lancou})`,
+    );
+    confere(pediuConfirmacao("Devolver no Classroom?") && sql(`select count(*) from public.atividades where acao = 'devolveu_classroom' and org_id = ${daOrg}`) === "1", "classroom: devolver pede confirmação e fica no registro");
+
+    await ana.p.goto(`${APP}/app/${SLUG}/configuracoes/classroom`);
+    await ana.p.getByRole("button", { name: "Desconectar Google Classroom" }).click();
+    await ana.p.getByRole("link", { name: "Conectar Google Classroom" }).waitFor();
+    confere(
+      sql(`select count(*) from public.conexoes_google where user_id = '${anaId}' and servico = 'classroom'`) === "0" && sql(`select coalesce(classroom_curso, 'nada') from public.turmas where id = '${turmaC}'`) === "nada",
+      "classroom: desconectar apaga a conexão e desliga a turma (o que veio fica)",
+    );
+    confere(pediuConfirmacao("Desconectar o Google Classroom?"), "classroom: desconectar pede confirmação");
+  }
+
   // 7m) Equipes: adicionar pessoa (sozinha ou numa equipe) e criar equipe juntando quem está sozinho
   {
     await ana.p.goto(`${APP}/app/${SLUG}/configuracoes/turmas`);
@@ -1632,7 +1749,7 @@ try {
     await pp.goto(`${APP}/app/${SLUG}/entregas`);
     const lado = pp.getByRole("navigation", { name: "Seções da empresa" });
     const itens = (await lado.getByRole("link").allInnerTexts()).map((x) => x.trim());
-    confere(/^Entregas\|(Aulas|Encontros)\|Calendário\|Equipes\|Relatórios\|Moodle\|Google Drive\|Configurações$/.test(itens.join("|")) && !(await pp.getByRole("button", { name: "Mais" }).count()), `computador: menu do lado com tudo à vista (${itens.join(", ")})`);
+    confere(/^Entregas\|(Aulas|Encontros)\|Calendário\|Equipes\|Relatórios\|Moodle\|Google Classroom\|Google Drive\|Configurações$/.test(itens.join("|")) && !(await pp.getByRole("button", { name: "Mais" }).count()), `computador: menu do lado com tudo à vista (${itens.join(", ")})`);
     await pp.screenshot({ path: `${FOTOS}/7e-computador.png` });
     const largo = (await lado.boundingBox()).width;
     await lado.getByRole("button", { name: "Recolher o menu" }).click();

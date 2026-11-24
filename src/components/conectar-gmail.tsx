@@ -14,6 +14,10 @@ const PERGUNTA = {
   gmail: { titulo: "Conectar seu Gmail?", texto: "O Handback vai poder enviar e-mails do seu endereço (as devolutivas que você aprovar). Ele não lê sua caixa." },
   agenda: { titulo: "Conectar seu Google Agenda?", texto: "O Handback só vai mexer nas agendas que ele mesmo criar. Ele não vê seus outros compromissos." },
   drive: { titulo: "Conectar seu Google Drive?", texto: "O Handback só vai mexer nas pastas e arquivos que ele mesmo criar. Ele não vê o resto do seu Drive." },
+  classroom: {
+    titulo: "Conectar seu Google Classroom?",
+    texto: "O Handback vai ver suas turmas, alunos e tarefas, criar tarefas e lançar notas. Do seu Drive, só os arquivos que você escolher. Marque todas as opções na janela do Google.",
+  },
 } as const;
 
 export function ConectarGmail({

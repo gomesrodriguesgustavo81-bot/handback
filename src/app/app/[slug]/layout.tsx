@@ -43,6 +43,7 @@ export default async function LayoutEmpresa({
   const mais: ItemNav[] = [
     ...(podeAvaliar ? [{ href: `/app/${slug}/relatorios`, nome: "Relatórios", icone: "relatorios" as const }] : []),
     ...(podeGerir ? [{ href: `/app/${slug}/moodle`, nome: "Moodle", icone: "moodle" as const }] : []),
+    ...(podeGerir ? [{ href: `/app/${slug}/configuracoes/classroom`, nome: "Google Classroom", icone: "classroom" as const }] : []),
     ...(podeGerir ? [{ href: `/app/${slug}/configuracoes/drive`, nome: "Google Drive", icone: "drive" as const }] : []),
   ];
   const configuracoes = podeGerir ? `/app/${slug}/configuracoes` : null;

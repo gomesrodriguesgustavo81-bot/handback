@@ -14,7 +14,7 @@ import { gmailConfigurado } from "@/lib/gmail";
 import { notaDoConceito } from "@/lib/moodle/cliente";
 import { contextoDaEmpresa } from "@/lib/empresa";
 import { criarClienteServidor } from "@/lib/supabase/server";
-import { dataHoraBR, passouMaisDe, tamanhoLegivel } from "@/lib/textos";
+import { dataHoraBR, minusc, passouMaisDe, tamanhoLegivel } from "@/lib/textos";
 
 export const metadata: Metadata = { title: "Folha da equipe" };
 // A análise com IA roda a partir desta página e pode levar alguns minutos.
@@ -25,14 +25,23 @@ type Entrega = {
   etapa_id: string;
   grupo_id: string;
   enviada_em: string;
-  origem: "email" | "manual" | "moodle";
+  origem: "email" | "manual" | "moodle" | "classroom";
   remetente: string;
   assunto: string;
   atrasada: boolean;
   status: "recebida" | "substituida";
   comentario: string;
   links: string[];
-  etapas: { numero: number; titulo: string; moodle_tarefa: number | null; moodle_nota_max: number | null } | null;
+  etapas: {
+    numero: number;
+    titulo: string;
+    moodle_tarefa: number | null;
+    moodle_nota_max: number | null;
+    classroom_tarefa: string | null;
+    classroom_nosso: boolean;
+    classroom_nota_max: number | null;
+    classroom_link: string;
+  } | null;
   grupos: { nome: string; tema: string } | null;
   arquivos_entrega: { id: string; caminho: string; nome: string; tamanho: number }[];
   emails_recebidos: { avisos: string[]; anexos_pendentes: { nome: string }[]; origem_id: string | null } | null;
@@ -65,6 +74,10 @@ type Analise = {
   moodle_enviada_em: string | null;
   moodle_nota: number | null;
   moodle_erro: string;
+  classroom_status: "enviando" | "enviada" | "erro" | null;
+  classroom_enviada_em: string | null;
+  classroom_nota: number | null;
+  classroom_erro: string;
 };
 
 export default async function FolhaDaEquipe({ params, searchParams }: PageProps<"/app/[slug]/entregas/[id]">) {
@@ -79,14 +92,18 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
   const { data } = await supabase
     .from("entregas")
     .select(
-      "id, etapa_id, grupo_id, enviada_em, origem, remetente, assunto, atrasada, status, comentario, links, etapas(numero, titulo, moodle_tarefa, moodle_nota_max), grupos(nome, tema), arquivos_entrega(id, caminho, nome, tamanho), emails_recebidos!entregas_email_id_fkey(avisos, anexos_pendentes, origem_id)",
+      "id, etapa_id, grupo_id, enviada_em, origem, remetente, assunto, atrasada, status, comentario, links, etapas(numero, titulo, moodle_tarefa, moodle_nota_max, classroom_tarefa, classroom_nosso, classroom_nota_max, classroom_link), grupos(nome, tema), arquivos_entrega(id, caminho, nome, tamanho), emails_recebidos!entregas_email_id_fkey(avisos, anexos_pendentes, origem_id)",
     )
     .eq("org_id", empresa.id)
     .eq("id", id)
     .maybeSingle();
   const entrega = data as Entrega | null;
   if (!entrega) notFound();
-  const [pastaDrive, parecidas] = await Promise.all([pastaDaEquipeNoDrive(supabase, entrega.grupo_id), parecidasDe(supabase, entrega.id)]);
+  const [pastaDrive, parecidas, { data: esperandoClassroom }] = await Promise.all([
+    pastaDaEquipeNoDrive(supabase, entrega.grupo_id),
+    parecidasDe(supabase, entrega.id),
+    entrega.origem === "classroom" ? supabase.from("classroom_pendentes").select("nome").eq("entrega_id", entrega.id) : Promise.resolve({ data: [] as { nome: string }[] }),
+  ]);
 
   const [{ data: analiseBruta }, { data: daEtapa }, { data: doGrupo }, gmail, { data: destinos }, { data: org }] = await Promise.all([
     supabase.from("analises").select("*").eq("entrega_id", entrega.id).maybeSingle(),
@@ -262,7 +279,7 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
         )}
       </Dobra>
 
-      <Dobra titulo={entrega.origem === "email" ? "E-mail recebido" : entrega.origem === "moodle" ? "Enviada no Moodle" : "Registro à mão"}>
+      <Dobra titulo={entrega.origem === "email" ? "E-mail recebido" : entrega.origem === "moodle" ? "Enviada no Moodle" : entrega.origem === "classroom" ? "Enviada no Classroom" : "Registro à mão"}>
         <p className="break-words text-xs text-suave">
           {entrega.origem === "email" ? "De" : "Por"}: {entrega.remetente || "—"} · {dataHoraBR(entrega.enviada_em)}
         </p>
@@ -333,13 +350,22 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-suave">
           <span>
             {v.etapa} {entrega.etapas?.numero} · {entrega.origem === "manual" ? "registrada" : "recebida"} {dataHoraBR(entrega.enviada_em)}{" "}
-            {entrega.origem === "email" ? "por e-mail" : entrega.origem === "moodle" ? "pelo Moodle" : "à mão"}
+            {entrega.origem === "email" ? "por e-mail" : entrega.origem === "moodle" ? "pelo Moodle" : entrega.origem === "classroom" ? "pelo Google Classroom" : "à mão"}
           </span>
           <PilulaAtraso atrasada={entrega.atrasada} />
         </div>
       </header>
 
       <AvisoGmail aviso={avisoGmail} />
+      {esperandoClassroom?.length ? (
+        <Aviso tipo="alerta">
+          {esperandoClassroom.length === 1 ? "1 arquivo desta entrega ainda está" : `${esperandoClassroom.length} arquivos desta entrega ainda estão`} no Drive do aluno (
+          {esperandoClassroom.map((x) => x.nome || "sem nome").join(", ")}).{" "}
+          <Link href={`/app/${slug}/etapas/${entrega.etapa_id}`} className="font-semibold underline">
+            Trazer na página do {minusc(v.etapa)}
+          </Link>
+        </Aviso>
+      ) : null}
       {parecidas.length ? (
         <section role="note" aria-label="Parecida com outras entregas" className="flex flex-col gap-1 rounded-2xl bg-alerta-fundo px-4 py-3 text-sm text-alerta">
           <strong>Parecida demais com outra entrega desta aula</strong>
@@ -398,6 +424,23 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
                   notaPrevista: (() => {
                     const n = notaDoConceito(entrega.etapas?.moodle_nota_max, (org?.notas_moodle as Record<string, number> | null)?.[a.conceito ?? ""]);
                     return n === null ? null : `${String(n).replace(".", ",")} (de ${String(entrega.etapas?.moodle_nota_max).replace(".", ",")})`;
+                  })(),
+                }
+              : null
+          }
+          classroom={
+            entrega.origem === "classroom" && entrega.etapas?.classroom_tarefa
+              ? {
+                  nosso: entrega.etapas.classroom_nosso,
+                  link: entrega.etapas.classroom_link,
+                  enviada: Boolean(a.classroom_enviada_em),
+                  em: a.classroom_enviada_em ? dataHoraBR(a.classroom_enviada_em) : "",
+                  nota: a.classroom_nota === null ? null : String(a.classroom_nota).replace(".", ","),
+                  erro: a.classroom_status === "erro" || (a.classroom_status === "enviada" && a.classroom_erro) ? a.classroom_erro : "",
+                  notaPrevista: (() => {
+                    const max = entrega.etapas?.classroom_nota_max;
+                    const n = notaDoConceito(max, (org?.notas_moodle as Record<string, number> | null)?.[a.conceito ?? ""]);
+                    return n === null ? null : `${String(n).replace(".", ",")} (de ${String(max).replace(".", ",")})`;
                   })(),
                 }
               : null

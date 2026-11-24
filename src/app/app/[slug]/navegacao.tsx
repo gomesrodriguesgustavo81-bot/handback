@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
-export type Icone = "entregas" | "aulas" | "calendario" | "equipes" | "relatorios" | "moodle" | "config" | "conta" | "avisos" | "drive";
+export type Icone = "entregas" | "aulas" | "calendario" | "equipes" | "relatorios" | "moodle" | "config" | "conta" | "avisos" | "drive" | "classroom";
 export type ItemNav = { href: string; nome: string; icone: Icone };
 
 const TRACOS: Record<Icone | "mais", ReactNode> = {
@@ -39,6 +39,13 @@ const TRACOS: Record<Icone | "mais", ReactNode> = {
   avisos: <path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 20a2 2 0 0 0 4 0" />,
   mais: <path d="M4 7h16M4 12h16M4 17h16" />,
   drive: <path d="M8 3h8l6 11-4 7H6l-4-7zM8 3l6 11H2M16 3l-6 11M22 14H10l-4 7" />,
+  classroom: (
+    <>
+      <rect x="3" y="4" width="18" height="13" rx="2" />
+      <circle cx="12" cy="9.5" r="2" />
+      <path d="M8.5 14.5c.8-1.4 2-2 3.5-2s2.7.6 3.5 2M8 21h8M12 17v4" />
+    </>
+  ),
 };
 
 function Desenho({ icone }: { icone: Icone | "mais" }) {

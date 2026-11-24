@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { caminhoSeguro, urlDoSite } from "@/lib/caminhos";
-import { gmailConfigurado, urlDeAutorizacao, type ServicoGoogle } from "@/lib/gmail";
+import { gmailConfigurado, urlDeAutorizacao, type ServicoGoogle, servicoGoogle } from "@/lib/gmail";
 import { COOKIE_ESTADO, comAviso } from "@/lib/gmail-rotas";
 import { criarClienteServidor } from "@/lib/supabase/server";
 
@@ -9,7 +9,7 @@ import { criarClienteServidor } from "@/lib/supabase/server";
 export async function GET(request: NextRequest) {
   const voltar = caminhoSeguro(request.nextUrl.searchParams.get("voltar"));
   const pedido = request.nextUrl.searchParams.get("servico");
-  const servico: ServicoGoogle = pedido === "agenda" || pedido === "drive" ? pedido : "gmail";
+  const servico: ServicoGoogle = servicoGoogle(pedido);
   const supabase = await criarClienteServidor();
   const {
     data: { user },

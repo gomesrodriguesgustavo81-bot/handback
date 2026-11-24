@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { caminhoSeguro, urlDoSite } from "@/lib/caminhos";
-import { cifrar, ErroGmail, trocarCodigo, type ServicoGoogle } from "@/lib/gmail";
+import { cifrar, ErroGmail, trocarCodigo, type ServicoGoogle, servicoGoogle } from "@/lib/gmail";
 import { criarClienteAdmin } from "@/lib/supabase/admin";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { registrarAcesso } from "@/lib/registro";
@@ -11,7 +11,7 @@ import { COOKIE_ESTADO, comAviso } from "@/lib/gmail-rotas";
 export async function GET(request: NextRequest) {
   const p = request.nextUrl.searchParams;
   const [estadoGuardado = "", voltarGuardado, servicoGuardado] = (request.cookies.get(COOKIE_ESTADO)?.value ?? "").split("|");
-  const servico: ServicoGoogle = servicoGuardado === "agenda" || servicoGuardado === "drive" ? servicoGuardado : "gmail";
+  const servico: ServicoGoogle = servicoGoogle(servicoGuardado);
   const voltar = caminhoSeguro(voltarGuardado);
   const ir = (aviso: string) => {
     const r = NextResponse.redirect(urlDoSite(request, comAviso(voltar, aviso)));

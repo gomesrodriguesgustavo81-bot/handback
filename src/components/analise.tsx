@@ -5,7 +5,7 @@ import { useActionState, useEffect, useState, useTransition, startTransition, ty
 import { useRouter } from "next/navigation";
 import { analisarComIA, analisarEmSegundoPlano, aprovarProntas, reabrirDevolutiva, revisarDevolutiva } from "@/app/app/[slug]/entregas/acoes";
 import { CONCEITOS_REVISAO, ESTILO_CONCEITO } from "./conceito";
-import { BotaoEnviar, DevolverMoodle, type InfoMoodle } from "./envio";
+import { BotaoEnviar, DevolverClassroom, DevolverMoodle, type InfoClassroom, type InfoMoodle } from "./envio";
 import type { Resultado } from "./form-acao";
 import { Aviso, Botao, LinkBotao } from "./ui";
 
@@ -167,6 +167,7 @@ export function FolhaDevolutiva({
   conectarHref,
   motivo,
   moodle = null,
+  classroom = null,
   children,
 }: {
   slug: string;
@@ -188,6 +189,8 @@ export function FolhaDevolutiva({
   motivo: string;
   /** Entrega de uma tarefa do Moodle: dá para devolver por lá. */
   moodle?: InfoMoodle | null;
+  /** Entrega que veio do Google Classroom: dá para lançar a nota lá. */
+  classroom?: InfoClassroom | null;
   children: ReactNode;
 }) {
   const router = useRouter();
@@ -340,6 +343,7 @@ export function FolhaDevolutiva({
                   <BotaoEnviar slug={slug} entregaId={entregaId} texto="Enviar de novo" variante="secundario" conectarHref={conectarHref} perguntar="Enviar esta devolutiva de novo?" />
                 ) : null}
               </div>
+              {classroom ? <DevolverClassroom slug={slug} entregaId={entregaId} classroom={classroom} /> : null}
             </div>
           ) : (
             <span className="text-xs text-suave">Nada é enviado sem a sua aprovação.</span>

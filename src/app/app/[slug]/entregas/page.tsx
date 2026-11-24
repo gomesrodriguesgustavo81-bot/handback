@@ -36,6 +36,7 @@ import { gmailConfigurado } from "@/lib/gmail";
 import { after } from "next/server";
 import { FaixaMoodle } from "./faixa-moodle";
 import { sincronizarTurma } from "@/lib/moodle/sincronizar";
+import { sincronizarClassroom } from "@/lib/classroom/sincronizar";
 import { criarClienteAdmin } from "@/lib/supabase/admin";
 
 export const metadata: Metadata = { title: "Entregas" };
@@ -100,6 +101,14 @@ export default async function PainelDaAula({
       .eq("turma_id", tId)
       .eq("status", "confirmar"),
   ]);
+  // Turma ligada ao Classroom: busca sozinha as novidades (no máximo a cada 15 minutos), sem segurar a tela.
+  if (turma?.classroom_curso && (!turma.classroom_buscado_em || passouMaisDe(turma.classroom_buscado_em, 15))) {
+    const turmaId = turma.id;
+    after(async () => {
+      const admin = criarClienteAdmin();
+      if (admin) await sincronizarClassroom(admin, turmaId, 15 * 60).catch((e) => console.error("[classroom] busca automática", e));
+    });
+  }
   // Turma ligada ao Moodle: busca sozinha as novidades (no máximo a cada 15 minutos), sem segurar a tela.
   let faixaMoodle = null;
   if (turma?.moodle_conta) {

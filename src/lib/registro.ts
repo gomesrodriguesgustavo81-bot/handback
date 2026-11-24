@@ -18,7 +18,9 @@ export type AcaoDeAcesso =
   | "conectou_agenda"
   | "desconectou_agenda"
   | "conectou_drive"
-  | "desconectou_drive";
+  | "desconectou_drive"
+  | "conectou_classroom"
+  | "desconectou_classroom";
 
 /** IP e aparelho de quem fez o pedido (a Vercel informa o IP real no x-forwarded-for). */
 export async function quemEOnde(): Promise<{ ip: string; aparelho: string }> {

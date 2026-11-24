@@ -10,13 +10,13 @@ const AVISOS: Record<string, { tipo: "info" | "erro"; texto: string }> = {
   erro: { tipo: "erro", texto: "Não foi possível conectar o Gmail. Tente de novo." },
 };
 
-const NOME = { agenda: "Google Agenda", drive: "Google Drive" } as const;
+const NOME = { agenda: "Google Agenda", drive: "Google Drive", classroom: "Google Classroom" } as const;
 function avisoDe(servico: keyof typeof NOME, aviso: string) {
   const n = NOME[servico];
   const t: Record<string, { tipo: "info" | "erro"; texto: string }> = {
     conectado: { tipo: "info", texto: `${n} conectado.` },
     cancelado: { tipo: "erro", texto: `A conexão com o ${n} foi cancelada.` },
-    "sem-permissao": { tipo: "erro", texto: `O Google não deu a permissão do ${n}. Conecte de novo e marque a opção pedida.` },
+    "sem-permissao": { tipo: "erro", texto: `O Google não deu todas as permissões do ${n}. Conecte de novo e marque todas as opções pedidas.` },
     expirou: { tipo: "erro", texto: `A conexão demorou demais. Tente conectar o ${n} de novo.` },
     "nao-configurado": { tipo: "erro", texto: "A conexão com o Google ainda não foi configurada no servidor." },
     erro: { tipo: "erro", texto: `Não foi possível conectar o ${n}. Tente de novo.` },

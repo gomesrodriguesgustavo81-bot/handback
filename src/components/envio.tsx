@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { enviarDevolutivaPorEmail } from "@/app/app/[slug]/entregas/acoes";
 import { devolverNoMoodleAcao } from "@/app/app/[slug]/moodle/acoes";
+import { devolverNoClassroomAcao } from "@/app/app/[slug]/configuracoes/classroom/acoes";
 import { Aviso, Botao } from "./ui";
 
 type Msg = { ok: boolean; mensagem: string; reconectar?: boolean } | null;
@@ -256,3 +257,65 @@ export function DevolverMoodle({
 }
 
 export type InfoMoodle = { enviada: boolean; em: string; nota: string | null; erro: string; notaPrevista: string | null };
+
+export type InfoClassroom = { nosso: boolean; enviada: boolean; em: string; nota: string | null; erro: string; notaPrevista: string | null; link: string };
+
+/**
+ * Lança no Classroom a nota da devolutiva aprovada e devolve o trabalho ao
+ * aluno. O Google só deixa isso em tarefa criada pelo Handback; a
+ * devolutiva escrita vai por e-mail (o Classroom não aceita comentário de apps).
+ */
+export function DevolverClassroom({ slug, entregaId, classroom }: { slug: string; entregaId: string; classroom: InfoClassroom }) {
+  const router = useRouter();
+  const { pedir, janela } = useConfirmar();
+  const [pendente, iniciar] = useTransition();
+  const [msg, setMsg] = useState<Msg>(null);
+  return (
+    <div className="flex flex-col gap-2 border-t border-borda pt-2">
+      <strong className="text-[13px]">Google Classroom</strong>
+      {classroom.enviada ? (
+        <p className="font-semibold text-marca-forte">
+          Nota {classroom.nota} lançada no Classroom em {classroom.em}
+        </p>
+      ) : null}
+      {classroom.erro ? <Aviso tipo="erro">A última tentativa no Classroom falhou: {classroom.erro}</Aviso> : null}
+      {!classroom.nosso ? (
+        <p className="text-xs text-suave">
+          Esta tarefa foi criada direto no Classroom, e o Google não deixa o Handback lançar nota nela.
+          {classroom.notaPrevista ? ` Lance lá: ${classroom.notaPrevista}.` : ""}{" "}
+          {classroom.link ? (
+            <a href={classroom.link} target="_blank" rel="noopener noreferrer" className="font-medium text-marca-forte underline">
+              Abrir no Classroom
+            </a>
+          ) : null}
+        </p>
+      ) : !classroom.notaPrevista ? (
+        <p className="text-xs text-suave">Este conceito ainda não tem nota. Ajuste as notas em Google Classroom › Nota para cada conceito.</p>
+      ) : (
+        <Botao
+          type="button"
+          variante={classroom.enviada ? "secundario" : "primario"}
+          disabled={pendente}
+          onClick={async () => {
+            if (
+              !(await pedir({
+                titulo: classroom.enviada ? "Lançar a nota de novo?" : "Devolver no Classroom?",
+                texto: `A nota ${classroom.notaPrevista} vai para o Classroom agora e o trabalho volta para o aluno, que já consegue ver. A devolutiva escrita vai por e-mail.`,
+                sim: "Sim, devolver",
+              }))
+            )
+              return;
+            iniciar(async () => {
+              setMsg(await devolverNoClassroomAcao(slug, entregaId));
+              router.refresh();
+            });
+          }}
+        >
+          {pendente ? "Lançando…" : classroom.enviada ? "Lançar de novo no Classroom" : "Devolver no Classroom"}
+        </Botao>
+      )}
+      {msg ? <Aviso tipo={msg.ok ? "info" : "erro"}>{msg.mensagem}</Aviso> : null}
+      {janela}
+    </div>
+  );
+}

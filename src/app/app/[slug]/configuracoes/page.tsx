@@ -42,6 +42,7 @@ export default async function Configuracoes({ params }: PageProps<"/app/[slug]/c
       titulo: `${vc.espacos} e entregas`,
       itens: [
         { nome: vc.espacos, detalhe: `${ativas} ativa(s) · criar, renomear, arquivar`, href: `${base}/configuracoes/turmas` },
+        { nome: "Google Classroom", detalhe: "Trazer alunos, tarefas e entregas da sua turma do Classroom e lançar as notas lá", href: `${base}/configuracoes/classroom` },
         { nome: "Google Drive", detalhe: "Guardar os arquivos das entregas numa pasta do seu Drive", href: `${base}/configuracoes/drive` },
         { nome: "Google Agenda", detalhe: "Os prazos da turma na sua agenda (e, se quiser, na dos alunos)", href: `${base}/configuracoes/agenda` },
         { nome: "Lembretes para os alunos", detalhe: "E-mail de prazo para quem ainda não entregou", href: `${base}/configuracoes/lembretes` },

@@ -16,13 +16,25 @@ export const ESCOPO_ENVIO = "https://www.googleapis.com/auth/gmail.send";
  * Cada serviço pede a MENOR permissão possível e vira uma conexão separada:
  * Agenda e Drive só mexem no que o próprio Handback criou.
  */
-export type ServicoGoogle = "gmail" | "agenda" | "drive";
-export const ESCOPO: Record<ServicoGoogle, string> = {
-  gmail: ESCOPO_ENVIO,
-  agenda: "https://www.googleapis.com/auth/calendar.app.created",
-  drive: "https://www.googleapis.com/auth/drive.file",
+export type ServicoGoogle = "gmail" | "agenda" | "drive" | "classroom";
+export const SERVICOS_GOOGLE: ServicoGoogle[] = ["gmail", "agenda", "drive", "classroom"];
+export const ESCOPOS: Record<ServicoGoogle, string[]> = {
+  gmail: [ESCOPO_ENVIO],
+  agenda: ["https://www.googleapis.com/auth/calendar.app.created"],
+  drive: ["https://www.googleapis.com/auth/drive.file"],
+  // Classroom: ver turmas e alunos (com e-mail), ler e criar tarefas e lançar
+  // notas; drive.file só para os arquivos que o professor escolher na janela do Google.
+  classroom: [
+    "https://www.googleapis.com/auth/classroom.courses.readonly",
+    "https://www.googleapis.com/auth/classroom.rosters.readonly",
+    "https://www.googleapis.com/auth/classroom.profile.emails",
+    "https://www.googleapis.com/auth/classroom.coursework.students",
+    "https://www.googleapis.com/auth/drive.file",
+  ],
 };
-export const NOME_SERVICO: Record<ServicoGoogle, string> = { gmail: "Gmail", agenda: "Google Agenda", drive: "Google Drive" };
+export const NOME_SERVICO: Record<ServicoGoogle, string> = { gmail: "Gmail", agenda: "Google Agenda", drive: "Google Drive", classroom: "Google Classroom" };
+/** O serviço pedido (texto vindo de fora), ou o Gmail. */
+export const servicoGoogle = (x: string | null | undefined): ServicoGoogle => (SERVICOS_GOOGLE.includes(x as ServicoGoogle) ? (x as ServicoGoogle) : "gmail");
 
 function enderecos() {
   const base = process.env.HANDBACK_GOOGLE_BASE?.replace(/\/$/, "");
@@ -52,7 +64,7 @@ export function urlDeAutorizacao(redirectUri: string, estado: string, dica?: str
   u.searchParams.set("client_id", process.env.GOOGLE_CLIENT_ID ?? "");
   u.searchParams.set("redirect_uri", redirectUri);
   u.searchParams.set("response_type", "code");
-  u.searchParams.set("scope", ["openid", "email", ESCOPO[servico]].join(" "));
+  u.searchParams.set("scope", ["openid", "email", ...ESCOPOS[servico]].join(" "));
   u.searchParams.set("access_type", "offline");
   u.searchParams.set("prompt", "consent");
   // Agenda e Drive: o token vale só para aquele serviço.
@@ -84,11 +96,12 @@ async function pedirToken(corpo: Record<string, string>) {
 /** Troca o código da autorização pelo token. Devolve o e-mail da conta e o token de renovação. */
 export async function trocarCodigo(codigo: string, redirectUri: string, servico: ServicoGoogle = "gmail"): Promise<{ email: string; renovacao: string }> {
   const j = await pedirToken({ code: codigo, redirect_uri: redirectUri, grant_type: "authorization_code" });
-  if (!String(j.scope ?? "").split(" ").includes(ESCOPO[servico])) {
+  const recebidos = String(j.scope ?? "").split(" ");
+  if (!ESCOPOS[servico].every((e) => recebidos.includes(e))) {
     throw new ErroGmail(
       servico === "gmail"
         ? "Sem a permissão de enviar e-mails. Conecte de novo e marque a opção de enviar e-mails."
-        : `Sem a permissão do ${NOME_SERVICO[servico]}. Conecte de novo e marque a opção pedida.`,
+        : `Sem a permissão do ${NOME_SERVICO[servico]}. Conecte de novo e marque todas as opções pedidas.`,
     );
   }
   if (!j.refresh_token) throw new ErroGmail("O Google não devolveu a autorização completa. Tente conectar de novo.");

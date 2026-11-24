@@ -13,6 +13,35 @@ import { CopiarMensagemDaAula } from "@/components/endereco-turma";
 import { enderecoDeRecebimento } from "@/lib/emails/endereco";
 import { dadosDaMensagem } from "@/lib/mensagem-turma";
 import { marcarMensagemCopiada } from "../../turma-acoes";
+import { ClassroomDoCiclo } from "@/components/classroom-ciclo";
+
+/** Números do Classroom deste ciclo (entregas, arquivos que chegaram e que esperam). */
+async function infoClassroom(
+  supabase: Awaited<ReturnType<typeof criarClienteServidor>>,
+  etapa: { id: string; classroom_tarefa: string | null; classroom_nosso: boolean; classroom_link: string },
+  dono: string | null,
+  podeGerir: boolean,
+) {
+  const [{ data: eu }, { data: entregas }, { data: pendentes }] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase.from("entregas").select("id, links, comentario, arquivos_entrega(count)").eq("etapa_id", etapa.id).eq("origem", "classroom").eq("status", "recebida"),
+    supabase.from("classroom_pendentes").select("entrega_id").eq("etapa_id", etapa.id).limit(2000),
+  ]);
+  const lista = (entregas ?? []) as { id: string; links: string[]; comentario: string; arquivos_entrega: { count: number }[] }[];
+  const meu = Boolean(dono && dono === eu.user?.id);
+  const comEspera = new Set((pendentes ?? []).map((p) => String(p.entrega_id)));
+  return {
+    tarefa: Boolean(etapa.classroom_tarefa),
+    nosso: etapa.classroom_nosso,
+    link: etapa.classroom_link,
+    entregaram: lista.length,
+    noHandback: lista.reduce((n, e) => n + (e.arquivos_entrega[0]?.count ?? 0), 0),
+    esperando: pendentes?.length ?? 0,
+    soLink: lista.filter((e) => !(e.arquivos_entrega[0]?.count ?? 0) && !comEspera.has(e.id)).length,
+    meu,
+    podePublicar: meu && podeGerir,
+  };
+}
 
 async function carregar(slug: string, id: string) {
   const ctx = await contextoDaEmpresa(slug);
@@ -20,7 +49,7 @@ async function carregar(slug: string, id: string) {
   const supabase = await criarClienteServidor();
   const { data: etapa } = await supabase
     .from("etapas")
-    .select("id, numero, titulo, data, recebe_de, recebe_ate, entregaveis, criterios, observacoes_ia, turma_id")
+    .select("id, numero, titulo, data, recebe_de, recebe_ate, entregaveis, criterios, observacoes_ia, turma_id, classroom_tarefa, classroom_nosso, classroom_link")
     .eq("org_id", ctx.empresa.id)
     .eq("id", id)
     .maybeSingle();
@@ -41,7 +70,7 @@ export default async function DetalheEtapa({ params, searchParams }: PageProps<"
   const v = empresa.vocabulario;
   // Mensagem pronta desta aula para a turma (prazo, o que entregar e o assunto exato).
   const supabase = await criarClienteServidor();
-  const { data: turma } = await supabase.from("turmas").select("id, modo, caixa_token").eq("id", etapa.turma_id).maybeSingle();
+  const { data: turma } = await supabase.from("turmas").select("id, modo, caixa_token, classroom_curso, classroom_por").eq("id", etapa.turma_id).maybeSingle();
   const endereco = turma ? enderecoDeRecebimento(turma.caixa_token) : null;
   const dadosMsg = podeAvaliar && turma && endereco ? await dadosDaMensagem(supabase, empresa, { id: turma.id, modo: turma.modo }) : null;
   const copiar =
@@ -53,12 +82,15 @@ export default async function DetalheEtapa({ params, searchParams }: PageProps<"
       </Cartao>
     ) : null;
 
+  const classroom = podeAvaliar && turma?.classroom_curso ? await infoClassroom(supabase, etapa, turma.classroom_por, podeGerir) : null;
+
   return (
     <section className="flex flex-col gap-4">
       <Link href={`/app/${slug}/etapas`} className="text-sm text-suave hover:text-texto">
         ← {v.etapas}
       </Link>
       {copiar}
+      {classroom ? <ClassroomDoCiclo slug={slug} etapaId={etapa.id} info={classroom} /> : null}
 
       {podeGerir ? (
         <>
