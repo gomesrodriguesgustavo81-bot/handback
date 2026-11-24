@@ -18,7 +18,7 @@ import { ClassroomDoCiclo } from "@/components/classroom-ciclo";
 /** Números do Classroom deste ciclo (entregas, arquivos que chegaram e que esperam). */
 async function infoClassroom(
   supabase: Awaited<ReturnType<typeof criarClienteServidor>>,
-  etapa: { id: string; classroom_tarefa: string | null; classroom_nosso: boolean; classroom_link: string },
+  etapa: { id: string; entregaveis: string[] | null; classroom_tarefa: string | null; classroom_nosso: boolean; classroom_link: string },
   dono: string | null,
   podeGerir: boolean,
 ) {
@@ -40,6 +40,7 @@ async function infoClassroom(
     soLink: lista.filter((e) => !(e.arquivos_entrega[0]?.count ?? 0) && !comEspera.has(e.id)).length,
     meu,
     podePublicar: meu && podeGerir,
+    semChecklist: !(etapa.entregaveis ?? []).length,
   };
 }
 

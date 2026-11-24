@@ -1596,6 +1596,10 @@ try {
     const cartaoC = ana.p.getByRole("region", { name: "Google Classroom" });
     await cartaoC.getByText("Tarefa do Classroom").waitFor();
     confere(await cartaoC.getByText("1 arquivo está no Drive dos alunos").isVisible(), "classroom: avisa que o arquivo do aluno está esperando");
+    confere(await cartaoC.getByText(/A IA precisa dele para analisar/).isVisible(), "classroom: avisa para escrever o checklist da tarefa que veio do Classroom");
+    await ana.p.getByLabel("O que deve ser entregue (checklist)").fill("Exercícios 1 a 10 resolvidos");
+    await ana.p.getByRole("button", { name: "Salvar" }).click();
+    await ana.p.getByText("Alterações salvas.").waitFor();
     await largura(ana.p, "classroom: ciclo");
     await ana.p.screenshot({ path: `${FOTOS}/55-classroom-ciclo.png`, fullPage: true });
     await cartaoC.getByRole("button", { name: "Trazer os arquivos dos alunos" }).click();

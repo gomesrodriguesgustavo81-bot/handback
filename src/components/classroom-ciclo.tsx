@@ -72,6 +72,7 @@ type Info = {
   soLink: number;
   meu: boolean;
   podePublicar: boolean;
+  semChecklist: boolean;
 };
 
 /** Cartão do Classroom na página do ciclo: números, trazer os arquivos e publicar a tarefa. */
@@ -164,6 +165,9 @@ export function ClassroomDoCiclo({ slug, etapaId, info }: { slug: string; etapaI
               <span className="text-xs text-suave">só com link ou texto</span>
             </span>
           </div>
+          {info.semChecklist ? (
+            <Aviso tipo="alerta">Escreva logo abaixo o que deve ser entregue (checklist). A IA precisa dele para analisar as entregas.</Aviso>
+          ) : null}
           {!info.nosso ? (
             <p className="text-xs text-suave">Tarefa criada direto no Classroom: a nota você lança lá. A devolutiva vai por e-mail.</p>
           ) : null}
