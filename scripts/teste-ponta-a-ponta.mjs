@@ -1501,6 +1501,7 @@ try {
     const etapaId = sql(`select e.id from public.etapas e join public.turmas t on t.id = e.turma_id where t.nome = 'Turma A' and t.org_id = (select id from public.organizacoes where slug = '${SLUG}') and e.recebe_ate is not null order by e.numero limit 1`);
     const tituloAntigo = sql(`select titulo from public.etapas where id = '${etapaId}'`);
     await ana.p.goto(`${APP}/app/${SLUG}/etapas/${etapaId}`);
+    await ana.p.locator("summary", { hasText: /^Editar / }).click();
     await ana.p.getByLabel("Título").fill(`${tituloAntigo} v2`);
     await ana.p.getByRole("button", { name: "Salvar" }).click();
     await ana.p.getByText("Alterações salvas.").waitFor();
