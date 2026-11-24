@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest, after } from "next/server";
+import { rodarPiloto } from "@/lib/piloto";
 import { buscarEmailResend, assinaturaValida } from "@/lib/emails/resend";
 import { receberEmail } from "@/lib/emails/receber";
 import { despacharPush } from "@/lib/push";
@@ -44,6 +45,8 @@ export async function POST(request: NextRequest) {
     const email = await buscarEmailResend(evento, chave);
     const r = await receberEmail(admin, email);
     after(() => despacharPush(admin).catch(() => 0));
+    const origem = (process.env.HANDBACK_SITE ?? request.nextUrl.origin).replace(/\/$/, "");
+    after(() => rodarPiloto(admin, origem).catch(() => 0));
     after(() => levarParaODrive(admin, Date.now() + 40_000).catch(() => undefined));
     return NextResponse.json(r, { status: 200 });
   } catch (erro) {

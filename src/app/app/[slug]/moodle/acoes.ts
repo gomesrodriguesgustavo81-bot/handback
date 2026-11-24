@@ -1,5 +1,6 @@
 "use server";
 
+import { pilotoDepois } from "@/lib/piloto";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -156,6 +157,7 @@ export async function buscarNoMoodle(slug: string): Promise<{ ok: boolean; mensa
   if (!turma?.moodle_conta || !admin) return { ok: false, mensagem: "Esta turma não está ligada ao Moodle." };
   try {
     const r = await sincronizarTurma(admin, turma.id);
+    await pilotoDepois(admin);
     revalidatePath(`/app/${slug}`, "layout");
     if (!r) return { ok: true, mensagem: "Acabou de buscar. Espere alguns segundos e tente de novo." };
     const partes = [

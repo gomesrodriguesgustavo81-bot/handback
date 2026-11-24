@@ -38,6 +38,8 @@ import { FaixaMoodle } from "./faixa-moodle";
 import { sincronizarTurma } from "@/lib/moodle/sincronizar";
 import { sincronizarClassroom } from "@/lib/classroom/sincronizar";
 import { criarClienteAdmin } from "@/lib/supabase/admin";
+import { origemDoSite } from "@/lib/acesso";
+import { rodarPiloto } from "@/lib/piloto";
 
 export const metadata: Metadata = { title: "Entregas" };
 export const maxDuration = 300;
@@ -104,9 +106,11 @@ export default async function PainelDaAula({
   // Turma ligada ao Classroom: busca sozinha as novidades (no máximo a cada 15 minutos), sem segurar a tela.
   if (turma?.classroom_curso && (!turma.classroom_buscado_em || passouMaisDe(turma.classroom_buscado_em, 15))) {
     const turmaId = turma.id;
+    const origem = await origemDoSite();
     after(async () => {
       const admin = criarClienteAdmin();
       if (admin) await sincronizarClassroom(admin, turmaId, 15 * 60).catch((e) => console.error("[classroom] busca automática", e));
+      if (admin) await rodarPiloto(admin, origem).catch(() => 0);
     });
   }
   // Turma ligada ao Moodle: busca sozinha as novidades (no máximo a cada 15 minutos), sem segurar a tela.
@@ -114,9 +118,11 @@ export default async function PainelDaAula({
   if (turma?.moodle_conta) {
     const turmaId = turma.id;
     if (!turma.moodle_buscado_em || passouMaisDe(turma.moodle_buscado_em, 15)) {
+      const origem = await origemDoSite();
       after(async () => {
         const admin = criarClienteAdmin();
         if (admin) await sincronizarTurma(admin, turmaId, 15 * 60).catch((e) => console.error("[moodle] busca automática", e));
+        if (admin) await rodarPiloto(admin, origem).catch(() => 0);
       });
     }
     const { data: tarefas } = await supabase

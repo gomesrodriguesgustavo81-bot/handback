@@ -1767,6 +1767,19 @@ try {
     await ana.p.screenshot({ path: `${FOTOS}/56-trilha-do-ciclo.png`, fullPage: true });
   }
 
+  // 7l5) Piloto automático: liga e desliga em Ajustes da turma (com confirmação)
+  {
+    await ana.p.goto(`${APP}/app/${SLUG}/turma`);
+    await ana.p.getByText("Piloto automático", { exact: true }).click();
+    await ana.p.getByRole("button", { name: "Ligar o piloto automático" }).click();
+    await ana.p.getByRole("button", { name: "Desligar o piloto" }).waitFor({ timeout: 15000 });
+    const turmaP = sql(`select id from public.turmas where piloto and org_id = (select id from public.organizacoes where slug = '${SLUG}')`);
+    confere(pediuConfirmacao("Ligar o piloto automático?") && Boolean(turmaP), "piloto: liga na turma, com confirmação");
+    await ana.p.getByRole("button", { name: "Desligar o piloto" }).click();
+    await ana.p.getByRole("button", { name: "Ligar o piloto automático" }).waitFor({ timeout: 15000 });
+    confere(sql(`select count(*) from public.turmas where piloto and org_id = (select id from public.organizacoes where slug = '${SLUG}')`) === "0", "piloto: desliga de novo");
+  }
+
   // 7m) Equipes: adicionar pessoa (sozinha ou numa equipe) e criar equipe juntando quem está sozinho
   {
     await ana.p.goto(`${APP}/app/${SLUG}/configuracoes/turmas`);

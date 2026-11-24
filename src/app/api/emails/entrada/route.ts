@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest, after } from "next/server";
+import { rodarPiloto } from "@/lib/piloto";
 import { criarClienteAdmin } from "@/lib/supabase/admin";
 import { lerEmailRecebido } from "@/lib/emails/formatos";
 import { receberEmail } from "@/lib/emails/receber";
@@ -34,6 +35,8 @@ export async function POST(request: NextRequest) {
   try {
     const r = await receberEmail(admin, email);
     after(() => despacharPush(admin).catch(() => 0));
+    const origem = (process.env.HANDBACK_SITE ?? request.nextUrl.origin).replace(/\/$/, "");
+    after(() => rodarPiloto(admin, origem).catch(() => 0));
     after(() => levarParaODrive(admin, Date.now() + 40_000).catch(() => undefined));
     // 200 mesmo quando a caixa é desconhecida: o serviço não deve ficar reenviando.
     return NextResponse.json(r, { status: 200 });

@@ -7,6 +7,7 @@ import { sincronizarTodasAsAgendas } from "@/lib/agenda";
 import { levarParaODrive } from "@/lib/drive";
 import { criarClienteAdmin } from "@/lib/supabase/admin";
 import { hojeISO } from "@/lib/textos";
+import { rodarPiloto, sincronizarPilotos } from "@/lib/piloto";
 
 export const maxDuration = 60;
 
@@ -27,8 +28,11 @@ export async function GET(request: NextRequest) {
   const hoje = request.nextUrl.searchParams.get("dia") && process.env.HANDBACK_TESTE_DIA === "1" ? request.nextUrl.searchParams.get("dia")! : hojeISO();
   const site = (process.env.HANDBACK_SITE ?? urlDoSite(request, "/").origin).replace(/\/$/, "");
   const r = await rodarDiario(admin, hoje, site);
+  // Piloto automático: busca o que chegou nas turmas com ele ligado e põe na fila da IA.
+  const pilotos = await sincronizarPilotos(admin, Date.now() + 20_000).catch(() => 0);
+  const piloto = await rodarPiloto(admin, site).catch(() => 0);
   if (await filaParada(admin).catch(() => false)) await chamarFila(site);
   const agendas = await sincronizarTodasAsAgendas(admin, site).catch(() => 0);
   const drive = await levarParaODrive(admin, Date.now() + 25_000).catch(() => null);
-  return NextResponse.json({ ok: true, ...r, agendas, drive: drive?.levados ?? 0 });
+  return NextResponse.json({ ok: true, ...r, agendas, drive: drive?.levados ?? 0, pilotos, piloto });
 }

@@ -11,6 +11,8 @@ import { dataHoraBR } from "@/lib/textos";
 import { turmaAtual } from "@/lib/turma";
 import { salvarTurma } from "../ajustes/acoes";
 import { AcoesLigada } from "../configuracoes/classroom/painel";
+import { BotaoConfirmar } from "@/components/form-acao";
+import { ligarPiloto } from "../turma-acoes";
 
 export const metadata: Metadata = { title: "Ajustes da turma" };
 
@@ -32,7 +34,7 @@ export default async function AjustesDaTurma({ params }: PageProps<"/app/[slug]/
   const base = `/app/${slug}`;
   const [{ data: eu }, { data: t }, { count: ciclosClassroom }, { count: esperando }] = await Promise.all([
     supabase.auth.getUser(),
-    supabase.from("turmas").select("drive_por, agenda_por, lembrete_por, lembrete_abre, lembrete_dois_dias, lembrete_no_dia, moodle_curso_nome").eq("id", turma.id).single(),
+    supabase.from("turmas").select("piloto, drive_por, agenda_por, lembrete_por, lembrete_abre, lembrete_dois_dias, lembrete_no_dia, moodle_curso_nome").eq("id", turma.id).single(),
     turma.classroom_curso
       ? supabase.from("etapas").select("id", { count: "exact", head: true }).eq("turma_id", turma.id).not("classroom_tarefa", "is", null)
       : Promise.resolve({ count: 0 }),
@@ -96,6 +98,31 @@ export default async function AjustesDaTurma({ params }: PageProps<"/app/[slug]/
             </LinkBotao>
           </>
         )}
+      </BlocoAjuste>
+
+      <BlocoAjuste
+        titulo="Piloto automático"
+        resumo={t?.piloto ? "O que chega já vai para a IA" : "A IA analisa quando você pede"}
+        selo={t?.piloto ? "Ligado" : "Desligado"}
+        tom={t?.piloto ? "ok" : "neutro"}
+      >
+        <p>
+          Com o piloto ligado, cada entrega que chega {turma.classroom_curso || turma.moodle_conta ? `(e o Handback busca no ${turma.classroom_curso ? "Classroom" : "Moodle"} todo dia sozinho) ` : ""}
+          já vai para a IA. Você recebe um aviso: “N análises prontas”.
+        </p>
+        <p className="text-suave">
+          Nada sai para o aluno sem você: revisar e aprovar continua com você.
+          {turma.classroom_curso ? " Os arquivos que ficam no Drive dos alunos ainda pedem um toque seu em “Trazer os arquivos” (regra do Google)." : ""}
+        </p>
+        <BotaoConfirmar
+          acao={ligarPiloto.bind(null, slug, !t?.piloto)}
+          perigo={false}
+          pergunta={t?.piloto ? "Desligar o piloto automático?" : "Ligar o piloto automático?"}
+          texto={t?.piloto ? "As entregas novas esperam você pedir a análise." : "O que já chegou e ainda não foi analisado entra na fila da IA agora. Nada é enviado aos alunos."}
+          sim={t?.piloto ? "Sim, desligar" : "Sim, ligar"}
+        >
+          {t?.piloto ? "Desligar o piloto" : "Ligar o piloto automático"}
+        </BotaoConfirmar>
       </BlocoAjuste>
 
       {turma.classroom_curso || turma.moodle_conta ? (

@@ -15,6 +15,7 @@ import { contextoDaEmpresa, mensagemDeErro } from "@/lib/empresa";
 import { decifrar, revogar } from "@/lib/gmail";
 import { registrarAcesso } from "@/lib/registro";
 import { criarClienteAdmin } from "@/lib/supabase/admin";
+import { pilotoDepois } from "@/lib/piloto";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { cookieDaTurma, turmaAtual } from "@/lib/turma";
 
@@ -113,6 +114,7 @@ export async function buscarNoClassroom(slug: string): Promise<R> {
   if (!c?.podeAvaliar) return { ok: false, mensagem: "Você não tem permissão para fazer isso." };
   try {
     const r = await sincronizarClassroom(c.admin, c.turma.id, 10);
+    await pilotoDepois(c.admin);
     revalidatePath(`/app/${slug}`, "layout");
     return r ? { ok: true, mensagem: `Pronto: ${resumoDaBusca(r)}` } : { ok: true, mensagem: "Acabou de buscar. Tente de novo em alguns segundos." };
   } catch (e) {
@@ -172,6 +174,7 @@ export async function trazerArquivos(slug: string, etapaId: string, ids: string[
     const { data: etapa } = await c.supabase.from("etapas").select("id").eq("id", etapaId).eq("turma_id", c.turma.id).maybeSingle();
     if (!etapa) return { ok: false, mensagem: "Ciclo não encontrado." };
     const r = await trazerArquivosEscolhidos(c.admin, etapaId, c.user.id, limpos);
+    await pilotoDepois(c.admin);
     return { ok: true, mensagem: "", ...r };
   } catch (e) {
     return falha(e, "Não foi possível trazer os arquivos. Tente de novo.");
