@@ -1738,6 +1738,23 @@ try {
     confere(!revisar || /entregas%2Frevisar%3Fetapa%3D/.test(revisar[1]), "início: “devolutivas para aprovar” abre a revisão do ciclo certo");
   }
 
+  // 7l4) Passo a passo: cada ciclo mostra a trilha de 5 passos e o próximo passo
+  {
+    await ana.p.goto(`${APP}/app/${SLUG}/etapas`);
+    confere(await ana.p.getByText(/^Passo [1-5] de 5 · |^Concluído$/).first().isVisible(), "ciclos: cada um diz em que passo está");
+    await ana.p.locator('ul li a[href*="/etapas/"]').first().click();
+    await ana.p.waitForURL(/\/etapas\/[0-9a-f-]{36}$/);
+    const passos = ana.p.getByRole("list", { name: "Passos do ciclo" });
+    await passos.waitFor();
+    const agora = await passos.locator('li[aria-current="step"]').count();
+    const concluido = await ana.p.getByText("Ciclo concluído: tudo enviado. ✓").count();
+    confere((await passos.getByRole("listitem").count()) === 5 && agora + concluido === 1, "ciclo: trilha com 5 passos e um só passo atual");
+    const r = await ana.p.request.get(`${ana.p.url()}/enviar`);
+    confere(r.status() === 200, "ciclo: a tela Enviar abre");
+    await largura(ana.p, "ciclo: trilha");
+    await ana.p.screenshot({ path: `${FOTOS}/56-trilha-do-ciclo.png`, fullPage: true });
+  }
+
   // 7m) Equipes: adicionar pessoa (sozinha ou numa equipe) e criar equipe juntando quem está sozinho
   {
     await ana.p.goto(`${APP}/app/${SLUG}/configuracoes/turmas`);

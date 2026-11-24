@@ -53,12 +53,17 @@ export default async function Revisar({ params, searchParams }: PageProps<"/app/
   if (!atual) {
     return (
       <section className="flex flex-col items-center gap-3 py-10 text-center">
-        <span aria-hidden className="flex size-14 items-center justify-center rounded-full bg-acento text-2xl text-sobre-acento">
+        <span aria-hidden className="flex size-14 items-center justify-center rounded-full bg-ok-fundo text-2xl text-ok">
           ✓
         </span>
         <h1 className="text-2xl font-bold">Tudo revisado!</h1>
         <p className="text-suave">Não sobrou nenhuma devolutiva para revisar em {titulo}.</p>
-        <LinkBotao href={`${base}?etapa=${etapa.id}`}>Voltar ao painel</LinkBotao>
+        <LinkBotao href={`/app/${slug}/etapas/${etapa.id}/enviar`} transitionTypes={["nav-forward"]}>
+          Próximo passo: enviar para os alunos
+        </LinkBotao>
+        <Link href={`/app/${slug}/etapas/${etapa.id}`} className="text-sm font-semibold text-marca-forte hover:underline">
+          Voltar ao ciclo
+        </Link>
       </section>
     );
   }
@@ -71,13 +76,16 @@ export default async function Revisar({ params, searchParams }: PageProps<"/app/
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2 text-sm">
-        <Link href={`${base}?etapa=${etapa.id}`} className="font-medium text-suave hover:text-texto">
-          ← Painel
+        <Link href={`/app/${slug}/etapas/${etapa.id}`} transitionTypes={["nav-back"]} className="font-medium text-suave hover:text-texto">
+          ← {titulo}
         </Link>
-        <span className="font-semibold text-marca-forte">
+        <span className="shrink-0 font-semibold text-marca-forte">
           {posicao} de {fila.length} para revisar
         </span>
       </div>
+      <span aria-hidden className="flex h-1.5 overflow-hidden rounded-full bg-marca-clara">
+        <span className="bg-marca transition-[width] duration-300" style={{ width: `${Math.round(((posicao - 1) / fila.length) * 100)}%` }} />
+      </span>
       <span aria-hidden className="block h-1.5 overflow-hidden rounded-full bg-borda/60">
         <span className="block h-full rounded-full bg-marca" style={{ width: `${Math.round(((posicao - 1) / fila.length) * 100)}%` }} />
       </span>

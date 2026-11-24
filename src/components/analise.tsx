@@ -70,7 +70,7 @@ export function BotaoAnalisar({
 }
 
 /** Analisa várias entregas, uma de cada vez, mostrando o andamento. */
-export function AnalisarVarias({ slug, entregas, rotulo }: { slug: string; entregas: { id: string; nome: string }[]; rotulo: string }) {
+export function AnalisarVarias({ slug, entregas, rotulo, forte = false }: { slug: string; entregas: { id: string; nome: string }[]; rotulo: string; /** Botão principal (o próximo passo da trilha). */ forte?: boolean }) {
   const router = useRouter();
   const { pedir, janela } = useConfirmar();
   const [pendente, iniciar] = useTransition();
@@ -81,7 +81,7 @@ export function AnalisarVarias({ slug, entregas, rotulo }: { slug: string; entre
       {entregas.length ? (
         <Botao
           type="button"
-          variante="secundario"
+          variante={forte ? "primario" : "secundario"}
           disabled={pendente}
           onClick={async () => {
             const n = entregas.length;

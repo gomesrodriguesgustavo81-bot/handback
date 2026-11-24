@@ -109,7 +109,7 @@ export default async function Inicio({ params, searchParams }: PageProps<"/app/[
     if (c.revisar)
       itens.push({ chave: `${id}-r`, turma, numero: String(c.revisar), titulo: `${plural(c.revisar, "devolutiva", "devolutivas")} para aprovar`, onde, acao: "Revisar", href: ir(turma, `entregas/revisar?etapa=${id}`), cor: "marca" });
     if (c.enviar)
-      itens.push({ chave: `${id}-e`, turma, numero: String(c.enviar), titulo: `${plural(c.enviar, "devolutiva aprovada", "devolutivas aprovadas")} sem enviar`, onde, acao: "Enviar", href: ir(turma, `entregas?etapa=${id}&filtro=aprovadas`), cor: "marca" });
+      itens.push({ chave: `${id}-e`, turma, numero: String(c.enviar), titulo: `${plural(c.enviar, "devolutiva aprovada", "devolutivas aprovadas")} sem enviar`, onde, acao: "Enviar", href: ir(turma, `etapas/${id}/enviar`), cor: "marca" });
     if (c.erro)
       itens.push({ chave: `${id}-x`, turma, numero: String(c.erro), titulo: `${plural(c.erro, "análise falhou", "análises falharam")}`, onde, acao: "Ver", href: ir(turma, `entregas?etapa=${id}`), cor: "erro" });
     if (c.esperando)

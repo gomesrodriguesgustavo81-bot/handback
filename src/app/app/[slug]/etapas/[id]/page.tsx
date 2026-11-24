@@ -14,6 +14,10 @@ import { enderecoDeRecebimento } from "@/lib/emails/endereco";
 import { dadosDaMensagem } from "@/lib/mensagem-turma";
 import { marcarMensagemCopiada } from "../../turma-acoes";
 import { ClassroomDoCiclo } from "@/components/classroom-ciclo";
+import { AnalisarVarias, FilaAndando } from "@/components/analise";
+import { LinkBotao } from "@/components/ui";
+import { trilhasDaTurma } from "@/lib/trilha-dados";
+import type { Passo, Trilha } from "@/lib/trilha";
 
 /** Números do Classroom deste ciclo (entregas, arquivos que chegaram e que esperam). */
 async function infoClassroom(
@@ -84,27 +88,94 @@ export default async function DetalheEtapa({ params, searchParams }: PageProps<"
     ) : null;
 
   const classroom = podeAvaliar && turma?.classroom_curso ? await infoClassroom(supabase, etapa, turma.classroom_por, podeGerir) : null;
+  const dados = podeAvaliar && turma ? (await trilhasDaTurma(supabase, empresa.id, turma, [etapa])).get(etapa.id) : undefined;
+  const trilha = dados?.trilha;
+  const cartaoClassroom = classroom ? <ClassroomDoCiclo slug={slug} etapaId={etapa.id} info={classroom} /> : null;
+  const painel = `/app/${slug}/entregas?etapa=${etapa.id}`;
+
+  // O que aparece dentro do passo atual: sempre um próximo passo claro.
+  const acaoDoPasso = (n: Passo["n"]) => {
+    if (!dados) return null;
+    const c = dados.contagem;
+    switch (n) {
+      case 1:
+        return (
+          <>
+            {!c.checklist ? (
+              <p className="text-sm text-suave">Escreva logo abaixo, em “Editar”, o que o aluno precisa entregar. A IA confere item por item.</p>
+            ) : null}
+            {cartaoClassroom}
+          </>
+        );
+      case 2:
+        return (
+          <>
+            {cartaoClassroom ?? copiar}
+            <LinkBotao href={painel} variante="secundario" className="self-start text-sm">
+              Ver quem já entregou
+            </LinkBotao>
+          </>
+        );
+      case 3:
+        return (
+          <>
+            {c.analisando ? <FilaAndando quantas={c.analisando} /> : null}
+            <AnalisarVarias forte slug={slug} entregas={dados.semAnalise} rotulo={`Analisar ${dados.semAnalise.length === 1 ? "a entrega" : `as ${dados.semAnalise.length} entregas`} com a IA`} />
+          </>
+        );
+      case 4:
+        return (
+          <LinkBotao href={`/app/${slug}/entregas/revisar?etapa=${etapa.id}`} transitionTypes={["nav-forward"]}>
+            Revisar as devolutivas ({c.revisar})
+          </LinkBotao>
+        );
+      case 5:
+        return (
+          <LinkBotao href={`/app/${slug}/etapas/${etapa.id}/enviar`} transitionTypes={["nav-forward"]}>
+            Enviar para os alunos ({c.enviar})
+          </LinkBotao>
+        );
+    }
+  };
+  // Mostrados fora da trilha quando o passo deles não é o atual (continuam sempre à mão).
+  const extras = (
+    <>
+      {trilha && trilha.atual > 2 ? cartaoClassroom : null}
+      {trilha && trilha.atual !== 2 && !cartaoClassroom ? copiar : null}
+    </>
+  );
+  const abrirEdicao = Boolean(salvo || erro || (dados && !dados.contagem.checklist));
 
   return (
     <section className="flex flex-col gap-4">
-      <Link href={`/app/${slug}/etapas`} transitionTypes={["nav-back"]} className="text-sm text-suave hover:text-texto">
+      <Link href={`/app/${slug}/etapas`} transitionTypes={["nav-back"]} className="self-start text-sm text-suave hover:text-texto">
         ← {v.etapas}
       </Link>
-      {copiar}
-      {classroom ? <ClassroomDoCiclo slug={slug} etapaId={etapa.id} info={classroom} /> : null}
+      <div className="flex flex-col gap-0.5">
+        <h1 className="text-2xl font-extrabold tracking-tight">
+          {v.etapa} {etapa.numero} · {etapa.titulo}
+        </h1>
+        <p className="text-sm text-suave">
+          {etapa.recebe_ate ? `Recebe ${etapa.recebe_de ? `de ${dataBR(etapa.recebe_de)} ` : ""}até ${dataBR(etapa.recebe_ate)}` : "Sem prazo definido"}
+        </p>
+      </div>
+
+      {trilha ? <TrilhaDoCiclo trilha={trilha} acao={acaoDoPasso} painel={painel} relatorio={`/app/${slug}/entregas/relatorio?etapa=${etapa.id}`} /> : null}
+      {extras}
+      {!trilha && copiar}
 
       {podeGerir ? (
         <>
           {salvo ? <Aviso>Cadastro salvo.</Aviso> : null}
           {typeof erro === "string" ? <Aviso tipo="erro">{erro}</Aviso> : null}
-          <Cartao className="flex flex-col gap-4">
-            <h2 className="text-lg font-semibold">
-              {v.etapa} {etapa.numero} · {etapa.titulo}
-            </h2>
-            <FormAcao acao={salvarEtapa.bind(null, slug, id)} textoBotao="Salvar alterações">
-              <CamposEtapa v={v} inicial={etapa} />
-            </FormAcao>
-          </Cartao>
+          <details id="editar" open={abrirEdicao} className="dobra rounded-2xl border border-borda bg-cartao">
+            <summary className="flex min-h-13 cursor-pointer items-center px-4 font-semibold">Editar {minusc(v.etapa)} (nome, prazo, checklist)</summary>
+            <div className="border-t border-borda p-4">
+              <FormAcao acao={salvarEtapa.bind(null, slug, id)} textoBotao="Salvar alterações">
+                <CamposEtapa v={v} inicial={etapa} />
+              </FormAcao>
+            </div>
+          </details>
           <div className="flex justify-end">
             <BotaoConfirmar
               acao={apagarEtapa.bind(null, slug, id)}
@@ -122,16 +193,9 @@ export default async function DetalheEtapa({ params, searchParams }: PageProps<"
         </>
       ) : (
         <Cartao className="flex flex-col gap-3">
-          <h2 className="text-lg font-semibold">
-            {v.etapa} {etapa.numero} · {etapa.titulo}
-          </h2>
+          <h2 className="text-lg font-semibold">O que pedir</h2>
           <dl className="grid grid-cols-1 gap-3 text-sm">
             {etapa.data ? <Item titulo="Data">{dataBR(etapa.data)}</Item> : null}
-            <Item titulo="Recebe entregas">
-              {etapa.recebe_ate
-                ? `${etapa.recebe_de ? `de ${dataBR(etapa.recebe_de)} ` : ""}até ${dataBR(etapa.recebe_ate)}`
-                : "Sem prazo definido"}
-            </Item>
             <Item titulo="O que deve ser entregue">
               {etapa.entregaveis.length ? (
                 <ul className="list-disc pl-5">
@@ -148,6 +212,63 @@ export default async function DetalheEtapa({ params, searchParams }: PageProps<"
         </Cartao>
       )}
     </section>
+  );
+}
+
+/** A trilha de 5 passos: feitos com ✓, o atual aberto com o botão, os próximos em cinza. */
+function TrilhaDoCiclo({ trilha, acao, painel, relatorio }: { trilha: Trilha; acao: (n: Passo["n"]) => ReactNode; painel: string; relatorio: string }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <ol aria-label="Passos do ciclo" className="flex flex-col">
+        {trilha.passos.map((p, i) => {
+          const ultimo = i === trilha.passos.length - 1;
+          const feito = p.estado === "feito" || trilha.atual === 6;
+          return (
+            <li key={p.n} aria-current={p.estado === "agora" ? "step" : undefined} className="flex gap-3.5">
+              <span className="flex flex-col items-center">
+                <span
+                  aria-hidden
+                  className={`flex size-8 shrink-0 items-center justify-center rounded-full text-[15px] font-extrabold ${
+                    feito ? "bg-ok text-white" : p.estado === "agora" ? "bg-marca text-sobre-marca ring-4 ring-marca-clara" : "border-2 border-borda bg-cartao text-suave"
+                  }`}
+                >
+                  {feito ? "✓" : p.n}
+                </span>
+                {ultimo ? null : <span aria-hidden className={`w-0.5 flex-1 ${feito ? "bg-ok" : "bg-borda"} min-h-4`} />}
+              </span>
+              {p.estado === "agora" && trilha.atual !== 6 ? (
+                <section aria-label={`Agora: ${p.nome}`} className="mb-4 flex min-w-0 flex-1 flex-col gap-3 rounded-2xl border border-borda bg-cartao p-4">
+                  <span className="flex flex-col gap-0.5">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-marca">Agora</span>
+                    <b className="text-lg leading-snug">{p.nome}</b>
+                    <span className="text-sm text-suave">{p.resumo}</span>
+                  </span>
+                  {acao(p.n)}
+                </section>
+              ) : (
+                <span className={`flex min-w-0 flex-col pt-1 ${ultimo ? "" : "pb-4"}`}>
+                  <b className={`text-[15px] ${p.estado === "depois" && trilha.atual !== 6 ? "text-suave" : ""}`}>{p.nome}</b>
+                  <span className="text-[13px] text-suave">{p.resumo}</span>
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+      {trilha.atual === 6 ? (
+        <p role="status" className="rounded-2xl bg-ok-fundo px-4 py-3 text-sm font-semibold text-ok">
+          Ciclo concluído: tudo enviado. ✓
+        </p>
+      ) : null}
+      <div className="flex flex-wrap gap-x-5 gap-y-1">
+        <Link href={painel} className="text-sm font-semibold text-marca-forte hover:underline">
+          Todas as entregas deste ciclo ›
+        </Link>
+        <Link href={relatorio} className="text-sm font-semibold text-marca-forte hover:underline">
+          Relatório ›
+        </Link>
+      </div>
+    </div>
   );
 }
 

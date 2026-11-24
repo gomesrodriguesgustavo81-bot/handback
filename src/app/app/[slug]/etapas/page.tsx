@@ -7,6 +7,27 @@ import { NovoCiclo } from "./novo-ciclo";
 import { contextoDaEmpresa } from "@/lib/empresa";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { dataBR, minusc } from "@/lib/textos";
+import { trilhasDaTurma } from "@/lib/trilha-dados";
+import { rotuloDoPasso, type Trilha } from "@/lib/trilha";
+
+/** Para onde leva o botão do passo atual de cada ciclo. */
+function destinoDoPasso(slug: string, id: string, t: Trilha): { href: string; rotulo: string; forte: boolean } {
+  const ciclo = `/app/${slug}/etapas/${id}`;
+  switch (t.atual) {
+    case 1:
+      return { href: ciclo, rotulo: "Preparar", forte: true };
+    case 2:
+      return { href: ciclo, rotulo: "Ver", forte: false };
+    case 3:
+      return { href: ciclo, rotulo: "Analisar", forte: true };
+    case 4:
+      return { href: `/app/${slug}/entregas/revisar?etapa=${id}`, rotulo: "Revisar", forte: true };
+    case 5:
+      return { href: `${ciclo}/enviar`, rotulo: "Enviar", forte: true };
+    default:
+      return { href: ciclo, rotulo: "Abrir", forte: false };
+  }
+}
 
 export async function generateMetadata({ params }: PageProps<"/app/[slug]/etapas">): Promise<Metadata> {
   const { slug } = await params;
@@ -29,6 +50,7 @@ export default async function ListaEtapas({ params, searchParams }: PageProps<"/
     .eq("org_id", empresa.id)
     .eq("turma_id", turma?.id ?? "")
     .order("numero");
+  const trilhas = turma ? await trilhasDaTurma(supabase, empresa.id, turma, etapas ?? []) : new Map();
   return (
     <section className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -60,39 +82,54 @@ export default async function ListaEtapas({ params, searchParams }: PageProps<"/
         </Vazio>
       ) : (
         <ul className="flex flex-col gap-3">
-          {etapas.map((e) => (
-            <li key={e.id}>
-              <Link
-                href={`/app/${slug}/etapas/${e.id}`}
-                transitionTypes={["nav-forward"]}
-                className="toque flex flex-col gap-1 rounded-2xl border border-borda bg-cartao p-4 hover:border-marca"
-              >
-                <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className="font-semibold">
-                    {v.etapa} {e.numero} · {e.titulo}
-                  </span>
-                  {e.classroom_tarefa ? (
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${e.classroom_nosso ? "bg-ok-fundo text-ok" : "bg-info-fundo text-info"}`}>
-                      {e.classroom_nosso ? "Publicado no Classroom" : "Veio do Classroom"}
+          {etapas.map((e) => {
+            const t = trilhas.get(e.id)?.trilha as Trilha | undefined;
+            const ir = t ? destinoDoPasso(slug, e.id, t) : null;
+            const resumo = t && t.atual < 6 ? t.passos[t.atual - 1].resumo : null;
+            return (
+              <li key={e.id} className="flex flex-col gap-3 rounded-2xl border border-borda bg-cartao p-4">
+                <Link href={`/app/${slug}/etapas/${e.id}`} transitionTypes={["nav-forward"]} className="toque flex flex-col gap-2.5">
+                  <span className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
+                    <span className="font-bold">
+                      {v.etapa} {e.numero} · {e.titulo}
                     </span>
-                  ) : e.moodle_tarefa ? (
-                    <span className="rounded-full bg-info-fundo px-2 py-0.5 text-xs font-semibold text-info">Veio do Moodle</span>
+                    <span className={`text-xs ${t?.atual === 6 ? "font-bold text-ok" : "text-suave"}`}>
+                      {t?.atual === 6 ? "✓ Concluído" : e.recebe_ate ? `prazo ${dataBR(e.recebe_ate)}` : "sem prazo"}
+                    </span>
+                  </span>
+                  {t ? (
+                    <span aria-hidden className="grid grid-cols-5 gap-1">
+                      {t.passos.map((p) => (
+                        <span
+                          key={p.n}
+                          className={`h-1.5 rounded-full ${t.atual === 6 ? "bg-ok" : p.estado === "feito" ? "bg-marca" : p.estado === "agora" ? "bg-marca/40" : "bg-borda"}`}
+                        />
+                      ))}
+                    </span>
                   ) : null}
-                </span>
-                <span className="text-sm text-suave">
-                  {[
-                    e.data ? `Data: ${dataBR(e.data)}` : null,
-                    e.recebe_ate
-                      ? `Recebe ${e.recebe_de ? `de ${dataBR(e.recebe_de)} ` : ""}até ${dataBR(e.recebe_ate)}`
-                      : "Sem prazo definido",
-                    `${e.entregaveis.length} ${e.entregaveis.length === 1 ? "item" : "itens"} no checklist`,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </span>
-              </Link>
-            </li>
-          ))}
+                  <span className="flex flex-wrap gap-x-2 text-xs text-suave">
+                    {e.classroom_tarefa ? <span>{e.classroom_nosso ? "Publicado no Classroom" : "Veio do Classroom"}</span> : e.moodle_tarefa ? <span>Veio do Moodle</span> : null}
+                  </span>
+                </Link>
+                {t && ir ? (
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="flex min-w-0 flex-col">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-marca">{rotuloDoPasso(t)}</span>
+                      {resumo ? <span className="text-sm font-semibold">{resumo}</span> : null}
+                    </span>
+                    <Link
+                      href={ir.href}
+                      transitionTypes={["nav-forward"]}
+                      aria-label={`${ir.rotulo}: ${v.etapa} ${e.numero}`}
+                      className={`toque inline-flex min-h-10 shrink-0 items-center rounded-xl px-4 text-sm font-bold ${ir.forte ? "bg-marca text-sobre-marca" : "bg-marca-clara text-marca-forte"}`}
+                    >
+                      {ir.rotulo}
+                    </Link>
+                  </div>
+                ) : null}
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>
