@@ -17,6 +17,7 @@ import { ClassroomDoCiclo } from "@/components/classroom-ciclo";
 import { AnalisarVarias, FilaAndando } from "@/components/analise";
 import { LinkBotao } from "@/components/ui";
 import { trilhasDaTurma } from "@/lib/trilha-dados";
+import { LembrarQuemFalta } from "./lembrar";
 import type { Passo, Trilha } from "@/lib/trilha";
 
 /** Números do Classroom deste ciclo (entregas, arquivos que chegaram e que esperam). */
@@ -111,9 +112,12 @@ export default async function DetalheEtapa({ params, searchParams }: PageProps<"
         return (
           <>
             {cartaoClassroom ?? copiar}
-            <LinkBotao href={painel} variante="secundario" className="self-start text-sm">
-              Ver quem já entregou
-            </LinkBotao>
+            <div className="flex flex-wrap gap-2">
+              <LinkBotao href={painel} variante="secundario" className="text-sm">
+                Ver quem já entregou
+              </LinkBotao>
+              <LembrarQuemFalta slug={slug} etapaId={etapa.id} faltam={Math.max(0, c.total - c.entregaram)} />
+            </div>
           </>
         );
       case 3:

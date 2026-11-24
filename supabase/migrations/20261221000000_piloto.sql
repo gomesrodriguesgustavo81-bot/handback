@@ -79,3 +79,17 @@ as $$
 $$;
 revoke execute on function public.piloto_varrer() from public, anon, authenticated;
 grant execute on function public.piloto_varrer() to service_role;
+
+-- "Lembrar quem não entregou": o professor manda na hora, no máximo uma vez
+-- por dia para cada aluno/equipe em cada ciclo (para não virar spam).
+create table public.lembretes_manuais (
+  etapa_id uuid not null references public.etapas (id) on delete cascade,
+  grupo_id uuid not null references public.grupos (id) on delete cascade,
+  dia date not null,
+  enviado_por uuid references auth.users (id) on delete set null,
+  enviado_em timestamptz not null default now(),
+  primary key (etapa_id, grupo_id, dia)
+);
+alter table public.lembretes_manuais enable row level security;
+revoke all on public.lembretes_manuais from anon, authenticated;
+grant select, insert, delete on public.lembretes_manuais to service_role;

@@ -6,6 +6,7 @@ import { completarVocabulario } from "@/lib/nomes";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { hojeISO } from "@/lib/textos";
 import { turmasDaEmpresa } from "@/lib/turma";
+import { ConviteAvisos } from "./convite-avisos";
 
 export const metadata: Metadata = { title: "Início" };
 
@@ -189,6 +190,8 @@ export default async function Inicio({ params, searchParams }: PageProps<"/app/[
       ) : (
         <p className="rounded-[22px] bg-cartao p-6 text-center text-suave shadow-cartao">Nada esperando por você agora. Quando chegar algo, aparece aqui.</p>
       )}
+
+      <ConviteAvisos />
 
       <section aria-label="Esta semana" className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-2">

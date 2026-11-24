@@ -17,6 +17,7 @@ import { after } from "next/server";
 import { origemDoSite } from "@/lib/acesso";
 import { sincronizarAgenda } from "@/lib/agenda";
 import { criarClienteAdmin } from "@/lib/supabase/admin";
+import { lembrarQuemFalta } from "@/lib/diario";
 
 /** Depois de mexer numa etapa, a agenda da turma (se ligada) se atualiza sozinha. */
 async function atualizarAgendaDepois(orgId: string) {
@@ -200,4 +201,26 @@ export async function criarCiclosDoPlano(slug: string, ciclos: CicloDoPlano[]): 
   await atualizarAgendaDepois(empresa.id);
   revalidatePath(`/app/${slug}`, "layout");
   return { ok: true, mensagem: `${linhasNovas.length} criad${linhasNovas.length === 1 ? "o" : "os"}.` };
+}
+
+/** "Lembrar quem não entregou": e-mail agora, do seu Gmail, só para quem falta (uma vez por dia). */
+export async function lembrarQuemNaoEntregou(slug: string, etapaId: string): Promise<{ ok: boolean; mensagem: string }> {
+  const { empresa, podeAvaliar } = await contextoDaEmpresa(slug);
+  if (!podeAvaliar || !/^[0-9a-f-]{36}$/i.test(etapaId)) return { ok: false, mensagem: "Você não tem permissão para fazer isso." };
+  const supabase = await criarClienteServidor();
+  const [{ data: etapa }, { data: eu }] = await Promise.all([
+    supabase.from("etapas").select("id").eq("id", etapaId).eq("org_id", empresa.id).maybeSingle(),
+    supabase.auth.getUser(),
+  ]);
+  const admin = criarClienteAdmin();
+  if (!etapa || !eu.user || !admin) return { ok: false, mensagem: "Não encontramos este ciclo." };
+  const r = await lembrarQuemFalta(admin, eu.user.id, etapa.id, hojeISO(), (process.env.HANDBACK_SITE ?? (await origemDoSite())).replace(/\/$/, ""));
+  if (!r) return { ok: false, mensagem: "Conecte seu Gmail em Contas conectadas para mandar o lembrete." };
+  const partes = [
+    r.enviados ? `Lembrete enviado para ${r.enviados}.` : "Ninguém novo para lembrar.",
+    r.jaHoje ? `${r.jaHoje} já ${r.jaHoje === 1 ? "foi lembrado" : "foram lembrados"} hoje.` : "",
+    r.semEmail ? `${r.semEmail} sem e-mail cadastrado.` : "",
+    r.falhas ? `${r.falhas} não ${r.falhas === 1 ? "saiu" : "saíram"}: tente de novo.` : "",
+  ].filter(Boolean);
+  return { ok: r.falhas === 0, mensagem: partes.join(" ") };
 }

@@ -175,7 +175,7 @@ export async function rodarDiario(admin: SupabaseClient, hoje: string, site: str
 }
 
 function textoDoLembrete(
-  tipo: TipoLembrete,
+  tipo: TipoLembrete | "manual",
   d: {
     etapa: { numero: number; titulo: string; recebe_ate: string | null; entregaveis: string[] };
     grupo: string;
@@ -191,13 +191,17 @@ function textoDoLembrete(
   const nomeEtapa = `${d.vc.etapa} ${d.etapa.numero} · ${d.etapa.titulo}`;
   const prazo = d.etapa.recebe_ate ? `${diaPorExtenso(d.etapa.recebe_ate)} (${ddmm(d.etapa.recebe_ate)})` : "";
   const assunto =
-    tipo === "abre"
+    tipo === "manual"
+      ? `Lembrete: ${nomeEtapa}${d.etapa.recebe_ate ? ` (prazo ${ddmm(d.etapa.recebe_ate)})` : ""}`
+      : tipo === "abre"
       ? `Já pode entregar: ${nomeEtapa}`
       : tipo === "no_dia"
         ? `Lembrete: ${nomeEtapa} vence hoje`
         : `Lembrete: ${nomeEtapa} vence ${d.etapa.recebe_ate ? diaPorExtenso(d.etapa.recebe_ate).split(",")[0] : "em 2 dias"}${d.etapa.recebe_ate ? ` (${ddmm(d.etapa.recebe_ate)})` : ""}`;
   const abertura =
-    tipo === "abre"
+    tipo === "manual"
+      ? `Olá, ${d.grupo}! Ainda não recebemos a entrega de vocês de ${nomeEtapa}.${prazo ? ` O prazo é ${prazo}.` : ""}`
+      : tipo === "abre"
       ? `Olá, ${d.grupo}! ${nomeEtapa} já está aberta para entregas${prazo ? `, até ${prazo}` : ""}.`
       : tipo === "no_dia"
         ? `Olá, ${d.grupo}! O prazo de ${nomeEtapa} é hoje. Ainda não recebemos a entrega de vocês.`
@@ -220,4 +224,56 @@ function textoDoLembrete(
       `${d.turma}`,
     ],
   };
+}
+
+export type ResultadoLembrar = { enviados: number; semEmail: number; jaHoje: number; falhas: number };
+
+/**
+ * "Lembrar quem não entregou": manda agora, do Gmail de quem pediu, um
+ * lembrete só para quem ainda não entregou este ciclo (uma vez por dia).
+ */
+export async function lembrarQuemFalta(admin: SupabaseClient, userId: string, etapaId: string, hoje: string, site: string): Promise<ResultadoLembrar | null> {
+  const r: ResultadoLembrar = { enviados: 0, semEmail: 0, jaHoje: 0, falhas: 0 };
+  const gmail = await abrirGmail(admin, userId, new Map());
+  if (!gmail) return null;
+  const { data: etapa } = await admin
+    .from("etapas")
+    .select("id, numero, titulo, recebe_ate, entregaveis, turmas(id, nome, caixa_token, moodle_conta, organizacoes(vocabulario, etiqueta_assunto))")
+    .eq("id", etapaId)
+    .maybeSingle();
+  const t = etapa?.turmas as unknown as { id: string; nome: string; caixa_token: string; moodle_conta: string | null; organizacoes: { vocabulario: Vocabulario; etiqueta_assunto: string } } | null;
+  if (!etapa || !t) return r;
+  const vc = completarVocabulario(t.organizacoes.vocabulario);
+  const [{ data: grupos }, { data: entregas }] = await Promise.all([
+    admin.from("grupos").select("id, nome, integrantes(email)").eq("turma_id", t.id).eq("ativo", true).eq("escondido", false),
+    admin.from("entregas").select("grupo_id").eq("etapa_id", etapa.id).eq("status", "recebida"),
+  ]);
+  const entregou = new Set((entregas ?? []).map((x) => x.grupo_id as string));
+  const endereco = t.moodle_conta ? null : enderecoDeRecebimento(t.caixa_token);
+  for (const g of grupos ?? []) {
+    if (entregou.has(g.id)) continue;
+    const para = (g.integrantes as { email: string }[]).map((i) => i.email).filter(Boolean);
+    if (!para.length) {
+      r.semEmail++;
+      continue;
+    }
+    const { data: reservou } = await admin
+      .from("lembretes_manuais")
+      .upsert({ etapa_id: etapa.id, grupo_id: g.id, dia: hoje, enviado_por: userId }, { onConflict: "etapa_id,grupo_id,dia", ignoreDuplicates: true })
+      .select("etapa_id");
+    if (!reservou?.length) {
+      r.jaHoje++;
+      continue;
+    }
+    try {
+      const msg = montarAviso(gmail.de, textoDoLembrete("manual", { etapa, grupo: g.nome, turma: t.nome, vc, endereco, etiqueta: t.organizacoes.etiqueta_assunto, moodle: Boolean(t.moodle_conta), para, site }));
+      await enviarPeloGmail(gmail.acesso, msg.raw);
+      r.enviados++;
+    } catch {
+      r.falhas++;
+      // Deixa tentar de novo hoje.
+      await admin.from("lembretes_manuais").delete().match({ etapa_id: etapa.id, grupo_id: g.id, dia: hoje });
+    }
+  }
+  return r;
 }

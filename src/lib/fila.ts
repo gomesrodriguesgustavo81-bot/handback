@@ -2,6 +2,7 @@ import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { analisarEntrega } from "./ia/analisar";
+import { despacharPush } from "./push";
 
 /**
  * Análises em segundo plano. Cada rodada analisa enquanto há tempo e, se
@@ -62,6 +63,8 @@ export async function processarFila(admin: SupabaseClient, ateMs: number): Promi
   }
   const { count } = await admin.from("fila_analises").select("entrega_id", { count: "exact", head: true }).is("feita_em", null);
   r.restam = count ?? 0;
+  // O aviso "N análises prontas" também vai para o celular de quem ligou as notificações.
+  if (r.feitas || r.erros) await despacharPush(admin).catch(() => 0);
   return r;
 }
 
