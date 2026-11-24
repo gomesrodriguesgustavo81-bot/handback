@@ -38,3 +38,31 @@ export const ROTULO_TENDENCIA: Record<Tendencia, string> = {
   manteve: "Manteve",
   "sem-dados": "Sem comparação",
 };
+
+type LinhaResumo = { grupo_id: string; etapa_id: string; analises: { status: string; conceito: string | null } | { status: string; conceito: string | null }[] | null };
+
+/** Resumo da turma (para o topo dos ciclos): quantos melhoraram, caíram e precisam de atenção. */
+export function resumoDaTurma(
+  grupos: { id: string }[],
+  etapas: { id: string; recebe_ate: string | null }[],
+  entregas: LinhaResumo[],
+  hoje: string,
+): { melhorou: number; caiu: number; atencao: number } {
+  const de = new Map(entregas.map((e) => [`${e.grupo_id}:${e.etapa_id}`, e]));
+  const r = { melhorou: 0, caiu: 0, atencao: 0 };
+  for (const g of grupos) {
+    const celulas: Celula[] = etapas.map((et) => {
+      const e = de.get(`${g.id}:${et.id}`);
+      if (!e) return et.recebe_ate && hoje > et.recebe_ate ? { tipo: "nao-entregou" } : { tipo: "aguardando" };
+      const a = Array.isArray(e.analises) ? e.analises[0] : e.analises;
+      if (a?.status === "aprovada" && a.conceito) return { tipo: "aprovado", conceito: a.conceito, entregaId: "" };
+      if (a?.status === "pronta") return { tipo: "revisar", conceito: a.conceito, entregaId: "" };
+      return { tipo: "sem-analise", entregaId: "" };
+    });
+    const ev = evolucaoDaEquipe(celulas);
+    if (ev.tendencia === "melhorou") r.melhorou++;
+    if (ev.tendencia === "caiu") r.caiu++;
+    if (ev.atencao) r.atencao++;
+  }
+  return r;
+}

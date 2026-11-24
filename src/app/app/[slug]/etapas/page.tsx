@@ -9,6 +9,8 @@ import { criarClienteServidor } from "@/lib/supabase/server";
 import { dataBR, minusc } from "@/lib/textos";
 import { trilhasDaTurma } from "@/lib/trilha-dados";
 import { rotuloDoPasso, type Trilha } from "@/lib/trilha";
+import { resumoDaTurma } from "@/lib/evolucao";
+import { hojeISO } from "@/lib/textos";
 
 /** Para onde leva o botão do passo atual de cada ciclo. */
 function destinoDoPasso(slug: string, id: string, t: Trilha): { href: string; rotulo: string; forte: boolean } {
@@ -51,6 +53,14 @@ export default async function ListaEtapas({ params, searchParams }: PageProps<"/
     .eq("turma_id", turma?.id ?? "")
     .order("numero");
   const trilhas = turma ? await trilhasDaTurma(supabase, empresa.id, turma, etapas ?? []) : new Map();
+  // Resumo da turma: quem melhorou, quem caiu e quem precisa de atenção ao longo dos ciclos.
+  const [{ data: gruposT }, { data: entregasT }] = turma && (etapas ?? []).length > 1
+    ? await Promise.all([
+        supabase.from("grupos").select("id").eq("org_id", empresa.id).eq("turma_id", turma.id).eq("ativo", true).limit(5000),
+        supabase.from("entregas").select("grupo_id, etapa_id, analises(status, conceito)").in("etapa_id", (etapas ?? []).map((e) => e.id)).eq("status", "recebida").limit(20000),
+      ])
+    : [{ data: null }, { data: null }];
+  const resumo = gruposT && entregasT ? resumoDaTurma(gruposT, etapas ?? [], entregasT as never, hojeISO()) : null;
   return (
     <section className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -66,6 +76,27 @@ export default async function ListaEtapas({ params, searchParams }: PageProps<"/
         <p role="status" className="rounded-xl bg-marca-clara px-3 py-2 text-sm font-semibold text-marca-forte">
           {criados} {Number(criados) === 1 ? "criado" : "criados"} a partir do plano de ensino. Confira cada um tocando no nome.
         </p>
+      ) : null}
+
+      {resumo && (resumo.melhorou || resumo.caiu || resumo.atencao) ? (
+        <Link
+          href={`/app/${slug}/entregas/evolucao${resumo.atencao ? "?ver=atencao" : ""}`}
+          className="toque flex items-center justify-between gap-3 rounded-2xl border border-borda bg-cartao px-4 py-3"
+        >
+          <span className="flex flex-col">
+            <b className="text-sm">Como a turma está</b>
+            <span className="text-[13px] text-suave">
+              {[
+                resumo.melhorou ? `${resumo.melhorou} ${resumo.melhorou === 1 ? "melhorou" : "melhoraram"} ↑` : "",
+                resumo.caiu ? `${resumo.caiu} ${resumo.caiu === 1 ? "caiu" : "caíram"} ↓` : "",
+                resumo.atencao ? `${resumo.atencao} ${resumo.atencao === 1 ? "precisa" : "precisam"} de atenção` : "",
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </span>
+          </span>
+          <span aria-hidden className="text-suave">›</span>
+        </Link>
       ) : null}
 
       {etapas?.length ? (

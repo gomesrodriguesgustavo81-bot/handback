@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evolucaoDaEquipe, type Celula } from "./evolucao";
+import { evolucaoDaEquipe, resumoDaTurma, type Celula } from "./evolucao";
 
 const ap = (conceito: string): Celula => ({ tipo: "aprovado", conceito, entregaId: "x" });
 
@@ -15,5 +15,27 @@ describe("evolucaoDaEquipe", () => {
     expect(evolucaoDaEquipe([ap("BOM"), ap("RUIM")]).motivos).toEqual(["RUIM no último conceito", "caiu em relação ao anterior"]);
     expect(evolucaoDaEquipe([{ tipo: "nao-entregou" }, ap("BOM"), { tipo: "nao-entregou" }]).motivos).toEqual(["não entregou 2 vezes"]);
     expect(evolucaoDaEquipe([{ tipo: "aguardando" }, { tipo: "sem-analise", entregaId: "z" }]).atencao).toBe(false);
+  });
+});
+
+describe("resumo da turma", () => {
+  it("conta quem melhorou, caiu e precisa de atenção", () => {
+    const etapas = [
+      { id: "e1", recebe_ate: "2026-01-01" },
+      { id: "e2", recebe_ate: "2026-01-08" },
+    ];
+    const a = (conceito: string) => ({ status: "aprovada", conceito });
+    const r = resumoDaTurma(
+      [{ id: "g1" }, { id: "g2" }, { id: "g3" }],
+      etapas,
+      [
+        { grupo_id: "g1", etapa_id: "e1", analises: a("REGULAR") },
+        { grupo_id: "g1", etapa_id: "e2", analises: [a("BOM")] },
+        { grupo_id: "g2", etapa_id: "e1", analises: a("BOM") },
+        { grupo_id: "g2", etapa_id: "e2", analises: a("RUIM") },
+      ],
+      "2026-02-01",
+    );
+    expect(r).toEqual({ melhorou: 1, caiu: 1, atencao: 2 });
   });
 });

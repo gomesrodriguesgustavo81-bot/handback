@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
+
+/** Segundos para desfazer antes de sair de verdade (igual ao "desfazer envio" do Gmail). */
+const ESPERA = 10;
 import { devolverNoClassroomAcao } from "@/app/app/[slug]/configuracoes/classroom/acoes";
 import { enviarDevolutivaPorEmail } from "@/app/app/[slug]/entregas/acoes";
 import { devolverNoMoodleAcao } from "@/app/app/[slug]/moodle/acoes";
@@ -37,12 +40,28 @@ export function EnviarTudo({
   const [erros, setErros] = useState<string[]>([]);
   const [reconectar, setReconectar] = useState(false);
   const [pronto, setPronto] = useState<number | null>(null);
+  const [espera, setEspera] = useState<number | null>(null);
+  const [desfeito, setDesfeito] = useState(false);
+  const cancelado = useRef(false);
   const n = entregas.length;
   const escolhidos = caminhos.filter((c) => c.pode && marcados.has(c.id));
 
   const enviar = async () => {
     const nomes = escolhidos.map((c) => c.nome).join(" e ");
-    if (!(await pedir({ titulo: `Enviar para ${n === 1 ? "1 aluno" : `${n} ${"alunos"}`}?`, texto: `As devolutivas aprovadas saem agora por: ${nomes}. Os alunos recebem na hora.`, sim: "Sim, enviar" }))) return;
+    if (!(await pedir({ titulo: `Enviar para ${n === 1 ? "1 aluno" : `${n} ${"alunos"}`}?`, texto: `As devolutivas aprovadas saem agora por: ${nomes}. Você ainda tem ${ESPERA} segundos para desfazer.`, sim: "Sim, enviar" }))) return;
+    // Alguns segundos para desfazer: depois que sai, não dá para puxar de volta.
+    cancelado.current = false;
+    setDesfeito(false);
+    for (let s = ESPERA; s > 0; s--) {
+      setEspera(s);
+      await new Promise((ok) => setTimeout(ok, 1000));
+      if (cancelado.current) {
+        setEspera(null);
+        setDesfeito(true);
+        return;
+      }
+    }
+    setEspera(null);
     setAndando(true);
     setErros([]);
     setFeitas(0);
@@ -119,6 +138,21 @@ export function EnviarTudo({
       </fieldset>
       {janela}
       {erros.length ? <ListaErros erros={erros} reconectar={reconectar} conectarHref={conectarHref} /> : null}
+      {desfeito ? <Aviso>Envio desfeito. Nada saiu para os alunos.</Aviso> : null}
+      {espera !== null ? (
+        <div role="status" className="cresce flex items-center justify-between gap-3 rounded-2xl bg-barra px-4 py-3 text-white">
+          <span className="text-[15px] font-semibold">Enviando em {espera} s…</span>
+          <button
+            type="button"
+            onClick={() => {
+              cancelado.current = true;
+            }}
+            className="toque min-h-11 rounded-xl bg-white/15 px-4 font-bold"
+          >
+            Desfazer
+          </button>
+        </div>
+      ) : (
       <Botao type="button" className="min-h-14 rounded-2xl text-base font-extrabold" disabled={andando || !escolhidos.length || !n} onClick={enviar}>
         {andando ? (
           <>
@@ -129,6 +163,7 @@ export function EnviarTudo({
           `Enviar para ${n === 1 ? "1 aluno" : `${n} alunos`}`
         )}
       </Botao>
+      )}
       {!escolhidos.length ? <p className="text-center text-sm text-suave">Marque pelo menos um caminho.</p> : null}
     </div>
   );
