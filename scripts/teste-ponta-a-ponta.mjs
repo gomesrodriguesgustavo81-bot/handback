@@ -1235,12 +1235,12 @@ try {
     confere((await ana.p.evaluate(() => document.documentElement.dataset.tema)) === "escuro", "tema escuro muda a tela na hora");
     await ana.p.reload();
     confere((await ana.p.evaluate(() => document.documentElement.dataset.tema)) === "escuro", "tema escuro continua depois de recarregar");
-    confere((await ana.p.evaluate(() => getComputedStyle(document.body).backgroundColor)) === "rgb(11, 23, 21)", "no tema escuro o fundo fica escuro");
+    confere((await ana.p.evaluate(() => getComputedStyle(document.body).backgroundColor)) === "rgb(11, 18, 32)", "no tema escuro o fundo fica escuro");
     await ana.p.screenshot({ path: `${FOTOS}/40-tema-escuro.png`, fullPage: true });
     menu = await menuConta(ana.p);
     confere((await menu.getByRole("button", { name: "Escuro" }).getAttribute("aria-pressed")) === "true", "menu mostra o tema escolhido");
     await menu.getByRole("button", { name: "Claro" }).click();
-    confere((await ana.p.evaluate(() => getComputedStyle(document.body).backgroundColor)) === "rgb(244, 247, 245)", "tema claro volta o fundo claro");
+    confere((await ana.p.evaluate(() => getComputedStyle(document.body).backgroundColor)) === "rgb(245, 247, 251)", "tema claro volta o fundo claro");
     await menu.getByRole("button", { name: "Sistema" }).click();
     confere((await ana.p.evaluate(() => document.documentElement.dataset.tema)) === undefined, "tema Sistema segue o aparelho");
 
