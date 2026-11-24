@@ -1776,7 +1776,7 @@ try {
       await ana.p.getByText(`${nome} entrou, com entrega individual.`).waitFor();
     }
     confere(pediuConfirmacao("Adicionar Lia Prado?"), "adicionar pessoa pede confirmação");
-    confere(await ana.p.getByText("3 cadastros · 3 pessoas").isVisible(), "cada pessoa sozinha vira um cadastro (entrega individual)");
+    confere(await ana.p.getByText("3 cadastros · 3 pessoas").waitFor({ timeout: 10000 }).then(() => true, () => false), "cada pessoa sozinha vira um cadastro (entrega individual)");
     // Junta duas pessoas sozinhas numa equipe
     await ana.p.getByRole("button", { name: "+ Criar equipe" }).click();
     const ge = ana.p.getByRole("dialog", { name: "Criar equipe" });
@@ -1796,7 +1796,7 @@ try {
     await gaveta.getByLabel("Em qual equipe ela entra?").selectOption({ label: "Equipe Sol (2 pessoas)" });
     await gaveta.getByRole("button", { name: "Adicionar", exact: true }).click();
     await ana.p.getByText("Ivo Melo entrou em “Equipe Sol”.").waitFor();
-    confere(pediuConfirmacao("Adicionar Ivo Melo em “Equipe Sol”?") && await ana.p.getByRole("listitem").filter({ hasText: "Equipe Sol" }).getByText("3 pessoas", { exact: true }).isVisible(), "adicionar pessoa numa equipe que já existe");
+    confere(pediuConfirmacao("Adicionar Ivo Melo em “Equipe Sol”?") && await ana.p.getByRole("listitem").filter({ hasText: "Equipe Sol" }).getByText("3 pessoas", { exact: true }).waitFor({ timeout: 10000 }).then(() => true, () => false), "adicionar pessoa numa equipe que já existe");
     await ana.p.getByRole("button", { name: "+ Adicionar pessoa" }).click();
     await gaveta.getByLabel("Nome").fill("Repetido");
     await gaveta.getByLabel("E-mail").fill("LIA@solo.test");
