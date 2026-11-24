@@ -151,8 +151,25 @@ const confirmacoes = [];
  * confirmada sozinha (a não ser que o teste ligue window.__semAuto para
  * clicar ele mesmo em "Sim" ou "Não").
  */
+/** Depois de mudar de página, espera o esqueleto de "carregando" sumir (o conteúdo de verdade chegar). */
+const semCarregando = (p) => p.waitForFunction(() => !document.querySelector('[role="status"][aria-label="Carregando"]'), null, { timeout: 30000 }).catch(() => {});
 async function prepararContexto(navegador, opcoes) {
-  const ctx = await navegador.newContext(opcoes);
+  // Sem animações no teste (o app respeita "reduzir movimento"): nada de esperar transição.
+  const ctx = await navegador.newContext({ reducedMotion: "reduce", ...opcoes });
+  ctx.on("page", (p) => {
+    const original = p.waitForURL.bind(p);
+    p.waitForURL = async (...args) => {
+      const r = await original(...args);
+      await semCarregando(p);
+      return r;
+    };
+    const ir = p.goto.bind(p);
+    p.goto = async (...args) => {
+      const r = await ir(...args);
+      await semCarregando(p);
+      return r;
+    };
+  });
   await ctx.exposeBinding("__anotarConfirmacao", (_origem, titulo) => {
     confirmacoes.push(titulo);
   });
@@ -506,7 +523,7 @@ try {
   confere(true, "nomes salvam sozinhos (sem botão) e as abas mudam");
   await largura(ana.p, "nomes usados aqui");
   await ana.p.screenshot({ path: `${FOTOS}/33-nomes.png`, fullPage: true });
-  await ana.p.goto(`${APP}/app/${SLUG}`);
+  await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
   confere(await ana.p.getByRole("link", { name: "Encontros" }).first().isVisible(), "aba passa a se chamar Encontros");
   confere((await ana.p.locator("option", { hasText: "Encontro 1 · Diagnóstico" }).count()) > 0, "painel usa a palavra nova");
   await ana.p.screenshot({ path: `${FOTOS}/10-visao-geral.png`, fullPage: true });
