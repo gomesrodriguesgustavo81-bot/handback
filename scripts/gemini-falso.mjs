@@ -39,6 +39,20 @@ createServer(async (req, res) => {
   if (modelo === "modelo-sem-cota") return responder(429, { error: { message: "Quota exceeded for this model" } });
   if (texto.includes("FORCAR_ERRO")) return responder(500, { error: { message: "erro interno simulado" } });
 
+  // Plano de ensino: devolve as entregas que achou no texto ("Entrega N: título até AAAA-MM-DD").
+  if (/PLANO DE ENSINO/.test(j.systemInstruction?.parts?.[0]?.text ?? "")) {
+    const ciclos = [...texto.matchAll(/Entrega (\d+): ([^\n]+?) até (\d{4}-\d{2}-\d{2})(?: \(([^)]*)\))?/g)].map((m) => ({
+      numero: Number(m[1]),
+      titulo: m[2].trim(),
+      data: "",
+      recebe_de: "",
+      recebe_ate: m[3],
+      entregaveis: (m[4] ?? "").split(";").map((x) => x.trim()).filter(Boolean),
+      criterios: "",
+    }));
+    return responder(200, { candidates: [{ content: { parts: [{ text: JSON.stringify({ ciclos }) }] }, finishReason: "STOP" }] });
+  }
+
   const bloco = texto.split("ITENS PEDIDOS")[1]?.split("\n\n")[0] ?? "";
   const itens = [...bloco.matchAll(/^\d+\. (.+)$/gm)].map((m) => m[1]);
   const grupo = texto.match(/^[A-ZÇÃÉ ]+: (.+)$/m)?.[1] ?? "grupo";

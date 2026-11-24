@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { BuscarAnexos } from "./buscar-anexos";
+import { parecidasDe } from "@/lib/parecidas";
 import { IconeDrive, pastaDaEquipeNoDrive } from "@/lib/pastas-drive";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -85,7 +86,7 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
     .maybeSingle();
   const entrega = data as Entrega | null;
   if (!entrega) notFound();
-  const pastaDrive = await pastaDaEquipeNoDrive(supabase, entrega.grupo_id);
+  const [pastaDrive, parecidas] = await Promise.all([pastaDaEquipeNoDrive(supabase, entrega.grupo_id), parecidasDe(supabase, entrega.id)]);
 
   const [{ data: analiseBruta }, { data: daEtapa }, { data: doGrupo }, gmail, { data: destinos }, { data: org }] = await Promise.all([
     supabase.from("analises").select("*").eq("entrega_id", entrega.id).maybeSingle(),
@@ -339,6 +340,20 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
       </header>
 
       <AvisoGmail aviso={avisoGmail} />
+      {parecidas.length ? (
+        <section role="note" aria-label="Parecida com outras entregas" className="flex flex-col gap-1 rounded-2xl bg-alerta-fundo px-4 py-3 text-sm text-alerta">
+          <strong>Parecida demais com outra entrega desta aula</strong>
+          {parecidas.map((p) => (
+            <span key={p.entregaId}>
+              <Link href={`${base}/${p.entregaId}`} className="font-semibold underline">
+                {p.grupo}
+              </Link>{" "}
+              · {p.motivo === "mandou o mesmo arquivo" ? "mandou o mesmo arquivo" : `${p.percentual}% do texto igual`}
+            </span>
+          ))}
+          <span className="text-xs">É só um aviso: confira as duas antes de decidir. Trechos comuns, como o enunciado copiado, também contam.</span>
+        </section>
+      ) : null}
       {substituida ? (
         <Aviso tipo="alerta">
           Substituída por um reenvio.{" "}

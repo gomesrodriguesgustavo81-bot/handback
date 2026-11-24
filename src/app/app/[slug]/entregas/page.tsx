@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { LinkBotao } from "@/components/ui";
 import { FaltamPassos, passosDoComeco } from "../primeiros-passos";
 import { turmaAtual } from "@/lib/turma";
 import { completarVocabulario, quemEntrega } from "@/lib/nomes";
@@ -312,6 +313,11 @@ export default async function PainelDaAula({
             entregas={semAnalise}
             rotulo={`Analisar com IA as ${semAnalise.length} sem análise`}
           />
+          {paraRevisar ? (
+            <LinkBotao href={`/app/${slug}/entregas/revisar?etapa=${etapa.id}`} variante="secundario">
+              Revisar uma por uma ({paraRevisar})
+            </LinkBotao>
+          ) : null}
           <AprovarProntas
             slug={slug}
             etapaId={etapa.id}

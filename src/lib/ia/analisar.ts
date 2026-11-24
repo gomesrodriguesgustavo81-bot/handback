@@ -5,6 +5,7 @@ import { dataHoraBR } from "../textos";
 import { despacharPush } from "../push";
 import { criarClienteAdmin } from "../supabase/admin";
 import { baixarDoDrive } from "../drive";
+import { guardarImpressao, textoDoPdf } from "../parecidas";
 import { chamarGemini } from "./gemini";
 import { addTexto, lerArquivo, lerLink, limparCorpo, novoConteudo } from "./leitura";
 import {
@@ -77,13 +78,21 @@ export async function analisarEntrega(supabase: SupabaseClient, entregaId: strin
     // 1) Conteúdo: texto do e-mail (ou comentário), anexos e links.
     const conteudo = novoConteudo();
     addTexto(conteudo, e.origem === "email" ? "CORPO DO E-MAIL" : "COMENTÁRIO", limparCorpo(e.comentario));
+    // Para comparar com as outras equipes (entregas parecidas demais).
+    const paraComparar: { textos: string[]; arquivos: Uint8Array[] } = { textos: [], arquivos: [] };
+    const guardarParaComparar = (dados: Uint8Array, nome: string, tipo: string) => {
+      paraComparar.arquivos.push(dados);
+      if (/\.pdf$/i.test(nome) || tipo === "application/pdf") paraComparar.textos.push(textoDoPdf(dados));
+    };
     for (const a of e.arquivos_entrega) {
       // Arquivo no Google Drive de quem ligou o Drive na turma: busca de lá.
       if (a.drive_id && a.drive_por) {
         const admin = criarClienteAdmin();
         try {
           if (!admin) throw new Error("sem servidor");
-          lerArquivo(conteudo, await baixarDoDrive(admin, a.drive_por, a.drive_id), a.nome, a.tipo);
+          const dados = await baixarDoDrive(admin, a.drive_por, a.drive_id);
+          guardarParaComparar(dados, a.nome, a.tipo);
+          lerArquivo(conteudo, dados, a.nome, a.tipo);
         } catch (e) {
           conteudo.avisos.push(`Não foi possível abrir o arquivo "${a.nome}" no Google Drive${e instanceof Error ? `: ${e.message}` : "."}`);
         }
@@ -94,7 +103,9 @@ export async function analisarEntrega(supabase: SupabaseClient, entregaId: strin
         conteudo.avisos.push(`Não foi possível abrir o arquivo "${a.nome}".`);
         continue;
       }
-      lerArquivo(conteudo, new Uint8Array(await blob.arrayBuffer()), a.nome, a.tipo);
+      const dados = new Uint8Array(await blob.arrayBuffer());
+      guardarParaComparar(dados, a.nome, a.tipo);
+      lerArquivo(conteudo, dados, a.nome, a.tipo);
     }
     for (const l of e.links.slice(0, 10)) await lerLink(conteudo, l);
 
@@ -157,6 +168,14 @@ export async function analisarEntrega(supabase: SupabaseClient, entregaId: strin
       },
     });
     if (erroGravar) throw new Error(erroGravar.message);
+    // Impressão digital para o aviso de entregas parecidas (sem o texto do e-mail, que é parecido em todas).
+    const adminImp = criarClienteAdmin();
+    if (adminImp) {
+      const textosArquivos = conteudo.textos.filter((t) => !/^=== (CORPO DO E-MAIL|COMENTÁRIO) ===/.test(t));
+      await guardarImpressao(adminImp, { id: e.id, org_id: e.org_id, etapa_id: e.etapa_id, grupo_id: e.grupo_id }, [...textosArquivos, ...paraComparar.textos], paraComparar.arquivos).catch((x) =>
+        console.error("[parecidas]", x),
+      );
+    }
     await despacharPush(criarClienteAdmin()).catch(() => 0);
     return { conceito: r.conceito, modelo };
   } catch (erro) {

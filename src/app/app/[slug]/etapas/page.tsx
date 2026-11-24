@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: PageProps<"/app/[slug]/etapas
 
 export default async function ListaEtapas({ params, searchParams }: PageProps<"/app/[slug]/etapas">) {
   const { slug } = await params;
-  const { ver } = await searchParams;
+  const { ver, criados } = await searchParams;
   // O calendário agora é uma aba só, com todas as turmas.
   if (ver === "calendario") redirect(`/app/${slug}/calendario`);
   const { empresa, podeGerir } = await contextoDaEmpresa(slug);
@@ -32,8 +32,20 @@ export default async function ListaEtapas({ params, searchParams }: PageProps<"/
     <section className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">{v.etapas}</h2>
-        {podeGerir ? <LinkBotao href={`/app/${slug}/etapas/nova`}>Adicionar {minusc(v.etapa)}</LinkBotao> : null}
+        {podeGerir ? (
+          <div className="flex flex-wrap gap-2">
+            <LinkBotao href={`/app/${slug}/etapas/plano`} variante="secundario">
+              Criar a partir do plano de ensino
+            </LinkBotao>
+            <LinkBotao href={`/app/${slug}/etapas/nova`}>Adicionar {minusc(v.etapa)}</LinkBotao>
+          </div>
+        ) : null}
       </div>
+      {typeof criados === "string" && /^\d+$/.test(criados) ? (
+        <p role="status" className="rounded-xl bg-marca-clara px-3 py-2 text-sm font-semibold text-marca-forte">
+          {criados} {Number(criados) === 1 ? "criado" : "criados"} a partir do plano de ensino. Confira cada um tocando no nome.
+        </p>
+      ) : null}
 
       {etapas?.length ? (
         <Link href={`/app/${slug}/calendario`} className="self-start text-sm font-semibold text-marca-forte hover:underline">

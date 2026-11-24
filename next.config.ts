@@ -14,6 +14,8 @@ const SEGURANCA = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Plano de ensino enviado para a IA (até 4 MB; a Vercel aceita até 4,5 MB por pedido).
+  experimental: { serverActions: { bodySizeLimit: "4.4mb" } },
   async headers() {
     return [
       { source: "/:caminho*", headers: SEGURANCA },

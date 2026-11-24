@@ -6,7 +6,10 @@ import { redirect } from "next/navigation";
 import type { Resultado } from "@/components/form-acao";
 import { contextoDaEmpresa, mensagemDeErro } from "@/lib/empresa";
 import { criarClienteServidor } from "@/lib/supabase/server";
-import { lerData, linhas } from "@/lib/textos";
+import { hojeISO, lerData, linhas } from "@/lib/textos";
+import { iaConfigurada } from "@/lib/ia/gemini";
+import { lerPlanoDeEnsino, type CicloDoPlano } from "@/lib/ia/plano";
+import { completarVocabulario } from "@/lib/nomes";
 import { after } from "next/server";
 import { origemDoSite } from "@/lib/acesso";
 import { sincronizarAgenda } from "@/lib/agenda";
@@ -101,4 +104,68 @@ export async function apagarEtapa(slug: string, id: string): Promise<void> {
   await atualizarAgendaDepois(empresa.id);
   revalidatePath(`/app/${slug}`, "layout");
   redirect(`/app/${slug}/etapas`);
+}
+
+/** Lê o plano de ensino com a IA e devolve os ciclos para revisar (ainda não cria nada). */
+export async function lerPlano(slug: string, dados: FormData): Promise<{ ok: boolean; mensagem: string; ciclos?: CicloDoPlano[] }> {
+  const { empresa, podeGerir } = await contextoDaEmpresa(slug);
+  if (!podeGerir) return { ok: false, mensagem: "Só quem administra cria as aulas." };
+  if (!iaConfigurada()) return { ok: false, mensagem: "A IA ainda não foi configurada no servidor." };
+  const texto = String(dados.get("texto") ?? "").slice(0, 100_000);
+  const f = dados.get("arquivo");
+  let arquivo: { dados: Uint8Array; nome: string; tipo: string } | null = null;
+  if (f instanceof File && f.size > 0) {
+    if (f.size > 4 * 1024 * 1024) return { ok: false, mensagem: "O arquivo passa de 4 MB. Cole o texto do plano no lugar." };
+    arquivo = { dados: new Uint8Array(await f.arrayBuffer()), nome: f.name, tipo: f.type };
+  }
+  if (!texto.trim() && !arquivo) return { ok: false, mensagem: "Cole o texto do plano de ensino ou escolha o arquivo." };
+  try {
+    const ciclos = await lerPlanoDeEnsino(texto, arquivo, completarVocabulario(empresa.vocabulario).etapa, hojeISO());
+    if (!ciclos.length) return { ok: false, mensagem: "A IA não achou entregas nesse plano. Confira se é o plano certo ou cole o trecho do cronograma." };
+    return { ok: true, mensagem: "", ciclos };
+  } catch (e) {
+    return { ok: false, mensagem: e instanceof Error ? e.message.split("\n")[0] : "Não foi possível ler o plano. Tente de novo." };
+  }
+}
+
+/** Cria os ciclos revisados. Números que já existem vão para depois do último. */
+export async function criarCiclosDoPlano(slug: string, ciclos: CicloDoPlano[]): Promise<{ ok: boolean; mensagem: string }> {
+  const { empresa, podeGerir } = await contextoDaEmpresa(slug);
+  if (!podeGerir) return { ok: false, mensagem: "Só quem administra cria as aulas." };
+  const turma = await turmaAtual(empresa.id);
+  if (!turma) return { ok: false, mensagem: "Crie uma turma antes." };
+  const supabase = await criarClienteServidor();
+  const { data: ja } = await supabase.from("etapas").select("numero").eq("turma_id", turma.id);
+  const usados = new Set((ja ?? []).map((e) => Number(e.numero)));
+  let proximo = Math.max(0, ...usados) + 1;
+  const linhasNovas = [];
+  for (const c of ciclos.slice(0, 60)) {
+    const titulo = String(c.titulo ?? "").trim().slice(0, 200);
+    if (titulo.length < 2) continue;
+    let numero = Number(c.numero);
+    if (!Number.isInteger(numero) || numero < 1 || numero > 9999 || usados.has(numero)) numero = proximo++;
+    usados.add(numero);
+    if (numero >= proximo) proximo = numero + 1;
+    const d = (x: string) => (/^\d{4}-\d{2}-\d{2}$/.test(String(x ?? "")) ? x : null);
+    let de = d(c.recebe_de);
+    const ate = d(c.recebe_ate);
+    if (de && ate && de > ate) de = null;
+    linhasNovas.push({
+      org_id: empresa.id,
+      turma_id: turma.id,
+      numero,
+      titulo,
+      data: d(c.data),
+      recebe_de: de,
+      recebe_ate: ate,
+      entregaveis: (c.entregaveis ?? []).map((s) => String(s).trim()).filter(Boolean).slice(0, 50),
+      criterios: String(c.criterios ?? "").trim().slice(0, 5000),
+    });
+  }
+  if (!linhasNovas.length) return { ok: false, mensagem: "Nada para criar." };
+  const { error } = await supabase.from("etapas").insert(linhasNovas);
+  if (error) return { ok: false, mensagem: mensagemDeErro(error, "Não foi possível criar. Tente de novo.") };
+  await atualizarAgendaDepois(empresa.id);
+  revalidatePath(`/app/${slug}`, "layout");
+  return { ok: true, mensagem: `${linhasNovas.length} criad${linhasNovas.length === 1 ? "o" : "os"}.` };
 }

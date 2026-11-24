@@ -726,6 +726,15 @@ try {
   confere((await ana.p.locator("dl div", { hasText: "Para revisar" }).innerText()).includes("2"), "painel conta 2 para revisar");
   await largura(ana.p, "painel da aula");
   await ana.p.screenshot({ path: `${FOTOS}/14b-painel.png`, fullPage: true });
+  await ana.p.getByRole("link", { name: "Revisar uma por uma (2)" }).click();
+  await ana.p.getByText("1 de 2 para revisar").waitFor();
+  confere(await ana.p.getByRole("heading", { name: "Equipe Azul" }).isVisible() && await ana.p.getByRole("button", { name: "Aprovar e próxima" }).isVisible(), "revisar uma por uma: uma entrega por tela, com “Aprovar e próxima”");
+  await largura(ana.p, "revisar uma por uma");
+  await ana.p.screenshot({ path: `${FOTOS}/14c-revisar.png` });
+  await ana.p.getByRole("link", { name: "Pular" }).click();
+  await ana.p.getByRole("heading", { name: "Equipe Roxa" }).waitFor();
+  confere(await ana.p.getByText("2 de 2 para revisar").isVisible(), "pular vai para a próxima");
+  await ana.p.goto(urlPainel);
   const pedidos = readFileSync(process.env.REGISTRO_IA, "utf8").trim().split("\n").map((l) => JSON.parse(l));
   confere(pedidos.every((x) => x.temRegras && x.temEsquema), "pedido à IA leva as regras (sem notas) e o formato de resposta");
   confere(pedidos.some((x) => x.modelo === "modelo-sem-cota") && pedidos.some((x) => x.modelo === "gemini-flash-latest"), "sem cota no modelo principal, troca para o reserva");
@@ -1554,6 +1563,19 @@ try {
     await formT.getByRole("button", { name: "Criar" }).click();
     await ana.p.getByText("“Projeto Final” criada").waitFor();
     await trocarTurma(ana.p, "Projeto Final");
+    // Criar os encontros a partir do plano de ensino
+    await ana.p.goto(`${APP}/app/${SLUG}/etapas`);
+    await ana.p.getByRole("link", { name: "Criar a partir do plano de ensino" }).click();
+    await ana.p.getByLabel("Texto do plano de ensino").fill("Cronograma do semestre\nEntrega 1: Pesquisa com usuários até 2099-12-10 (Roteiro de entrevista; Síntese)\nEntrega 2: Protótipo final até 2099-12-20 (Link do protótipo)");
+    await ana.p.getByRole("button", { name: "Ler com a IA" }).click();
+    await ana.p.getByText("A IA achou 2 entregas").waitFor();
+    confere((await ana.p.getByLabel(/^Título d/).first().inputValue()) === "Pesquisa com usuários", "plano de ensino: a IA monta os encontros para revisar");
+    await largura(ana.p, "plano de ensino");
+    await ana.p.screenshot({ path: `${FOTOS}/7a1-plano.png`, fullPage: true });
+    await ana.p.getByRole("button", { name: /^Criar 2 / }).click();
+    await ana.p.waitForURL(/\/etapas\?criados=2/);
+    confere(pediuConfirmacao("Criar 2") && await ana.p.getByText("Encontro 1 · Pesquisa com usuários").isVisible() && await ana.p.getByText("Encontro 2 · Protótipo final").isVisible(), "plano de ensino: os encontros são criados com prazo e checklist (com confirmação)");
+    confere(sql(`select array_to_string(entregaveis, '|') from public.etapas e join public.turmas t on t.id = e.turma_id where t.nome = 'Projeto Final' and e.numero = 1 and t.org_id = (select id from public.organizacoes where slug = '${SLUG}')`) === "Roteiro de entrevista|Síntese", "o checklist veio do plano");
     await ana.p.goto(`${APP}/app/${SLUG}/grupos`);
     const gaveta = ana.p.getByRole("dialog", { name: "Adicionar pessoa" });
     for (const [nome, email] of [["Lia Prado", "lia@solo.test"], ["Rui Costa", "rui@solo.test"], ["Téo Alves", "teo@solo.test"]]) {
@@ -1622,6 +1644,27 @@ try {
     await pp.screenshot({ path: `${FOTOS}/7f-menu-recolhido.png` });
     await lado.getByRole("button", { name: "Abrir o menu" }).click();
     await pc.close();
+    // Duas equipes mandam o mesmo arquivo: aviso de parecidas
+    {
+      const tokenPF = sql(`select caixa_token from public.turmas t where t.nome = 'Projeto Final' and t.org_id = (select id from public.organizacoes where slug = '${SLUG}')`);
+      const enderecoPF = ENDERECO.replace(/\+[a-z0-9]{12}@/, `+${tokenPF}@`);
+      const igual = "Relatorio da pesquisa com usuarios. ".repeat(120);
+      for (const [de, id] of [["lia@solo.test", "p1"], ["teo@solo.test", "p2"]]) {
+        const r = await chegaEmail({ id: `<${id}-${sufixo}@solo>`, de, nome: de, assunto: "[ENTREGA] Encontro 1", anexos: [{ nome: "pesquisa.txt", tipo: "text/plain", conteudo: igual }] }, { para: enderecoPF });
+        confere(r.status === "entrega", `entrega de ${de} chegou (${r.status ?? r.motivo})`);
+      }
+      await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
+      await ana.p.getByRole("button", { name: /Analisar com IA as 2 sem análise/ }).click();
+      await ana.p.getByText(/2 entregas entraram na fila/).waitFor();
+      for (let i = 0; i < 40 && sql(`select count(*) from public.impressoes_entregas i join public.grupos g on g.id = i.grupo_id where g.nome in ('Equipe Sol', 'Téo Alves') and i.org_id = (select id from public.organizacoes where slug = '${SLUG}')`) !== "2"; i++) await espera(1500);
+      const idSol = sql(`select e.id from public.entregas e join public.grupos g on g.id = e.grupo_id where g.nome = 'Equipe Sol' and e.org_id = (select id from public.organizacoes where slug = '${SLUG}')`);
+      await ana.p.goto(`${APP}/app/${SLUG}/entregas/${idSol}`);
+      const nota = ana.p.getByRole("note", { name: "Parecida com outras entregas" });
+      await nota.waitFor();
+      confere(await nota.getByRole("link", { name: "Téo Alves" }).isVisible() && await nota.getByText(/mandou o mesmo arquivo/).isVisible(), "entregas parecidas: avisa quando duas equipes mandam o mesmo arquivo");
+      await ana.p.screenshot({ path: `${FOTOS}/7b1-parecidas.png`, fullPage: true });
+      confere(sql(`select count(*) from public.impressoes_entregas i join public.organizacoes o on o.id = i.org_id where o.slug = '${SLUG}' and array_length(i.assinatura, 1) = 64`) !== "0", "a impressão digital guarda só números (64), não o texto");
+    }
     // Selecionar várias e apagar de uma vez
     await ana.p.goto(`${APP}/app/${SLUG}/grupos`);
     await ana.p.getByRole("button", { name: "Selecionar" }).click();
