@@ -7,6 +7,7 @@ import { devolverNoClassroomAcao } from "@/app/app/[slug]/configuracoes/classroo
 import { enviarDevolutivaPorEmail } from "@/app/app/[slug]/entregas/acoes";
 import { devolverNoMoodleAcao } from "@/app/app/[slug]/moodle/acoes";
 import { useConfirmar } from "@/components/confirmar";
+import { comemorar, SimboloHandback } from "@/components/marca";
 import { Aviso, Botao } from "@/components/ui";
 
 export type Caminho = { id: "classroom" | "moodle" | "email"; nome: string; detalhe: string; pode: boolean; porque?: string };
@@ -67,6 +68,7 @@ export function EnviarTudo({
     }
     setAndando(false);
     setPronto(ok);
+    if (ok) comemorar();
     router.refresh();
   };
 
@@ -74,7 +76,9 @@ export function EnviarTudo({
     return (
       <div className="flex flex-col gap-3">
         <div role="status" className="cresce flex flex-col items-center gap-2 rounded-2xl bg-ok-fundo p-6 text-center text-ok">
-          <span aria-hidden className="text-3xl">✓</span>
+          <span aria-hidden className="pula">
+            <SimboloHandback tamanho={56} desenha />
+          </span>
           <b className="text-lg">{pronto === 1 ? "1 devolutiva enviada" : `${pronto} devolutivas enviadas`}</b>
         </div>
         {erros.length ? <ListaErros erros={erros} reconectar={reconectar} conectarHref={conectarHref} /> : null}

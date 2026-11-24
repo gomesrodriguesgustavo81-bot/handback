@@ -243,6 +243,17 @@ h1, h2, .titulo {
   interpolate-size: allow-keywords;
 }
 
+/* Logo: o visto se desenha ao abrir; pulinho quando algo termina */
+@keyframes desenha { to { stroke-dashoffset: 0; } }
+.visto-desenha { stroke-dasharray: 1; stroke-dashoffset: 1; animation: desenha 0.5s var(--curva) 0.15s forwards; }
+@keyframes pula {
+  0% { transform: none; }
+  30% { transform: translateY(-6px) scale(1.1); }
+  60% { transform: translateY(0) scale(0.95); }
+  100% { transform: none; }
+}
+.pula { animation: pula 0.6s var(--curva); }
+
 /* Fundo que escurece atrás de gavetas e janelas */
 @keyframes escurece {
   from { opacity: 0; }
@@ -325,7 +336,8 @@ details.dobra[open]::details-content { block-size: auto; }
 ::view-transition-new(topo-do-app), ::view-transition-new(barra-de-baixo) { animation: none; }
 
 @media (prefers-reduced-motion: reduce) {
-  .entra, .salvo-some, .sobe, .escurece, .cresce, .esqueleto { animation: none; }
+  .entra, .salvo-some, .sobe, .escurece, .cresce, .esqueleto, .pula { animation: none; }
+  .visto-desenha { animation: none; stroke-dashoffset: 0; }
   .toque:active { transform: none; }
   details.dobra::details-content { transition: none; }
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
