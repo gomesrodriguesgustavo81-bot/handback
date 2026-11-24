@@ -1771,7 +1771,13 @@ try {
   const bloqueada = await chegaEmail({ id: `<b-${sufixo}@aluno>`, assunto: "[ENTREGA] Encontro 2 - Equipe Azul" });
   confere(bloqueada.ok === false && bloqueada.motivo === "empresa bloqueada", "empresa bloqueada não recebe entregas");
 
-  // 9) Sair encerra a sessão
+  // 9) Já conectado, a tela de login leva direto para dentro; sair encerra a sessão
+  await ana.p.goto(`${APP}/entrar`);
+  await ana.p.waitForURL(/\/app/);
+  confere(!new URL(ana.p.url()).pathname.startsWith("/entrar"), "quem já está conectado e abre a tela de login entra direto");
+  await ana.p.goto(`${APP}/entrar?voltar=/app/${SLUG}/calendario`);
+  await ana.p.waitForURL(/\/calendario$/);
+  confere(true, "e vai para onde queria ir");
   await ana.p.goto(`${APP}/app`);
   await (await menuConta(ana.p)).getByRole("menuitem", { name: "Sair" }).click();
   await ana.p.waitForURL(`${APP}/`);

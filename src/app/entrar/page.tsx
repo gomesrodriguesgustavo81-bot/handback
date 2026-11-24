@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { criarClienteServidor } from "@/lib/supabase/server";
 import Link from "next/link";
 import { Marca } from "@/components/marca";
 import { Aviso, Cartao } from "@/components/ui";
@@ -31,6 +33,13 @@ export default async function Entrar({ searchParams }: PageProps<"/entrar">) {
   const voltar = caminhoSeguro(params.voltar);
   const erro = typeof params.erro === "string" ? ERROS[params.erro] : undefined;
   const google = process.env.HANDBACK_LOGIN_GOOGLE === "1";
+  // Já está conectado (ex.: abriu a tela de login pelo site ou por um favorito): entra direto.
+  if (!erro && supabaseConfigurado()) {
+    const {
+      data: { user },
+    } = await (await criarClienteServidor()).auth.getUser();
+    if (user) redirect(voltar.startsWith("/entrar") ? "/app" : voltar);
+  }
 
   return (
     <main className="flex flex-1 items-center justify-center px-4 py-10">
