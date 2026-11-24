@@ -20,14 +20,14 @@ alter table public.conexoes_google add constraint conexoes_google_servico_check
 -- ---------------------------------------------------------------------
 alter table public.turmas
   add column classroom_por uuid references auth.users (id) on delete set null,
-  add column classroom_curso text check (classroom_curso ~ '^[0-9]{1,30}$'),
+  add column classroom_curso text check (classroom_curso ~ '^[A-Za-z0-9_-]{1,64}$'),
   add column classroom_curso_nome text not null default '' check (length(classroom_curso_nome) <= 300),
   add column classroom_buscado_em timestamptz,
   add column classroom_erro text not null default '';
 create unique index turmas_classroom_unica on public.turmas (classroom_por, classroom_curso) where classroom_curso is not null;
 
 alter table public.etapas
-  add column classroom_tarefa text check (classroom_tarefa ~ '^[0-9]{1,30}$'),
+  add column classroom_tarefa text check (classroom_tarefa ~ '^[A-Za-z0-9_-]{1,64}$'),
   -- Criada pelo Handback no Classroom: só nessas o Google deixa lançar nota.
   add column classroom_nosso boolean not null default false,
   add column classroom_nota_max numeric,
@@ -35,7 +35,7 @@ alter table public.etapas
 create unique index etapas_classroom_unica on public.etapas (turma_id, classroom_tarefa) where classroom_tarefa is not null;
 
 -- Aluno do Classroom que virou um cadastro individual (não estava em nenhuma equipe).
-alter table public.grupos add column classroom_aluno text check (classroom_aluno ~ '^[0-9]{1,30}$');
+alter table public.grupos add column classroom_aluno text check (classroom_aluno ~ '^[A-Za-z0-9_-]{1,64}$');
 create unique index grupos_classroom_unico on public.grupos (turma_id, classroom_aluno) where classroom_aluno is not null;
 
 -- Cada envio no Classroom (id + hora em que foi entregue) vira uma entrega só uma vez.
