@@ -1530,7 +1530,6 @@ try {
     confere(await ana.p.getByLabel(/Guardar os arquivos no meu Drive/).isDisabled(), "drive: só liga depois de conectar a própria conta");
     await conectarConta(ana.p, "Google Drive");
     await ana.p.goto(`${APP}/app/${SLUG}/configuracoes/drive`);
-    await janelaD.waitForEvent("close", { timeout: 10000 }).catch(() => {});
     confere(sql(`select servico from public.conexoes_google where user_id = '${anaId}'`) === "drive", "drive: conexão própria, só do Drive");
     await ana.p.getByLabel(/Guardar os arquivos no meu Drive/).click();
     await ana.p.getByText(/Ligado\. Os arquivos das entregas vão para a pasta Handback/).waitFor();
