@@ -944,7 +944,7 @@ try {
     const ass2 = `v1,${createHmac("sha256", chave).update(`msg2_${sufixo}.${ts}.${ev2}`).digest("base64")}`;
     const r2 = await (await fetch(`${APP}/api/emails/resend`, { method: "POST", headers: { "content-type": "application/json", "svix-id": `msg2_${sufixo}`, "svix-timestamp": ts, "svix-signature": ass2 }, body: ev2 })).json();
     confere(r2.status === "ignorado", `e-mail de alguém da escola é ignorado (${r2.status ?? r2.motivo})`);
-    confere(sql(`select count(*) from storage.objects where name like '%explica.mp4'`) === "0", "privacidade: anexo de e-mail ignorado não é guardado");
+    confere(sql(`select count(*) from storage.objects where name like (select id::text from public.organizacoes where slug = '${SLUG}') || '/%explica.mp4'`) === "0", "privacidade: anexo de e-mail ignorado não é guardado");
     await ana.p.goto(`${APP}/app/${SLUG}/entregas/caixa?ver=ignorados`);
     const itemIgn = ana.p.locator("li.rounded-2xl", { hasText: "time roxa ciclo 2" });
     confere(await itemIgn.getByText(/Tinha 1 anexo \(explica\.mp4\)/).isVisible(), "a caixa mostra o anexo que não foi guardado");
