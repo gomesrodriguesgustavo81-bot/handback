@@ -346,7 +346,7 @@ try {
   await ana.p.waitForURL(new RegExp(`/app/${SLUG}/inicio$`));
   confere(await ana.p.getByRole("heading", { level: 1, name: /para fazer|Tudo em dia/ }).isVisible(), "quem tem uma empresa só entra direto no Início (o que fazer agora)");
   const abasAna = (await ana.p.getByRole("navigation", { name: "Seções da empresa" }).getByRole("link").allInnerTexts()).filter(Boolean);
-  confere(abasAna.join("|") === "Início|Entregas|Aulas|Equipes", `abas do dia a dia, com o vocabulário de escola (${abasAna.join(", ")})`);
+  confere(abasAna.join("|") === "Início|Aulas|Equipes|Calendário", `abas do dia a dia, com o vocabulário de escola (${abasAna.join(", ")})`);
   await ana.p.getByRole("button", { name: "Mais" }).click();
   const gavetaMais = ana.p.getByRole("dialog", { name: "Mais opções" });
   confere(await gavetaMais.getByRole("link", { name: "Configurações" }).isVisible() && await gavetaMais.getByRole("link", { name: "Relatórios" }).isVisible(), "celular: barra embaixo; Relatórios e Configurações ficam em “Mais”");
@@ -500,7 +500,7 @@ try {
   await prof.p.goto(`${APP}/app`);
   await prof.p.waitForURL(new RegExp(`/app/${SLUG}/inicio$`));
   const abas = (await prof.p.getByRole("navigation", { name: "Seções da empresa" }).getByRole("link").allInnerTexts()).filter(Boolean);
-  confere(abas.join("|") === "Início|Entregas|Aulas|Equipes" && !(await prof.p.getByRole("link", { name: "Configurações" }).count()), `professor vê as abas certas, sem a engrenagem (${abas.join(", ")})`);
+  confere(abas.join("|") === "Início|Aulas|Equipes|Calendário" && !(await prof.p.getByRole("link", { name: "Configurações" }).count()), `professor vê as abas certas, sem a engrenagem (${abas.join(", ")})`);
   confere(await (await menuConta(prof.p)).getByText("Seu papel: Avaliador").isVisible(), "papel de avaliador (no menu da conta)");
   await prof.p.getByRole("button", { name: "Fechar o menu" }).click({ position: { x: 8, y: 400 } });
   await prof.p.getByRole("link", { name: "Aulas", exact: true }).click();
@@ -1296,8 +1296,7 @@ try {
     const [idEtapa, prazoAntigo] = umaEtapa.split("|");
     sql(`update public.etapas set recebe_ate = '${hoje}' where id = '${idEtapa}'`);
     await ana.p.goto(`${APP}/app/${SLUG}/etapas`);
-    await ana.p.getByRole("button", { name: "Mais" }).click();
-    await ana.p.getByRole("dialog", { name: "Mais opções" }).getByRole("link", { name: "Calendário" }).click();
+    await ana.p.getByRole("navigation", { name: "Seções da empresa" }).getByRole("link", { name: "Calendário" }).last().click();
     await ana.p.waitForURL(/\/calendario$/);
     await ana.p.getByRole("button", { name: "Todas as turmas" }).waitFor();
     confere(await ana.p.getByRole("button", { name: "Todas as turmas" }).isVisible() && await ana.p.getByRole("button", { name: "Turma A", exact: true }).isVisible(), "calendário tem aba própria, com todas as turmas e filtro por turma");
@@ -1867,7 +1866,7 @@ try {
     await pp.goto(`${APP}/app/${SLUG}/entregas`);
     const lado = pp.getByRole("navigation", { name: "Seções da empresa" });
     const itens = (await lado.getByRole("link").allInnerTexts()).map((x) => x.trim());
-    confere(/^Início\|Entregas\|(Aulas|Encontros)\|Equipes\|Calendário\|Relatórios\|Ajustes da turma\|Contas conectadas\|Configurações$/.test(itens.join("|")) && !(await pp.getByRole("button", { name: "Mais" }).count()), `computador: menu do lado com tudo à vista (${itens.join(", ")})`);
+    confere(/^Início\|(Aulas|Encontros)\|Equipes\|Calendário\|Relatórios\|Ajustes da turma\|Contas conectadas\|Configurações$/.test(itens.join("|")) && !(await pp.getByRole("button", { name: "Mais" }).count()), `computador: menu do lado com tudo à vista (${itens.join(", ")})`);
     await pp.screenshot({ path: `${FOTOS}/7e-computador.png` });
     const largo = (await lado.boundingBox()).width;
     await lado.getByRole("button", { name: "Recolher o menu" }).click();
@@ -1958,7 +1957,7 @@ try {
   await dono.p.goto(`${APP}/admin`);
   await dono.p.locator("li", { hasText: SLUG }).getByRole("link", { name: "Entrar para dar suporte" }).click();
   await dono.p.getByText(/Modo suporte/).waitFor();
-  confere(await dono.p.getByRole("link", { name: "Entregas" }).isVisible(), "com suporte liberado, dono entra no espaço");
+  confere(await dono.p.getByRole("link", { name: "Calendário", exact: true }).first().isVisible(), "com suporte liberado, dono entra no espaço");
   await dono.p.getByRole("button", { name: "Sair do suporte" }).click();
   await dono.p.waitForURL(/\/admin$/);
   confere((await dono.p.goto(`${APP}/app/${SLUG}/entregas`)).status() === 404, "depois de sair do suporte, dono não entra mais");

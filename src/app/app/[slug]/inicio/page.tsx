@@ -11,7 +11,15 @@ import { ConviteAvisos } from "./convite-avisos";
 export const metadata: Metadata = { title: "Início" };
 
 type Cor = "marca" | "alerta" | "neutro" | "erro";
-type Item = { chave: string; turma: string | null; numero: string; titulo: string; onde: string; acao: string; href: string; cor: Cor };
+/** Um tipo de tarefa (ex.: "3 devolutivas para aprovar"), com cada ciclo em que ela aparece. */
+type Grupo = {
+  chave: string;
+  total: number;
+  titulo: string;
+  acao: string;
+  cor: Cor;
+  lugares: { chave: string; turma: string | null; rotulo: string; n: number; href: string }[];
+};
 
 const CORES: Record<Cor, string> = {
   marca: "bg-marca-clara text-marca-forte",
@@ -63,6 +71,7 @@ export default async function Inicio({ params, searchParams }: PageProps<"/app/[
     supabase.from("conexoes_google").select("servico, invalida"),
     supabase.from("contas_moodle").select("invalida").eq("org_id", empresa.id),
   ]);
+  const { data: emails } = await supabase.from("emails_recebidos").select("turma_id").eq("org_id", empresa.id).eq("status", "confirmar").limit(2000);
 
   const nomeDa = new Map(turmas.map((t) => [t.id, t]));
   const origem = (id: string) => {
@@ -92,46 +101,85 @@ export default async function Inicio({ params, searchParams }: PageProps<"/app/[
     if (nomeDa.has(ciclo.turma_id)) conta(ciclo).esperando++;
   }
 
-  const itens: Item[] = [];
   const contasComProblema = [
     ...(gmail?.invalida ? ["Gmail"] : []),
     ...(google ?? []).filter((g) => g.invalida).map((g) => ({ agenda: "Google Agenda", drive: "Google Drive", classroom: "Google Classroom" })[g.servico as string] ?? "Google"),
     ...((moodle ?? []).some((m) => m.invalida) ? ["Moodle"] : []),
   ];
-  for (const nome of contasComProblema) {
-    itens.push({ chave: `conta-${nome}`, turma: null, numero: "!", titulo: `${nome} pediu para conectar de novo`, onde: "Contas conectadas", acao: "Conectar", href: `/app/${slug}/contas`, cor: "erro" });
-  }
   const ordenados = [...porCiclo.values()].sort((x, y) => origem(x.ciclo.turma_id).localeCompare(origem(y.ciclo.turma_id)) || x.ciclo.numero - y.ciclo.numero);
-  for (const c of ordenados) {
-    const { id, turma_id: turma, numero } = c.ciclo;
-    const onde = `${origem(turma)} · ${v.etapa} ${numero}`;
-    if (c.semAnalise)
-      itens.push({ chave: `${id}-a`, turma, numero: String(c.semAnalise), titulo: `${plural(c.semAnalise, "entrega", "entregas")} para analisar`, onde, acao: "Analisar", href: ir(turma, `entregas?etapa=${id}`), cor: "marca" });
-    if (c.revisar)
-      itens.push({ chave: `${id}-r`, turma, numero: String(c.revisar), titulo: `${plural(c.revisar, "devolutiva", "devolutivas")} para aprovar`, onde, acao: "Revisar", href: ir(turma, `entregas/revisar?etapa=${id}`), cor: "marca" });
-    if (c.enviar)
-      itens.push({ chave: `${id}-e`, turma, numero: String(c.enviar), titulo: `${plural(c.enviar, "devolutiva aprovada", "devolutivas aprovadas")} sem enviar`, onde, acao: "Enviar", href: ir(turma, `etapas/${id}/enviar`), cor: "marca" });
-    if (c.erro)
-      itens.push({ chave: `${id}-x`, turma, numero: String(c.erro), titulo: `${plural(c.erro, "análise falhou", "análises falharam")}`, onde, acao: "Ver", href: ir(turma, `entregas?etapa=${id}`), cor: "erro" });
-    if (c.esperando)
-      itens.push({ chave: `${id}-p`, turma, numero: String(c.esperando), titulo: `${plural(c.esperando, "arquivo esperando", "arquivos esperando")} no Drive dos alunos`, onde, acao: "Trazer", href: ir(turma, `etapas/${id}`), cor: "alerta" });
-  }
-  const visiveis = itens.filter((i) => !escolhida || i.turma === null || i.turma === escolhida.id);
+  const daTurma = (turma: string | null) => !escolhida || turma === null || turma === escolhida.id;
+  const lugar = (c: Conta, n: number, para: string) => ({
+    chave: c.ciclo.id,
+    turma: c.ciclo.turma_id,
+    rotulo: `${v.etapa} ${c.ciclo.numero}${turmas.length > 1 && !escolhida ? ` · ${nomeDa.get(c.ciclo.turma_id)?.nome ?? ""}` : ""}`,
+    n,
+    href: ir(c.ciclo.turma_id, para),
+  });
+  // Agrupa por tipo de tarefa: uma linha só para "3 devolutivas para aprovar", com os ciclos embaixo.
+  const tipo = (chave: string, cor: Cor, acao: string, um: string, varios: string, conta: (c: Conta) => number, para: (c: Conta) => string): Grupo | null => {
+    const lugares = ordenados.filter((c) => conta(c) > 0 && daTurma(c.ciclo.turma_id)).map((c) => lugar(c, conta(c), para(c)));
+    const total = lugares.reduce((n, l) => n + l.n, 0);
+    return total ? { chave, total, titulo: `${total} ${plural(total, um, varios)}`, acao, cor, lugares } : null;
+  };
+  const porTurma = new Map<string, number>();
+  for (const e of emails ?? []) if (e.turma_id && nomeDa.has(e.turma_id) && daTurma(e.turma_id)) porTurma.set(e.turma_id, (porTurma.get(e.turma_id) ?? 0) + 1);
+  const totalEmails = [...porTurma.values()].reduce((a, b) => a + b, 0);
+  const grupos = [
+    contasComProblema.length
+      ? {
+          chave: "contas",
+          total: contasComProblema.length,
+          titulo: `${contasComProblema.join(", ")} ${contasComProblema.length === 1 ? "pediu" : "pediram"} para conectar de novo`,
+          acao: "Conectar",
+          cor: "erro" as Cor,
+          lugares: [{ chave: "contas", turma: null, rotulo: "Contas conectadas", n: contasComProblema.length, href: `/app/${slug}/contas` }],
+        }
+      : null,
+    tipo("analisar", "marca", "Analisar", "entrega para analisar", "entregas para analisar", (c) => c.semAnalise, (c) => `etapas/${c.ciclo.id}`),
+    tipo("revisar", "marca", "Revisar", "devolutiva para aprovar", "devolutivas para aprovar", (c) => c.revisar, (c) => `entregas/revisar?etapa=${c.ciclo.id}`),
+    tipo("enviar", "marca", "Enviar", "devolutiva aprovada sem enviar", "devolutivas aprovadas sem enviar", (c) => c.enviar, (c) => `etapas/${c.ciclo.id}/enviar`),
+    tipo("erro", "erro", "Ver", "análise falhou", "análises falharam", (c) => c.erro, (c) => `etapas/${c.ciclo.id}`),
+    tipo("esperando", "alerta", "Trazer", "arquivo esperando no Drive dos alunos", "arquivos esperando no Drive dos alunos", (c) => c.esperando, (c) => `etapas/${c.ciclo.id}`),
+    totalEmails
+      ? {
+          chave: "emails",
+          total: totalEmails,
+          titulo: `${totalEmails} ${plural(totalEmails, "e-mail para conferir", "e-mails para conferir")}`,
+          acao: "Conferir",
+          cor: "alerta" as Cor,
+          lugares: [...porTurma.entries()].map(([t, n]) => ({ chave: t, turma: t, rotulo: nomeDa.get(t)?.nome ?? "", n, href: ir(t, "entregas/caixa") })),
+        }
+      : null,
+  ].filter((g): g is Grupo => Boolean(g));
+
   const prazosVisiveis = (prazos ?? []).filter((p) => nomeDa.has(p.turma_id) && (!escolhida || p.turma_id === escolhida.id));
+  const deHoje = prazosVisiveis.filter((p) => p.recebe_ate === hoje);
+  const proximos = prazosVisiveis.filter((p) => p.recebe_ate !== hoje);
   const dias = Array.from({ length: 7 }, (_, i) => maisDias(hoje, i));
   const comPrazo = new Set(prazosVisiveis.map((p) => String(p.recebe_ate)));
   const chip = (ativo: boolean) =>
     `toque inline-flex min-h-9 items-center rounded-full px-3.5 text-[13px] font-semibold ${ativo ? "bg-marca text-sobre-marca" : "bg-cartao text-texto shadow-cartao"}`;
-  const [primeiro, ...resto] = visiveis;
+  const [primeiro, ...resto] = grupos;
+  const etiqueta = (l: Grupo["lugares"][number], forte = false) => (
+    <Link
+      key={l.chave}
+      href={l.href}
+      transitionTypes={["nav-forward"]}
+      className={`toque inline-flex min-h-8 items-center gap-1 rounded-full px-3 text-[13px] font-semibold ${forte ? "bg-fundo text-texto hover:bg-marca-clara" : "bg-fundo text-suave hover:text-texto"}`}
+    >
+      {l.rotulo}
+      {l.n > 1 || forte ? <span className="text-suave">· {l.n}</span> : null}
+    </Link>
+  );
 
   return (
-    <div className="flex max-w-2xl flex-col gap-5">
+    <div className="flex max-w-5xl flex-col gap-5">
       <h1 className="text-[26px] font-extrabold leading-tight tracking-tight sm:text-3xl">
-        {visiveis.length ? (
+        {grupos.length ? (
           <>
             Você tem{" "}
             <span className="text-marca">
-              {visiveis.length} {plural(visiveis.length, "coisa", "coisas")}
+              {grupos.length} {plural(grupos.length, "coisa", "coisas")}
             </span>{" "}
             para fazer
           </>
@@ -152,83 +200,98 @@ export default async function Inicio({ params, searchParams }: PageProps<"/app/[
         </nav>
       ) : null}
 
-      {primeiro ? (
-        <ul aria-label="Para fazer" className="flex flex-col gap-2.5">
-          {/* O primeiro da fila ganha destaque: é o próximo passo. */}
-          <li>
-            <Link
-              href={primeiro.href}
-              transitionTypes={["nav-forward"]}
-              className="toque flex flex-col gap-4 rounded-[22px] bg-cartao p-4 shadow-cartao ring-1 ring-borda/60 hover:ring-marca"
-            >
-              <span className="flex items-center gap-3">
-                <span className={`flex size-12 shrink-0 items-center justify-center rounded-2xl text-lg font-extrabold ${CORES[primeiro.cor]}`}>{primeiro.numero}</span>
-                <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-marca">Próximo passo</span>
-                  <span className="text-[17px] font-bold leading-snug">{primeiro.numero === "!" ? primeiro.titulo : `${primeiro.numero} ${primeiro.titulo}`}</span>
-                  <span className="truncate text-[13px] text-suave">{primeiro.onde}</span>
-                </span>
-              </span>
-              <span className={`flex min-h-12 items-center justify-center rounded-2xl text-[15px] font-bold ${primeiro.cor === "erro" ? "bg-erro text-white" : "bg-marca text-sobre-marca"}`}>
-                {primeiro.acao} agora
-              </span>
-            </Link>
-          </li>
-          {resto.map((i) => (
-            <li key={i.chave}>
-              <Link href={i.href} transitionTypes={["nav-forward"]} className="toque flex min-h-16 items-center gap-3 rounded-[18px] bg-cartao px-3.5 py-2.5 shadow-cartao ring-1 ring-borda/60 hover:ring-marca">
-                <span className={`flex h-10 min-w-10 shrink-0 items-center justify-center rounded-xl px-1.5 text-sm font-extrabold ${CORES[i.cor]}`}>{i.numero}</span>
-                <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="font-semibold leading-snug">{i.titulo}</span>
-                  <span className="truncate text-xs text-suave">{i.onde}</span>
-                </span>
-                <span className="shrink-0 text-sm font-semibold text-marca">{i.acao} ›</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="rounded-[22px] bg-cartao p-6 text-center text-suave shadow-cartao">Nada esperando por você agora. Quando chegar algo, aparece aqui.</p>
-      )}
-
-      <ConviteAvisos />
-
-      <section aria-label="Esta semana" className="flex flex-col gap-3">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-[15px] font-bold">Esta semana</h2>
-          <Link href={`/app/${slug}/calendario`} className="text-sm font-semibold text-marca hover:underline">
-            Calendário ›
-          </Link>
-        </div>
-        <div className="grid grid-cols-7 gap-1.5 text-center">
-          {dias.map((d, i) => (
-            <span
-              key={d}
-              className={`flex flex-col items-center gap-0.5 rounded-2xl py-2 text-[11px] ${i === 0 ? "bg-marca text-sobre-marca" : "bg-cartao text-suave shadow-cartao"} ${comPrazo.has(d) && i > 0 ? "shadow-[inset_0_-3px_0_var(--erro)]" : ""}`}
-            >
-              {SEMANA[new Date(`${d}T12:00:00Z`).getUTCDay()]}
-              <b className={`text-[15px] ${i === 0 ? "" : "text-texto"}`}>{Number(d.slice(8))}</b>
-              {comPrazo.has(d) && i === 0 ? <span aria-hidden className="size-1.5 rounded-full bg-sobre-marca" /> : null}
-            </span>
-          ))}
-        </div>
-        {prazosVisiveis.length ? (
-          <ul className="flex flex-col gap-1 text-sm">
-            {prazosVisiveis.map((p) => (
-              <li key={p.id}>
-                <Link href={ir(p.turma_id, `etapas/${p.id}`)} className="text-suave hover:underline">
-                  <b className="text-erro">
-                    {SEMANA[new Date(`${p.recebe_ate}T12:00:00Z`).getUTCDay()]} {Number(String(p.recebe_ate).slice(8))}
-                  </b>{" "}
-                  · prazo {v.etapa} {p.numero} · <span className="text-texto">{p.titulo}</span> · {nomeDa.get(p.turma_id)?.nome}
+      <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-6">
+        <div className="flex flex-col gap-3">
+          {primeiro ? (
+            <ul aria-label="Para fazer" className="flex flex-col gap-2.5">
+              {/* O primeiro tipo de tarefa ganha destaque: é o próximo passo. */}
+              <li className="flex flex-col gap-4 rounded-[22px] bg-cartao p-5 shadow-cartao ring-1 ring-borda/60">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-marca">Próximo passo</span>
+                <Link href={primeiro.lugares[0].href} transitionTypes={["nav-forward"]} className="text-[22px] font-extrabold leading-snug hover:underline">
+                  {primeiro.titulo}
+                </Link>
+                {primeiro.lugares.length > 1 ? <span className="flex flex-wrap gap-1.5">{primeiro.lugares.map((l) => etiqueta(l, true))}</span> : <span className="text-sm text-suave">{primeiro.lugares[0].rotulo}</span>}
+                <Link
+                  href={primeiro.lugares[0].href}
+                  transitionTypes={["nav-forward"]}
+                  className={`toque flex min-h-12 items-center justify-center rounded-2xl px-6 text-[15px] font-bold lg:self-start ${primeiro.cor === "erro" ? "bg-erro text-white" : "bg-marca text-sobre-marca"}`}
+                >
+                  {primeiro.acao} agora
                 </Link>
               </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-suave">Nenhum prazo nos próximos 7 dias.</p>
-        )}
-      </section>
+              {resto.map((g) => (
+                <li key={g.chave} className="flex flex-col gap-2 rounded-[18px] bg-cartao px-4 py-3 shadow-cartao ring-1 ring-borda/60">
+                  <span className="flex items-center gap-3">
+                    <span className={`flex h-10 min-w-10 shrink-0 items-center justify-center rounded-xl px-1.5 text-sm font-extrabold ${CORES[g.cor]}`}>{g.total}</span>
+                    <Link href={g.lugares[0].href} transitionTypes={["nav-forward"]} className="min-w-0 flex-1 font-semibold leading-snug hover:underline">
+                      {g.titulo.replace(/^\d+\s/, "")}
+                    </Link>
+                    <Link href={g.lugares[0].href} transitionTypes={["nav-forward"]} className="shrink-0 text-sm font-semibold text-marca">
+                      {g.acao} ›
+                    </Link>
+                  </span>
+                  {g.lugares.length > 1 ? <span className="flex flex-wrap gap-1.5 pl-[3.25rem]">{g.lugares.map((l) => etiqueta(l))}</span> : <span className="pl-[3.25rem] text-xs text-suave">{g.lugares[0].rotulo}</span>}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="rounded-[22px] bg-cartao p-6 text-center text-suave shadow-cartao">Nada esperando por você agora. Quando chegar algo, aparece aqui.</p>
+          )}
+          <ConviteAvisos />
+        </div>
+
+        <aside className="flex flex-col gap-3">
+          {deHoje.length ? (
+            <section aria-label="Hoje" className="flex flex-col gap-2 rounded-[20px] bg-cartao p-4 shadow-cartao ring-1 ring-borda/60">
+              <b className="text-[15px]">Hoje</b>
+              <span className="flex items-center gap-3">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-erro-fundo font-extrabold text-erro">{deHoje.length}</span>
+                <span className="flex min-w-0 flex-col">
+                  <b className="text-sm">{deHoje.length === 1 ? "prazo vence hoje" : "prazos vencem hoje"}</b>
+                  <span className="text-xs text-suave">
+                    {deHoje.map((p) => `${v.etapa} ${p.numero}`).join(", ")}
+                    {turmas.length > 1 && !escolhida ? ` · ${[...new Set(deHoje.map((p) => nomeDa.get(p.turma_id)?.nome))].join(", ")}` : ""}
+                  </span>
+                </span>
+              </span>
+            </section>
+          ) : null}
+          <section aria-label="Esta semana" className="flex flex-col gap-3 rounded-[20px] bg-cartao p-4 shadow-cartao ring-1 ring-borda/60">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-[15px] font-bold">Esta semana</h2>
+              <Link href={`/app/${slug}/calendario`} className="text-sm font-semibold text-marca hover:underline">
+                Calendário ›
+              </Link>
+            </div>
+            <div className="grid grid-cols-7 gap-1 text-center">
+              {dias.map((d, i) => (
+                <span key={d} className={`flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-[11px] ${i === 0 ? "bg-marca text-sobre-marca" : "text-suave"}`}>
+                  {SEMANA[new Date(`${d}T12:00:00Z`).getUTCDay()]}
+                  <b className={`text-[14px] ${i === 0 ? "" : "text-texto"}`}>{Number(d.slice(8))}</b>
+                  <span aria-hidden className={`size-1.5 rounded-full ${comPrazo.has(d) ? (i === 0 ? "bg-sobre-marca" : "bg-marca") : "bg-transparent"}`} />
+                </span>
+              ))}
+            </div>
+            {proximos.length ? (
+              <ul className="flex flex-col gap-1 text-[13px]">
+                {proximos.slice(0, 4).map((p) => (
+                  <li key={p.id}>
+                    <Link href={ir(p.turma_id, `etapas/${p.id}`)} className="text-suave hover:underline">
+                      <b className="text-texto">
+                        {SEMANA[new Date(`${p.recebe_ate}T12:00:00Z`).getUTCDay()]} {Number(String(p.recebe_ate).slice(8))}
+                      </b>{" "}
+                      · {v.etapa} {p.numero} · <span className="text-texto">{p.titulo}</span>
+                    </Link>
+                  </li>
+                ))}
+                {proximos.length > 4 ? <li className="text-suave">e mais {proximos.length - 4} no calendário</li> : null}
+              </ul>
+            ) : (
+              <p className="text-[13px] text-suave">{deHoje.length ? "Nenhum outro prazo nos próximos dias." : "Nenhum prazo nos próximos 7 dias."}</p>
+            )}
+          </section>
+        </aside>
+      </div>
     </div>
   );
 }

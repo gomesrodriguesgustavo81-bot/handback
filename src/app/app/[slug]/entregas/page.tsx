@@ -79,6 +79,7 @@ export default async function PainelDaAula({
     filtro: filtroPedido,
     gmail: avisoGmail,
     busca: buscaPedida,
+    registrar,
   } = await searchParams;
   const busca =
     typeof buscaPedida === "string" ? buscaPedida.trim().slice(0, 80) : "";
@@ -563,7 +564,7 @@ export default async function PainelDaAula({
       )}
 
       {total ? (
-        <Dobra titulo="Registrar entrega à mão" extra="em mãos, WhatsApp…">
+        <Dobra id="registrar" aberta={registrar === "1"} titulo="Registrar entrega à mão" extra="em mãos, WhatsApp…">
           <FormEntrega
             slug={slug}
             orgId={empresa.id}

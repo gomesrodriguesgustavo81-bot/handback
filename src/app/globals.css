@@ -194,6 +194,11 @@ html, body {
   border-radius: 20px;
 }
 
+/* Turma no alto do menu do lado: some quando o menu está recolhido */
+@media (min-width: 1024px) {
+  :root[data-menu="recolhido"] .turma-no-menu { display: none; }
+}
+
 /* Assistente (PassosDoForm): o botão de salvar só aparece no último passo */
 form[data-ultimo="nao"] > button[type="submit"] { display: none; }
 

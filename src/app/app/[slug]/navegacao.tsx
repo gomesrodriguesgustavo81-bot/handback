@@ -66,7 +66,7 @@ function Desenho({ icone }: { icone: Icone | "mais" }) {
 }
 
 /** Um grupo do menu (no computador vira um título que abre e fecha; no celular, um título na gaveta "Mais"). */
-export type GrupoNav = { nome: string; itens: ItemNav[] };
+export type GrupoNav = { nome: string; itens: ItemNav[]; /** Itens menores, embaixo (Relatórios, Ajustes, Contas…). */ pequeno?: boolean };
 /** Link "← Voltar" das páginas de dentro de um lugar (ex.: Ajustes da turma › Google Drive). */
 export type Volta = { href: string; nome: string; prefixos: string[] };
 
@@ -110,6 +110,9 @@ export function Navegacao({ abas, grupos }: { abas: ItemNav[]; grupos: GrupoNav[
       setFechados(JSON.parse(localStorage.getItem("hb-menu-grupos") ?? "[]"));
     } catch {}
   }, []);
+  useEffect(() => {
+    document.documentElement.dataset.menu = recolhido ? "recolhido" : "aberto";
+  }, [recolhido]);
   const alternarMenu = () =>
     setRecolhido((x) => {
       try {
@@ -127,17 +130,17 @@ export function Navegacao({ abas, grupos }: { abas: ItemNav[]; grupos: GrupoNav[
     });
 
   const mostrarBarra = abas.length + (extras.length ? 1 : 0) > 1;
-  const linkLado = (a: ItemNav) => (
+  const linkLado = (a: ItemNav, pequeno = false) => (
     <Link
       key={a.href}
       href={a.href}
       aria-current={ativa(a) ? "page" : undefined}
       title={recolhido ? a.nome : undefined}
-      className={`toque flex min-h-11 items-center gap-3 rounded-xl px-3 text-[15px] transition-colors ${
-        ativa(a) ? "bg-marca-clara font-semibold text-marca-forte" : "font-medium text-suave hover:bg-cartao hover:text-texto"
+      className={`toque flex items-center gap-3 rounded-xl px-3 transition-colors ${pequeno ? "min-h-9 text-[13px]" : "min-h-11 text-[15px]"} ${
+        ativa(a) ? "bg-marca-clara font-semibold text-marca-forte" : pequeno ? "font-medium text-suave hover:bg-cartao hover:text-texto" : "font-semibold text-texto hover:bg-cartao"
       }`}
     >
-      <span className="shrink-0">
+      <span className={`shrink-0 ${pequeno ? "opacity-70 [&_svg]:size-[18px]" : ""}`}>
         <Desenho icone={a.icone} />
       </span>
       <span className={recolhido ? "sr-only" : "truncate"}>{a.nome}</span>
@@ -184,7 +187,8 @@ export function Navegacao({ abas, grupos }: { abas: ItemNav[]; grupos: GrupoNav[
               ) : g.nome ? (
                 <span aria-hidden className="mx-3 my-1 border-t border-borda" />
               ) : null}
-              {fechado ? null : g.itens.map(linkLado)}
+              {g.pequeno ? <span aria-hidden className="mx-3 my-2 border-t border-borda" /> : null}
+              {fechado ? null : g.itens.map((x) => linkLado(x, g.pequeno))}
             </div>
           );
         })}

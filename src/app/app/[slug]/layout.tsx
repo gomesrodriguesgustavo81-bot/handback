@@ -36,37 +36,33 @@ export default async function LayoutEmpresa({
 
   const b = `/app/${slug}`;
   const inicio: ItemNav = { href: `${b}/inicio`, nome: "Início", icone: "inicio" };
-  const entregas: ItemNav = { href: `${b}/entregas`, nome: "Entregas", icone: "entregas" };
   const ciclos: ItemNav = { href: `${b}/etapas`, nome: v.etapas, icone: "aulas" };
   const alunos: ItemNav = { href: `${b}/grupos`, nome: entrega.varios, icone: "equipes" };
   const ajustesTurma = ["drive", "agenda", "lembretes", "recebimento"].map((p) => `${b}/configuracoes/${p}`);
-  const abas: ItemNav[] = podeAvaliar ? [inicio, entregas, ciclos, alunos] : [ciclos, { href: `${b}/calendario`, nome: "Calendário", icone: "calendario" }];
+  const calendario: ItemNav = { href: `${b}/calendario`, nome: "Calendário", icone: "calendario" };
+  // Entregas não é mais uma aba: as entregas ficam dentro de cada ciclo (a aba Ciclos acende nelas).
+  ciclos.tambem = [`${b}/entregas`];
+  const abas: ItemNav[] = podeAvaliar ? [inicio, ciclos, alunos, calendario] : [ciclos, calendario];
   const grupos: GrupoNav[] = [
-    { nome: "", itens: podeAvaliar ? [inicio] : [] },
+    { nome: "", itens: podeAvaliar ? [inicio, ciclos, alunos, calendario] : [ciclos, calendario] },
     {
-      nome: v.espaco,
+      nome: "",
+      pequeno: true,
       itens: [
-        ...(podeAvaliar ? [entregas] : []),
-        ciclos,
-        ...(podeAvaliar ? [alunos] : []),
-        { href: `${b}/calendario`, nome: "Calendário", icone: "calendario" as const },
         ...(podeAvaliar ? [{ href: `${b}/relatorios`, nome: "Relatórios", icone: "relatorios" as const }] : []),
         ...(podeGerir ? [{ href: `${b}/turma`, nome: `Ajustes d${o(v, "espaco")} ${v.espaco.toLowerCase()}`, icone: "ajustes" as const, tambem: ajustesTurma }] : []),
+        ...(podeGerir
+          ? [
+              { href: `${b}/contas`, nome: "Contas conectadas", icone: "contas" as const },
+              {
+                href: `${b}/configuracoes`,
+                nome: "Configurações",
+                icone: "config" as const,
+                tambem: ["pessoas", "registro", "ajustes", "nova-turma", "moodle"].map((p) => `${b}/${p}`),
+              },
+            ]
+          : []),
       ],
-    },
-    {
-      nome: "Sua conta",
-      itens: podeGerir
-        ? [
-            { href: `${b}/contas`, nome: "Contas conectadas", icone: "contas" as const },
-            {
-              href: `${b}/configuracoes`,
-              nome: "Configurações",
-              icone: "config" as const,
-              tambem: ["pessoas", "registro", "ajustes", "nova-turma", "moodle"].map((p) => `${b}/${p}`),
-            },
-          ]
-        : [],
     },
   ].filter((g) => g.itens.length);
   const voltas: Volta[] = podeGerir
@@ -79,7 +75,23 @@ export default async function LayoutEmpresa({
 
   return (
     <div className="flex flex-col gap-4 pb-28 lg:grid lg:grid-cols-[auto_minmax(0,1fr)] lg:items-start lg:gap-8 lg:pb-0 print:block print:pb-0">
-      <Navegacao abas={abas} grupos={grupos} />
+      {/* No computador, a turma fica no alto do menu do lado; no celular, no alto da página. */}
+      <div className="contents lg:sticky lg:top-6 lg:flex lg:flex-col lg:gap-3 lg:self-start print:hidden">
+        {ativas.length > 1 || podeGerir ? (
+          <SoForaDaFolha foraDoInicio>
+            <div className="turma-no-menu lg:w-56">
+              <SeletorTurma
+                slug={slug}
+                rotulo={v.espaco}
+                turmas={ativas.map((t) => ({ id: t.id, nome: t.moodle_conta ? `${t.nome} (Moodle)` : t.classroom_curso ? `${t.nome} (Classroom)` : t.nome }))}
+                atual={atual?.id ?? null}
+                criarHref={podeGerir ? `/app/${slug}/nova-turma` : null}
+              />
+            </div>
+          </SoForaDaFolha>
+        ) : null}
+        <Navegacao abas={abas} grupos={grupos} />
+      </div>
       <div className="flex min-w-0 flex-col gap-4">
       <SoForaDaFolha>
         <Saudacao nome={eu.nome} email={eu.email} />
@@ -122,17 +134,6 @@ export default async function LayoutEmpresa({
         </div>
       ) : null}
       <div className="contents print:hidden">
-      {ativas.length > 1 || podeGerir ? (
-        <SoForaDaFolha foraDoInicio>
-          <SeletorTurma
-            slug={slug}
-            rotulo={v.espaco}
-            turmas={ativas.map((t) => ({ id: t.id, nome: t.moodle_conta ? `${t.nome} (Moodle)` : t.classroom_curso ? `${t.nome} (Classroom)` : t.nome }))}
-            atual={atual?.id ?? null}
-            criarHref={podeGerir ? `/app/${slug}/nova-turma` : null}
-          />
-        </SoForaDaFolha>
-      ) : null}
       <Voltar voltas={voltas} />
       </div>
       {children}
