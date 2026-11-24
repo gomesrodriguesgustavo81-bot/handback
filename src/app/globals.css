@@ -307,7 +307,7 @@ details.dobra[open]::details-content { block-size: auto; }
   .toque:active { transform: none; }
   details.dobra::details-content { transition: none; }
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
-  * { transition-duration: 0.01ms !important; }
+  *, *::before, *::after { transition-duration: 0s !important; transition-delay: 0s !important; }
 }
 
 /* Relatórios: cada folha vira uma página A4 na impressão (e no "Salvar como PDF"). */

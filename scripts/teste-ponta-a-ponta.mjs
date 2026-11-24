@@ -1286,6 +1286,7 @@ try {
     await ana.p.getByRole("button", { name: "Mais" }).click();
     await ana.p.getByRole("dialog", { name: "Mais opções" }).getByRole("link", { name: "Calendário" }).click();
     await ana.p.waitForURL(/\/calendario$/);
+    await ana.p.getByRole("button", { name: "Todas as turmas" }).waitFor();
     confere(await ana.p.getByRole("button", { name: "Todas as turmas" }).isVisible() && await ana.p.getByRole("button", { name: "Turma A", exact: true }).isVisible(), "calendário tem aba própria, com todas as turmas e filtro por turma");
     const diaHoje = ana.p.getByRole("button", { name: /, hoje/ });
     confere((await diaHoje.getAttribute("aria-pressed")) === "true" && /vence/.test(await diaHoje.getAttribute("aria-label")), "calendário abre no dia de hoje, com o prazo marcado");
@@ -1343,8 +1344,9 @@ try {
 
     // Lembretes para os alunos (Turma A)
     await conectarConta(ana.p, "Gmail");
-    await ana.p.goto(`${APP}/app/${SLUG}/configuracoes`);
-    await ana.p.getByRole("link", { name: /^Lembretes para os alunos/ }).click();
+    await ana.p.goto(`${APP}/app/${SLUG}/turma`);
+    await ana.p.getByText("Lembretes para os alunos", { exact: true }).click();
+    await ana.p.getByRole("link", { name: "Escolher os lembretes" }).click();
     await ana.p.getByRole("heading", { name: "Lembretes para os alunos" }).waitFor();
     for (const nome of ["2 dias antes do prazo", "No dia do prazo"]) {
       await ana.p.getByLabel(nome).click();
