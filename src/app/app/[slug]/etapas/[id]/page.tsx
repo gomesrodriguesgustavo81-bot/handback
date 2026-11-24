@@ -18,6 +18,7 @@ import { AnalisarVarias, FilaAndando } from "@/components/analise";
 import { LinkBotao } from "@/components/ui";
 import { trilhasDaTurma } from "@/lib/trilha-dados";
 import { LembrarQuemFalta } from "./lembrar";
+import { DobraEditar } from "./dobra-editar";
 import type { Passo, Trilha } from "@/lib/trilha";
 
 /** Números do Classroom deste ciclo (entregas, arquivos que chegaram e que esperam). */
@@ -172,14 +173,11 @@ export default async function DetalheEtapa({ params, searchParams }: PageProps<"
         <>
           {salvo ? <Aviso>Cadastro salvo.</Aviso> : null}
           {typeof erro === "string" ? <Aviso tipo="erro">{erro}</Aviso> : null}
-          <details id="editar" open={abrirEdicao} className="dobra rounded-2xl border border-borda bg-cartao">
-            <summary className="flex min-h-13 cursor-pointer items-center px-4 font-semibold">Editar {minusc(v.etapa)} (nome, prazo, checklist)</summary>
-            <div className="border-t border-borda p-4">
-              <FormAcao acao={salvarEtapa.bind(null, slug, id)} textoBotao="Salvar alterações">
-                <CamposEtapa v={v} inicial={etapa} />
-              </FormAcao>
-            </div>
-          </details>
+          <DobraEditar abertoNoInicio={abrirEdicao} titulo={`Editar ${minusc(v.etapa)} (nome, prazo, checklist)`}>
+            <FormAcao acao={salvarEtapa.bind(null, slug, id)} textoBotao="Salvar alterações">
+              <CamposEtapa v={v} inicial={etapa} />
+            </FormAcao>
+          </DobraEditar>
           <div className="flex justify-end">
             <BotaoConfirmar
               acao={apagarEtapa.bind(null, slug, id)}
