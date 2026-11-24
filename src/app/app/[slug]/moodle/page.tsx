@@ -1,18 +1,19 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { BotaoConfirmar, FormAcao } from "@/components/form-acao";
-import { Aviso, Campo, Cartao, LinkBotao } from "@/components/ui";
+import { FormAcao } from "@/components/form-acao";
+import { Aviso, Cartao, LinkBotao } from "@/components/ui";
 import { contextoDaEmpresa } from "@/lib/empresa";
 import { cursosDaPessoa, ErroMoodle, type Curso } from "@/lib/moodle/cliente";
 import { conexaoPorId } from "@/lib/moodle/sincronizar";
-import { completarVocabulario } from "@/lib/nomes";
+import { completarVocabulario, o } from "@/lib/nomes";
 import { criarClienteAdmin } from "@/lib/supabase/admin";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { dataHoraBR } from "@/lib/textos";
-import { desligarMoodle, ligarDisciplina, salvarNotasMoodle } from "./acoes";
+import { ligarDisciplina } from "./acoes";
+import Link from "next/link";
 import { FormConectarMoodle } from "./form-conectar";
 
-export const metadata: Metadata = { title: "Moodle" };
+export const metadata: Metadata = { title: "Nova turma do Moodle" };
 export const maxDuration = 60;
 
 function IconeMoodle() {
@@ -33,10 +34,9 @@ export default async function Moodle({ params, searchParams }: PageProps<"/app/[
   if (!podeGerir) notFound();
   const vc = completarVocabulario(empresa.vocabulario);
   const supabase = await criarClienteServidor();
-  const [{ data: contas }, { data: turmas }, { data: config }] = await Promise.all([
+  const [{ data: contas }, { data: turmas }] = await Promise.all([
     supabase.from("contas_moodle").select("id, site, site_nome, nome, invalida, erro, erro_em").eq("org_id", empresa.id).order("conectada_em", { ascending: false }),
     supabase.from("turmas").select("id, nome, moodle_conta, moodle_curso").eq("org_id", empresa.id).not("moodle_conta", "is", null),
-    supabase.from("organizacoes").select("notas_moodle").eq("id", empresa.id).single(),
   ]);
   const conta = (contas ?? []).find((c) => !c.invalida) ?? null;
   const cortada = !conta ? (contas ?? []).find((c) => c.invalida) : undefined;
@@ -60,14 +60,15 @@ export default async function Moodle({ params, searchParams }: PageProps<"/app/[
   const livres = cursos.filter((c) => !ligadas.has(c.id));
   const pronta = typeof q.pronta === "string" ? (turmas ?? []).find((t) => t.id === q.pronta) : undefined;
   const num = (k: string) => (typeof q[k] === "string" ? Number(q[k]) : 0);
-  const notas = (config?.notas_moodle ?? {}) as Record<string, number>;
 
   return (
     <div className="flex max-w-2xl flex-col gap-5">
       <div className="flex items-center gap-3">
         <IconeMoodle />
         <div>
-          <h1 className="text-xl font-semibold">Ligar ao Moodle</h1>
+          <h1 className="text-2xl font-bold">
+            Nov{o(vc, "espaco")} {vc.espaco.toLowerCase()} do Moodle
+          </h1>
           <p className="text-sm text-suave">
             {conta ? "Passo 2 de 2 · disciplina" : "Passo 1 de 2 · entrar"} — alunos, grupos, tarefas e entregas vêm do Moodle.
           </p>
@@ -110,9 +111,9 @@ export default async function Moodle({ params, searchParams }: PageProps<"/app/[
             <span className="font-semibold [overflow-wrap:anywhere]">
               Conectado como {conta.nome || "?"} · {conta.site_nome || conta.site}
             </span>
-            <BotaoConfirmar acao={desligarMoodle.bind(null, slug, conta.id)} pergunta="Desligar o Moodle? As turmas e entregas que já vieram continuam aqui, mas param de atualizar.">
-              Desligar
-            </BotaoConfirmar>
+            <Link href={`/app/${slug}/contas`} className="font-medium underline">
+              Contas conectadas
+            </Link>
           </div>
 
           <Cartao className="flex flex-col gap-4">
@@ -158,21 +159,7 @@ export default async function Moodle({ params, searchParams }: PageProps<"/app/[
         </>
       )}
 
-      <Cartao id="notas" className="flex scroll-mt-6 flex-col gap-3">
-        <div>
-          <h2 className="text-lg font-semibold">Nota no Moodle para cada conceito</h2>
-          <p className="text-sm text-suave">
-            Quando você escolhe lançar a nota, o Handback usa esta porcentagem da nota máxima da tarefa. Ex.: BOM = 80% de 10 = 8,0.
-          </p>
-        </div>
-        <FormAcao acao={salvarNotasMoodle.bind(null, slug)} textoBotao="Salvar notas">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {(["EXCELENTE", "BOM", "REGULAR", "RUIM"] as const).map((c) => (
-              <Campo key={c} rotulo={`${c} (%)`} name={`nota_${c}`} inputMode="decimal" required defaultValue={String(notas[c] ?? "")} />
-            ))}
-          </div>
-        </FormAcao>
-      </Cartao>
+
 
     </div>
   );

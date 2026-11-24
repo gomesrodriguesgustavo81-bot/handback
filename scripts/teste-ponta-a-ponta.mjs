@@ -168,6 +168,20 @@ async function prepararContexto(navegador, opcoes) {
   });
   return ctx;
 }
+/** Contas conectadas: conecta uma conta Google (janelinha do Google de mentira) e espera aparecer conectada. */
+async function conectarConta(p, nome) {
+  await p.goto(`${APP}/app/${SLUG}/contas`);
+  const cartao = p.getByRole("region", { name: nome, exact: true });
+  const [janela] = await Promise.all([p.waitForEvent("popup"), cartao.getByRole("link", { name: `Conectar ${nome}` }).click()]);
+  await cartao.getByText(/professora@gmail\.test/).waitFor();
+  await janela.waitForEvent("close", { timeout: 10000 }).catch(() => {});
+}
+async function desconectarConta(p, nome) {
+  await p.goto(`${APP}/app/${SLUG}/contas`);
+  const cartao = p.getByRole("region", { name: nome, exact: true });
+  await cartao.getByRole("button", { name: `Desconectar ${nome}` }).click();
+  await cartao.getByRole("link", { name: new RegExp(`^Conectar ${nome}`) }).waitFor();
+}
 const pediuConfirmacao = (trecho) => confirmacoes.some((t) => (typeof trecho === "string" ? t.includes(trecho) : trecho.test(t)));
 
 const sql = (q) => execFileSync("psql", [DB, "-Atc", q]).toString().trim();
@@ -300,10 +314,10 @@ try {
   await ana.p.screenshot({ path: `${FOTOS}/4d-primeiros-passos.png`, fullPage: true });
   confere(await ana.p.getByText(/^(Bom dia|Boa tarde|Boa noite), Ana!$/).isVisible(), "no topo, a saudação pelo horário com o nome da pessoa");
   await ana.p.goto(`${APP}/app`);
-  await ana.p.waitForURL(new RegExp(`/app/${SLUG}/entregas$`));
-  confere(true, "quem tem uma empresa só entra direto nas Entregas");
+  await ana.p.waitForURL(new RegExp(`/app/${SLUG}/inicio$`));
+  confere(await ana.p.getByRole("heading", { name: "O que fazer agora" }).isVisible(), "quem tem uma empresa só entra direto no Início (o que fazer agora)");
   const abasAna = (await ana.p.getByRole("navigation", { name: "Seções da empresa" }).getByRole("link").allInnerTexts()).filter(Boolean);
-  confere(abasAna.join("|") === "Entregas|Aulas|Calendário|Equipes", `abas do dia a dia, com o vocabulário de escola (${abasAna.join(", ")})`);
+  confere(abasAna.join("|") === "Início|Entregas|Aulas|Equipes", `abas do dia a dia, com o vocabulário de escola (${abasAna.join(", ")})`);
   await ana.p.getByRole("button", { name: "Mais" }).click();
   const gavetaMais = ana.p.getByRole("dialog", { name: "Mais opções" });
   confere(await gavetaMais.getByRole("link", { name: "Configurações" }).isVisible() && await gavetaMais.getByRole("link", { name: "Relatórios" }).isVisible(), "celular: barra embaixo; Relatórios e Configurações ficam em “Mais”");
@@ -380,7 +394,8 @@ try {
 
   // F1) Ana cadastra uma aula com checklist
   await ana.p.goto(`${APP}/app/${SLUG}/etapas`);
-  await ana.p.getByRole("link", { name: "Adicionar aula" }).click();
+  await ana.p.getByRole("button", { name: "+ Nova aula" }).click();
+  await ana.p.getByRole("dialog", { name: "Nova aula" }).getByRole("link", { name: /^Escrever a aula/ }).click();
   await ana.p.waitForURL(/\/etapas\/nova$/);
   confere((await ana.p.getByLabel("Nº").inputValue()) === "1", "número da primeira aula sugerido (1)");
   await ana.p.getByLabel("Título").fill("Diagnóstico");
@@ -454,14 +469,14 @@ try {
   // F5) Professor entra: vê aulas e equipes, sem editar; não vê Pessoas nem Ajustes
   const prof = await primeiroAcesso(navegador, PROF);
   await prof.p.goto(`${APP}/app`);
-  await prof.p.waitForURL(new RegExp(`/app/${SLUG}/entregas$`));
+  await prof.p.waitForURL(new RegExp(`/app/${SLUG}/inicio$`));
   const abas = (await prof.p.getByRole("navigation", { name: "Seções da empresa" }).getByRole("link").allInnerTexts()).filter(Boolean);
-  confere(abas.join("|") === "Entregas|Aulas|Calendário|Equipes" && !(await prof.p.getByRole("link", { name: "Configurações" }).count()), `professor vê as abas certas, sem a engrenagem (${abas.join(", ")})`);
+  confere(abas.join("|") === "Início|Entregas|Aulas|Equipes" && !(await prof.p.getByRole("link", { name: "Configurações" }).count()), `professor vê as abas certas, sem a engrenagem (${abas.join(", ")})`);
   confere(await (await menuConta(prof.p)).getByText("Seu papel: Avaliador").isVisible(), "papel de avaliador (no menu da conta)");
   await prof.p.getByRole("button", { name: "Fechar o menu" }).click({ position: { x: 8, y: 400 } });
   await prof.p.getByRole("link", { name: "Aulas", exact: true }).click();
   await prof.p.waitForURL(/\/etapas$/);
-  confere(!(await prof.p.getByRole("link", { name: "Adicionar aula" }).count()), "professor não vê o botão de adicionar aula");
+  confere(!(await prof.p.getByRole("button", { name: "+ Nova aula" }).count()), "professor não vê o botão de adicionar aula");
   await prof.p.getByText("Aula 1 · Diagnóstico").click();
   await prof.p.waitForURL(/\/etapas\/[0-9a-f-]{36}$/);
   await prof.p.getByText("Mapa de stakeholders", { exact: true }).waitFor();
@@ -837,9 +852,7 @@ try {
   await ana.p.screenshot({ path: `${FOTOS}/18-relatorio.png`, fullPage: true });
 
   // Desconectar o Gmail
-  await ana.p.goto(`${APP}/app/${SLUG}/configuracoes/email`);
-  await ana.p.getByRole("button", { name: "Desconectar Gmail" }).click();
-  await ana.p.getByText("Envie pelo seu Gmail").waitFor();
+  await desconectarConta(ana.p, "Gmail");
   await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
   await ana.p.getByRole("link", { name: "Conectar meu Gmail" }).waitFor();
   confere(true, "Gmail desconectado; painel volta a oferecer a conexão");
@@ -1031,9 +1044,9 @@ try {
   // 7e) Ligação com o Moodle (Moodle de mentira em 4558)
   if (process.env.REGISTRO_MOODLE) {
     const MOODLE = "http://127.0.0.1:4558";
-    await ana.p.goto(`${APP}/app/${SLUG}/configuracoes`);
+    await ana.p.goto(`${APP}/app/${SLUG}/nova-turma`);
     await ana.p.getByRole("link", { name: /^Moodle/ }).click();
-    await ana.p.getByRole("heading", { name: "Ligar ao Moodle" }).waitFor();
+    await ana.p.getByRole("heading", { name: "Nova turma do Moodle" }).waitFor();
     // Moodle com login da instituição: o Handback percebe sozinho e mostra o caminho da chave.
     await ana.p.getByLabel("Endereço do Moodle").fill("rodrigues@usp.br");
     await ana.p.getByRole("button", { name: "Continuar" }).click();
@@ -1180,8 +1193,9 @@ try {
     await ana.p.goto(`${APP}/app/${SLUG}/registro?ver=avaliacoes`);
     confere((await ana.p.locator("main ol").innerText()).includes("Devolveu no Moodle a devolutiva de"), "Moodle: devolução aparece no registro de atividades");
     // Desligar e ligar de novo: a turma volta a ficar ligada sozinha.
-    await ana.p.goto(`${APP}/app/${SLUG}/moodle`);
-    await ana.p.getByRole("button", { name: "Desligar" }).click();
+    await ana.p.goto(`${APP}/app/${SLUG}/contas`);
+    await ana.p.getByRole("region", { name: "Moodle" }).getByRole("button", { name: "Desconectar Moodle" }).click();
+    await ana.p.getByRole("region", { name: "Moodle" }).getByRole("link", { name: /^Conectar Moodle/ }).click();
     await ana.p.getByRole("button", { name: "Continuar" }).waitFor();
     const turmaMoodle = `select coalesce(moodle_conta::text, 'sem') from public.turmas where nome = 'Design de Interação' and org_id = (select id from public.organizacoes where slug = '${SLUG}')`;
     confere(sql(turmaMoodle) === "sem", "Moodle: desligar tira a ligação da turma");
@@ -1214,19 +1228,20 @@ try {
     confere((await ana.p.evaluate(() => document.documentElement.dataset.tema)) === undefined, "tema Sistema segue o aparelho");
 
     // E-mail: conectar abre só uma janelinha do Google, que fecha sozinha
-    await menu.getByRole("menuitem", { name: "E-mail de envio (Gmail)" }).click();
-    await ana.p.getByRole("heading", { name: "E-mail", exact: true }).waitFor();
-    const [janela] = await Promise.all([ana.p.waitForEvent("popup"), ana.p.getByRole("link", { name: "Conectar com Google" }).click()]);
-    await ana.p.getByText("Gmail conectado", { exact: true }).waitFor();
+    await menu.getByRole("menuitem", { name: "Contas conectadas" }).click();
+    await ana.p.getByRole("heading", { name: "Contas conectadas", exact: true }).waitFor();
+    const cartaoGmail = ana.p.getByRole("region", { name: "Gmail", exact: true });
+    const [janela] = await Promise.all([ana.p.waitForEvent("popup"), cartaoGmail.getByRole("link", { name: "Conectar Gmail" }).click()]);
+    await cartaoGmail.getByText(/professora@gmail\.test/).waitFor();
     await janela.waitForEvent("close", { timeout: 10000 }).catch(() => {});
     confere(janela.isClosed(), "a janelinha do Google fecha sozinha");
-    confere(ana.p.url().endsWith("/configuracoes/email") && (await ana.p.getByText("professora@gmail.test").isVisible()), "conecta o Gmail sem sair da tela");
-    await largura(ana.p, "aba E-mail");
+    confere(ana.p.url().endsWith("/contas") && (await cartaoGmail.getByText("Conectado", { exact: true }).isVisible()), "conecta o Gmail sem sair da tela");
+    await largura(ana.p, "contas conectadas");
     await ana.p.screenshot({ path: `${FOTOS}/41-email.png`, fullPage: true });
     await ana.p.evaluate(() => (window.__semAuto = true));
     await ana.p.getByRole("button", { name: "Desconectar Gmail" }).click();
     const janelaConf = ana.p.getByRole("alertdialog");
-    confere(await janelaConf.getByRole("heading", { name: "Desconectar?" }).isVisible() && await janelaConf.getByText(/As devolutivas param/).isVisible(), "desconectar pede confirmação numa janela");
+    confere(await janelaConf.getByRole("heading", { name: "Desconectar o Gmail?" }).isVisible() && await janelaConf.getByText(/As devolutivas param/).isVisible(), "desconectar pede confirmação numa janela");
     const caixaJanela = await ana.p.locator(".fixed.inset-0.z-\\[60\\]").boundingBox();
     const tela = ana.p.viewportSize();
     confere(caixaJanela && caixaJanela.width >= tela.width - 1 && caixaJanela.height >= tela.height - 1, "a janela cobre a tela toda");
@@ -1234,14 +1249,14 @@ try {
     await espera(400);
     await ana.p.screenshot({ path: `${FOTOS}/49-confirmar.png` });
     await janelaConf.getByRole("button", { name: "Não" }).click();
-    confere(!(await ana.p.getByRole("alertdialog").count()) && await ana.p.getByText("Gmail conectado", { exact: true }).isVisible(), "dizer Não fecha a janela e mantém o Gmail");
+    confere(!(await ana.p.getByRole("alertdialog").count()) && await cartaoGmail.getByText("Conectado", { exact: true }).isVisible(), "dizer Não fecha a janela e mantém o Gmail");
     await ana.p.getByRole("button", { name: "Desconectar Gmail" }).click();
     await ana.p.keyboard.press("Escape");
-    confere(!(await ana.p.getByRole("alertdialog").count()) && await ana.p.getByText("Gmail conectado", { exact: true }).isVisible(), "Esc também cancela");
+    confere(!(await ana.p.getByRole("alertdialog").count()) && await cartaoGmail.getByText("Conectado", { exact: true }).isVisible(), "Esc também cancela");
     await ana.p.getByRole("button", { name: "Desconectar Gmail" }).click();
     await ana.p.getByRole("alertdialog").getByRole("button", { name: "Sim, confirmar" }).click();
     await ana.p.evaluate(() => (window.__semAuto = false));
-    await ana.p.getByText("Envie pelo seu Gmail").waitFor();
+    await cartaoGmail.getByRole("link", { name: "Conectar Gmail" }).waitFor();
     confere(sql(`select count(*) from public.contas_gmail g join auth.users u on u.id = g.user_id where u.email = '${ANA}'`) === "0", "desconectar apaga a ligação do Gmail");
 
     // Calendário na aba das aulas
@@ -1251,7 +1266,8 @@ try {
     const [idEtapa, prazoAntigo] = umaEtapa.split("|");
     sql(`update public.etapas set recebe_ate = '${hoje}' where id = '${idEtapa}'`);
     await ana.p.goto(`${APP}/app/${SLUG}/etapas`);
-    await ana.p.getByRole("navigation", { name: "Seções da empresa" }).getByRole("link", { name: "Calendário" }).click();
+    await ana.p.getByRole("button", { name: "Mais" }).click();
+    await ana.p.getByRole("dialog", { name: "Mais opções" }).getByRole("link", { name: "Calendário" }).click();
     await ana.p.waitForURL(/\/calendario$/);
     confere(await ana.p.getByRole("button", { name: "Todas as turmas" }).isVisible() && await ana.p.getByRole("button", { name: "Turma A", exact: true }).isVisible(), "calendário tem aba própria, com todas as turmas e filtro por turma");
     const diaHoje = ana.p.getByRole("button", { name: /, hoje/ });
@@ -1309,10 +1325,7 @@ try {
     await ana.p.screenshot({ path: `${FOTOS}/44-meus-avisos.png`, fullPage: true });
 
     // Lembretes para os alunos (Turma A)
-    await ana.p.goto(`${APP}/app/${SLUG}/configuracoes/email`);
-    const [janela] = await Promise.all([ana.p.waitForEvent("popup"), ana.p.getByRole("link", { name: "Conectar com Google" }).click()]);
-    await ana.p.getByText("Gmail conectado", { exact: true }).waitFor();
-    await janela.waitForEvent("close", { timeout: 10000 }).catch(() => {});
+    await conectarConta(ana.p, "Gmail");
     await ana.p.goto(`${APP}/app/${SLUG}/configuracoes`);
     await ana.p.getByRole("link", { name: /^Lembretes para os alunos/ }).click();
     await ana.p.getByRole("heading", { name: "Lembretes para os alunos" }).waitFor();
@@ -1432,13 +1445,13 @@ try {
     const agendasFalsas = async () => (await fetch(`${GOOGLE}/__agenda`)).json();
     const daTurma = async () => Object.values(await agendasFalsas()).find((a) => a.summary === "Handback · Turma A");
     const anaId = sql(`select id from auth.users where email = '${ANA}'`);
-    await ana.p.goto(`${APP}/app/${SLUG}/configuracoes`);
-    await ana.p.getByRole("link", { name: /^Google Agenda/ }).click();
-    await ana.p.getByRole("heading", { name: "Google Agenda", exact: true }).waitFor();
-    confere(await ana.p.getByLabel(/Pôr os prazos na minha agenda/).isDisabled(), "agenda: só liga depois de conectar a própria conta");
-    const [janelaG] = await Promise.all([ana.p.waitForEvent("popup"), ana.p.getByRole("link", { name: "Conectar Google Agenda" }).click()]);
-    await ana.p.getByRole("region", { name: "Sua conta Google" }).getByText("professora@gmail.test").waitFor();
-    await janelaG.waitForEvent("close", { timeout: 10000 }).catch(() => {});
+    await ana.p.goto(`${APP}/app/${SLUG}/turma`);
+    await ana.p.getByText("Prazos no Google Agenda", { exact: true }).click();
+    await ana.p.getByRole("link", { name: "Abrir os prazos na agenda" }).click();
+    await ana.p.getByRole("heading", { name: "Prazos no Google Agenda", exact: true }).waitFor();
+    confere(await ana.p.getByLabel(/Pôr os prazos na minha agenda/).isDisabled() && await ana.p.getByRole("link", { name: "Ir para Contas conectadas" }).isVisible(), "agenda: só liga depois de conectar a própria conta (em Contas conectadas)");
+    await conectarConta(ana.p, "Google Agenda");
+    await ana.p.goto(`${APP}/app/${SLUG}/configuracoes/agenda`);
     confere(sql(`select servico from public.conexoes_google where user_id = '${anaId}'`) === "agenda", "agenda: conexão própria, separada do Gmail");
     confere(sql(`select count(*) from public.conexoes_google where user_id = '${anaId}' and token_cifrado like 'v1.%'`) === "1", "agenda: a chave do Google fica cifrada");
 
@@ -1478,8 +1491,7 @@ try {
     await ana.p.getByLabel(/Pôr os prazos na minha agenda/).click();
     await ana.p.getByText(/Agenda desligada e apagada/).waitFor();
     confere(!(await daTurma()) && sql(`select count(*) from public.agenda_eventos ae join public.turmas t on t.id = ae.turma_id where t.nome = 'Turma A' and t.org_id = (select id from public.organizacoes where slug = '${SLUG}')`) === "0", "agenda: desligar apaga a agenda da conta Google");
-    await ana.p.getByRole("button", { name: "Desconectar Google Agenda" }).click();
-    await ana.p.getByRole("link", { name: "Conectar Google Agenda" }).waitFor();
+    await desconectarConta(ana.p, "Google Agenda");
     confere(sql(`select count(*) from public.conexoes_google where user_id = '${anaId}'`) === "0", "agenda: desconectar apaga a conexão");
     confere(pediuConfirmacao("Conectar seu Google Agenda?") && pediuConfirmacao("Criar a agenda da turma") && pediuConfirmacao("Convidar os alunos") && pediuConfirmacao("Desligar a agenda") && pediuConfirmacao("Desconectar o Google Agenda?"), "agenda: conectar, criar, convidar, desligar e desconectar pedem confirmação");
   }
@@ -1492,12 +1504,13 @@ try {
     const daTurmaA = `from public.arquivos_entrega a join public.entregas e on e.id = a.entrega_id join public.grupos g on g.id = e.grupo_id join public.turmas t on t.id = g.turma_id
       where t.nome = 'Turma A' and t.org_id = (select id from public.organizacoes where slug = '${SLUG}')`;
     const totalA = Number(sql(`select count(*) ${daTurmaA}`));
-    await ana.p.goto(`${APP}/app/${SLUG}/configuracoes`);
-    await ana.p.getByRole("link", { name: /^Google Drive/ }).click();
-    await ana.p.getByRole("heading", { name: "Google Drive", exact: true }).waitFor();
+    await ana.p.goto(`${APP}/app/${SLUG}/turma`);
+    await ana.p.getByText("Pasta no Google Drive", { exact: true }).click();
+    await ana.p.getByRole("link", { name: "Abrir a pasta no Drive" }).click();
+    await ana.p.getByRole("heading", { name: "Pasta no Google Drive", exact: true }).waitFor();
     confere(await ana.p.getByLabel(/Guardar os arquivos no meu Drive/).isDisabled(), "drive: só liga depois de conectar a própria conta");
-    const [janelaD] = await Promise.all([ana.p.waitForEvent("popup"), ana.p.getByRole("link", { name: "Conectar Google Drive" }).click()]);
-    await ana.p.getByRole("region", { name: "Sua conta Google" }).getByText("professora@gmail.test").waitFor();
+    await conectarConta(ana.p, "Google Drive");
+    await ana.p.goto(`${APP}/app/${SLUG}/configuracoes/drive`);
     await janelaD.waitForEvent("close", { timeout: 10000 }).catch(() => {});
     confere(sql(`select servico from public.conexoes_google where user_id = '${anaId}'`) === "drive", "drive: conexão própria, só do Drive");
     await ana.p.getByLabel(/Guardar os arquivos no meu Drive/).click();
@@ -1547,8 +1560,7 @@ try {
     const curiosoArq = await curioso.p.request.get(`${APP}/app/${SLUG}/entregas/${entregaArq}/arquivo/${arqId}`, { maxRedirects: 0 });
     confere(curiosoArq.status() === 404, "drive: quem é de fora não abre o arquivo");
 
-    await ana.p.getByRole("button", { name: "Desconectar Google Drive" }).click();
-    await ana.p.getByRole("link", { name: "Conectar Google Drive" }).waitFor();
+    await desconectarConta(ana.p, "Google Drive");
     const depois = await abrir();
     confere(depois.status() === 404 && /conexão foi desfeita/.test(await depois.text()), "drive: depois de desconectar, o Handback avisa que perdeu o acesso");
     confere(pediuConfirmacao("Conectar seu Google Drive?") && pediuConfirmacao("Guardar os arquivos no seu Drive?") && pediuConfirmacao("Levar também os arquivos antigos?") && pediuConfirmacao("Desconectar o Google Drive?"), "drive: conectar, ligar, levar e desconectar pedem confirmação");
@@ -1560,13 +1572,15 @@ try {
     const classroomFalso = async () => (await fetch(`${GOOGLE}/__classroom`)).json();
     const anaId = sql(`select id from auth.users where email = '${ANA}'`);
     const daOrg = `(select id from public.organizacoes where slug = '${SLUG}')`;
-    await ana.p.goto(`${APP}/app/${SLUG}/configuracoes`);
+    await ana.p.goto(`${APP}/app/${SLUG}/nova-turma`);
+    await ana.p.getByRole("heading", { name: "Nova turma", exact: true }).waitFor();
+    confere(await ana.p.getByRole("link", { name: /^Google Classroom/ }).getByText("Conectar antes").isVisible(), "nova turma: mostra que o Classroom precisa ser conectado antes");
+    await largura(ana.p, "nova turma");
+    await ana.p.screenshot({ path: `${FOTOS}/52-nova-turma.png`, fullPage: true });
+    await conectarConta(ana.p, "Google Classroom");
+    await ana.p.goto(`${APP}/app/${SLUG}/nova-turma`);
     await ana.p.getByRole("link", { name: /^Google Classroom/ }).click();
-    await ana.p.getByRole("heading", { name: "Google Classroom", exact: true }).waitFor();
-    await largura(ana.p, "classroom: conectar");
-    await ana.p.screenshot({ path: `${FOTOS}/52-classroom-conectar.png`, fullPage: true });
-    await Promise.all([ana.p.waitForEvent("popup"), ana.p.getByRole("link", { name: "Conectar Google Classroom" }).click()]);
-    await ana.p.getByRole("region", { name: "Sua conta Google" }).getByText("professora@gmail.test").waitFor();
+    await ana.p.getByRole("heading", { name: "Nova turma do Google Classroom" }).waitFor();
     confere(sql(`select count(*) from public.conexoes_google where user_id = '${anaId}' and servico = 'classroom'`) === "1", "classroom: cada professor conecta a própria conta");
     const escolher = ana.p.getByRole("region", { name: "Ligar uma sala do Classroom" });
     await escolher.getByText("Turma 2026").waitFor();
@@ -1574,14 +1588,16 @@ try {
     await largura(ana.p, "classroom: escolher a turma");
     await ana.p.screenshot({ path: `${FOTOS}/53-classroom-escolher.png`, fullPage: true });
     await escolher.getByRole("button", { name: "Criar a turma e ligar" }).click();
-    const ligadaC = ana.p.getByRole("region", { name: "Turma do Classroom" });
-    await ligadaC.getByText(/1 tarefa virou \S+ e 2 entregas chegaram \(1 arquivo espera/).waitFor({ timeout: 30000 });
+    await escolher.getByText("Turma criada. Chegaram 3 alunos, 1 tarefa e 2 entregas novas.").waitFor({ timeout: 30000 });
     confere(pediuConfirmacao("Conectar seu Google Classroom?") && pediuConfirmacao("Criar a turma e ligar ao Classroom?"), "classroom: conectar e ligar pedem confirmação");
     const turmaC = sql(`select id from public.turmas where nome = 'Cálculo I · Turma 2026' and org_id = ${daOrg} and modo = 'individual' and moodle_conta is null`);
     confere(Boolean(turmaC) && (await ana.p.locator('select[name="turma"]').inputValue()) === turmaC, "classroom: a sala vira uma turma nova, separada, já escolhida no topo");
     confere(await escolher.getByText(/Já ligadas: Cálculo I · Turma 2026/).isVisible() && (await escolher.getByRole("radio").count()) === 1, "classroom: a sala ligada sai da lista para não ligar duas vezes");
     const daCalculo = `from public.integrantes i where i.turma_id = '${turmaC}'`;
     confere(sql(`select count(*) ${daCalculo}`) === "3" && sql(`select count(distinct i.grupo_id) ${daCalculo}`) === "3", "classroom: os 3 alunos entraram, cada um no seu cadastro");
+    await ana.p.goto(`${APP}/app/${SLUG}/turma`);
+    await ana.p.getByText(/1 tarefa virou \S+ · 1 arquivo espera você trazer/).waitFor();
+    confere(await ana.p.getByText("Classroom", { exact: true }).first().isVisible(), "ajustes da turma: mostra que as entregas vêm do Classroom");
     await largura(ana.p, "classroom: ligada");
     await ana.p.screenshot({ path: `${FOTOS}/54-classroom-ligada.png`, fullPage: true });
 
@@ -1633,7 +1649,7 @@ try {
     confere(pediuConfirmacao("Publicar no Classroom?") && sql(`select classroom_nosso from public.etapas where id = '${etapa2}'`) === "t", "classroom: publicar pede confirmação e marca o ciclo como do Handback");
     await fetch(`${GOOGLE}/__classroom/entregar`, { method: "POST", body: JSON.stringify({ curso: "111", tarefa: criada.id, aluno: "u3", arquivo: "Carla - Lista 2.pdf" }) });
     sql(`update public.turmas set classroom_buscado_em = null where id = '${turmaC}'`);
-    await ana.p.goto(`${APP}/app/${SLUG}/configuracoes/classroom`);
+    await ana.p.goto(`${APP}/app/${SLUG}/turma`);
     await ana.p.getByRole("button", { name: "Buscar agora" }).click();
     await ana.p.getByText("Pronto: 3 alunos, 2 tarefas e 1 entrega nova.").waitFor({ timeout: 30000 });
     confere(true, "classroom: Buscar agora traz a entrega nova");
@@ -1669,7 +1685,7 @@ try {
     await ana.p.getByRole("button", { name: /^Apagar/ }).click();
     await ana.p.waitForURL(/\/etapas$/);
     sql(`update public.turmas set classroom_buscado_em = null where id = '${turmaC}'`);
-    await ana.p.goto(`${APP}/app/${SLUG}/configuracoes/classroom`);
+    await ana.p.goto(`${APP}/app/${SLUG}/turma`);
     await ana.p.getByRole("button", { name: "Buscar agora" }).click();
     await ana.p.getByText("Pronto: 3 alunos, 1 tarefa e 0 entregas novas.").waitFor({ timeout: 30000 });
     confere(
@@ -1677,9 +1693,7 @@ try {
       "classroom: ciclo que veio do Classroom, apagado aqui, fica lá e não volta na busca",
     );
 
-    await ana.p.goto(`${APP}/app/${SLUG}/configuracoes/classroom`);
-    await ana.p.getByRole("button", { name: "Desconectar Google Classroom" }).click();
-    await ana.p.getByRole("link", { name: "Conectar Google Classroom" }).waitFor();
+    await desconectarConta(ana.p, "Google Classroom");
     confere(
       sql(`select count(*) from public.conexoes_google where user_id = '${anaId}' and servico = 'classroom'`) === "0" && sql(`select coalesce(classroom_curso, 'nada') from public.turmas where id = '${turmaC}'`) === "nada",
       "classroom: desconectar apaga a conexão e desliga a turma (o que veio fica)",
@@ -1699,7 +1713,8 @@ try {
     await trocarTurma(ana.p, "Projeto Final");
     // Criar os encontros a partir do plano de ensino
     await ana.p.goto(`${APP}/app/${SLUG}/etapas`);
-    await ana.p.getByRole("link", { name: "Criar a partir do plano de ensino" }).click();
+    await ana.p.getByRole("button", { name: "+ Novo encontro" }).click();
+    await ana.p.getByRole("dialog", { name: "Novo encontro" }).getByRole("link", { name: /^Ler do plano de ensino/ }).click();
     await ana.p.getByLabel("Texto do plano de ensino").fill("Cronograma do semestre\nEntrega 1: Pesquisa com usuários até 2099-12-10 (Roteiro de entrevista; Síntese)\nEntrega 2: Protótipo final até 2099-12-20 (Link do protótipo)");
     await ana.p.getByRole("button", { name: "Ler com a IA" }).click();
     await ana.p.getByText("A IA achou 2 entregas").waitFor();
@@ -1766,7 +1781,7 @@ try {
     await pp.goto(`${APP}/app/${SLUG}/entregas`);
     const lado = pp.getByRole("navigation", { name: "Seções da empresa" });
     const itens = (await lado.getByRole("link").allInnerTexts()).map((x) => x.trim());
-    confere(/^Entregas\|(Aulas|Encontros)\|Calendário\|Equipes\|Relatórios\|Moodle\|Google Classroom\|Google Drive\|Configurações$/.test(itens.join("|")) && !(await pp.getByRole("button", { name: "Mais" }).count()), `computador: menu do lado com tudo à vista (${itens.join(", ")})`);
+    confere(/^Início\|Entregas\|(Aulas|Encontros)\|Equipes\|Calendário\|Relatórios\|Ajustes da turma\|Contas conectadas\|Configurações$/.test(itens.join("|")) && !(await pp.getByRole("button", { name: "Mais" }).count()), `computador: menu do lado com tudo à vista (${itens.join(", ")})`);
     await pp.screenshot({ path: `${FOTOS}/7e-computador.png` });
     const largo = (await lado.boundingBox()).width;
     await lado.getByRole("button", { name: "Recolher o menu" }).click();

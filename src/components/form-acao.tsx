@@ -58,7 +58,14 @@ export function FormAcao({
       {janela}
       {estado ? <Aviso tipo={estado.ok ? "info" : "erro"}>{estado.mensagem}</Aviso> : null}
       <Botao type="submit" disabled={enviando}>
-        {enviando ? textoEnviando : textoBotao}
+        {enviando ? (
+          <>
+            <span aria-hidden className="rodinha" />
+            {textoEnviando}
+          </>
+        ) : (
+          textoBotao
+        )}
       </Botao>
     </form>
   );
@@ -97,11 +104,18 @@ export function BotaoConfirmar({
           const extra = [m?.[2], texto].filter(Boolean).join(" ") || undefined;
           if (await pedir({ titulo, texto: extra, sim, perigo })) iniciar(() => acao());
         }}
-        className={`inline-flex min-h-11 items-center rounded-xl border px-3 text-sm disabled:opacity-60 ${
+        className={`toque inline-flex min-h-11 items-center gap-2 rounded-xl border px-3 text-sm disabled:opacity-60 ${
           perigo ? "border-erro/40 text-erro hover:bg-erro-fundo" : "border-borda text-marca-forte hover:bg-fundo"
         }`}
       >
-        {pendente ? "Um momento…" : children}
+        {pendente ? (
+          <>
+            <span aria-hidden className="rodinha" />
+            Um momento…
+          </>
+        ) : (
+          children
+        )}
       </button>
       {janela}
     </>

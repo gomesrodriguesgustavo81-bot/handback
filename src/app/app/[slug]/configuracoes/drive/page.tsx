@@ -1,25 +1,21 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { AvisoGmail } from "@/components/aviso-gmail";
-import { ConectarGmail } from "@/components/conectar-gmail";
 import { BotaoConfirmar } from "@/components/form-acao";
 import { contextoDaEmpresa } from "@/lib/empresa";
-import { gmailConfigurado } from "@/lib/gmail";
 import { completarVocabulario } from "@/lib/nomes";
 import { criarClienteAdmin } from "@/lib/supabase/admin";
 import { criarClienteServidor } from "@/lib/supabase/server";
-import { dataHoraBR } from "@/lib/textos";
 import { turmaAtual } from "@/lib/turma";
-import { desconectarDrive, levarAgora } from "./acoes";
+import { levarAgora } from "./acoes";
+import { ContaNecessaria } from "@/components/conta-necessaria";
 import { Antigos, LigarDrive } from "./painel";
 import { linksDasPastas } from "@/lib/drive";
 import { IconeDrive } from "@/lib/pastas-drive";
 
-export const metadata: Metadata = { title: "Google Drive" };
+export const metadata: Metadata = { title: "Pasta no Google Drive" };
 
-export default async function Drive({ params, searchParams }: PageProps<"/app/[slug]/configuracoes/drive">) {
+export default async function Drive({ params }: PageProps<"/app/[slug]/configuracoes/drive">) {
   const { slug } = await params;
-  const { gmail: aviso } = await searchParams;
   const { empresa, podeGerir } = await contextoDaEmpresa(slug);
   if (!podeGerir) notFound();
   const turma = await turmaAtual(empresa.id);
@@ -45,40 +41,12 @@ export default async function Drive({ params, searchParams }: PageProps<"/app/[s
   return (
     <div className="flex max-w-xl flex-col gap-4">
       <div>
-        <h1 className="text-2xl font-bold">Google Drive</h1>
+        <h1 className="text-2xl font-bold">Pasta no Google Drive</h1>
         <p className="text-sm text-suave">
           Da turma <strong>{turma.nome}</strong>. Os arquivos das entregas vão para uma pasta no Drive, e o Handback continua abrindo e analisando normalmente.
         </p>
       </div>
-      <AvisoGmail aviso={aviso} servico="drive" />
-
-      <section aria-label="Sua conta Google" className="flex flex-col gap-3 rounded-2xl border border-borda bg-cartao p-4">
-        <h2 className="font-semibold">Sua conta Google</h2>
-        {!gmailConfigurado() ? (
-          <p className="text-sm text-suave">A conexão com o Google ainda não foi configurada no servidor.</p>
-        ) : conectado ? (
-          <>
-            <p className="text-sm">
-              <strong className="break-all">{conectado.email}</strong>
-              <span className="text-suave"> · conectado em {dataHoraBR(conectado.conectada_em)}</span>
-            </p>
-            <p className="text-xs text-suave">Permissão: só as pastas e arquivos que o Handback criar. Ele não vê o resto do seu Drive.</p>
-            <BotaoConfirmar
-              acao={desconectarDrive.bind(null, slug)}
-              pergunta="Desconectar o Google Drive? Os arquivos continuam no seu Drive, mas o Handback deixa de conseguir abrir e analisar os que estão lá."
-            >
-              Desconectar Google Drive
-            </BotaoConfirmar>
-          </>
-        ) : (
-          <>
-            <p className="text-sm text-suave">
-              {con?.invalida ? "A conexão expirou. " : ""}Cada pessoa conecta a própria conta. O Handback só mexe nas pastas que ele mesmo criar.
-            </p>
-            <ConectarGmail voltar={`/app/${slug}/configuracoes/drive`} servico="drive" texto="Conectar Google Drive" />
-          </>
-        )}
-      </section>
+      <ContaNecessaria slug={slug} nome="Google Drive" conta={conectado ? conectado.email : con?.invalida ? "expirou" : null} />
 
       <section aria-label="Arquivos da turma" className="flex flex-col gap-2 rounded-2xl border border-borda bg-cartao p-4">
         <LigarDrive slug={slug} ligado={meu} podeLigar={Boolean(conectado)} deOutro={dono} />

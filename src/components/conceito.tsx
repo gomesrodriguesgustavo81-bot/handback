@@ -97,7 +97,7 @@ export function Bloco({ titulo, extra, children, rotulo }: { titulo: string; ext
 /** Seção que abre e fecha (fica fechada por padrão). */
 export function Dobra({ titulo, extra, children, aberta = false }: { titulo: string; extra?: ReactNode; children: ReactNode; aberta?: boolean }) {
   return (
-    <details open={aberta} className="group rounded-2xl border border-borda bg-cartao">
+    <details open={aberta} className="dobra group rounded-2xl border border-borda bg-cartao">
       <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-2 px-4 font-semibold [&::-webkit-details-marker]:hidden">
         <span className="flex items-center gap-2">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="text-suave transition-transform group-open:rotate-90">

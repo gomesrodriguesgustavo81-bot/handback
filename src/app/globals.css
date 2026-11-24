@@ -214,8 +214,99 @@ h1, h2, .titulo {
 }
 .salvo-some { animation: aparece 2.4s ease both; }
 
+/* ---------- Movimento (o mesmo ritmo no app inteiro) ----------
+   toque e aba: 0,15 s · página, gaveta e bloco: 0,25 s · nada passa de 0,4 s */
+:root {
+  --curva: cubic-bezier(0.2, 0.8, 0.2, 1);
+  interpolate-size: allow-keywords;
+}
+
+/* Fundo que escurece atrás de gavetas e janelas */
+@keyframes escurece {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.escurece { animation: escurece 0.2s ease both; }
+
+/* Janela de confirmação: cresce do centro, sem susto */
+@keyframes cresce {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+.cresce { animation: cresce 0.18s var(--curva) both; }
+
+/* Botões e links tocáveis: afundam um pouquinho ao tocar */
+.toque { transition: transform 0.1s ease, background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease; }
+.toque:active { transform: scale(0.97); }
+
+/* Rodinha de "trabalhando" dentro dos botões */
+@keyframes gira { to { transform: rotate(360deg); } }
+.rodinha {
+  width: 1em;
+  height: 1em;
+  flex: none;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 999px;
+  animation: gira 0.8s linear infinite;
+}
+
+/* Blocos que abrem e fecham: crescem suave (o resto da tela desce junto) */
+details.dobra::details-content {
+  block-size: 0;
+  overflow: clip;
+  transition: block-size 0.25s var(--curva), content-visibility 0.25s allow-discrete;
+}
+details.dobra[open]::details-content { block-size: auto; }
+
+/* Carregando: o formato da página em cinza brilhando */
+@keyframes brilho {
+  from { background-position: -240px 0; }
+  to { background-position: 240px 0; }
+}
+.esqueleto {
+  background: linear-gradient(90deg, var(--borda) 0, var(--fundo) 60px, var(--borda) 120px);
+  background-size: 480px 100%;
+  animation: brilho 1.2s linear infinite;
+  opacity: 0.7;
+}
+
+/* Trocar de página: aba = troca rápida; entrar = vem da direita; voltar = vem da esquerda */
+::view-transition { pointer-events: none; }
+::view-transition-old(.troca) { animation: 120ms ease-in both somir; }
+::view-transition-new(.troca) { animation: 150ms ease-out 60ms both surgir; }
+::view-transition-old(.nav-forward) {
+  --deslize: -40px;
+  animation: 120ms ease-in both somir, 250ms var(--curva) both deslize-sai;
+}
+::view-transition-new(.nav-forward) {
+  --deslize: 40px;
+  animation: 180ms ease-out 70ms both surgir, 250ms var(--curva) both deslize-entra;
+}
+::view-transition-old(.nav-back) {
+  --deslize: 40px;
+  animation: 120ms ease-in both somir, 250ms var(--curva) both deslize-sai;
+}
+::view-transition-new(.nav-back) {
+  --deslize: -40px;
+  animation: 180ms ease-out 70ms both surgir, 250ms var(--curva) both deslize-entra;
+}
+@keyframes somir { to { opacity: 0; } }
+@keyframes surgir { from { opacity: 0; } }
+@keyframes deslize-sai { to { translate: var(--deslize); } }
+@keyframes deslize-entra { from { translate: var(--deslize); } }
+/* A pílula verde da barra desliza até a aba nova */
+::view-transition-group(.pilula) { animation-duration: 0.15s; animation-timing-function: var(--curva); }
+/* Topo e barra de baixo ficam parados enquanto o conteúdo se mexe */
+::view-transition-group(topo-do-app), ::view-transition-group(barra-de-baixo) { animation: none; z-index: 100; }
+::view-transition-old(topo-do-app), ::view-transition-old(barra-de-baixo) { display: none; }
+::view-transition-new(topo-do-app), ::view-transition-new(barra-de-baixo) { animation: none; }
+
 @media (prefers-reduced-motion: reduce) {
-  .entra, .salvo-some, .sobe { animation: none; }
+  .entra, .salvo-some, .sobe, .escurece, .cresce, .esqueleto { animation: none; }
+  .toque:active { transform: none; }
+  details.dobra::details-content { transition: none; }
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
   * { transition-duration: 0.01ms !important; }
 }
 

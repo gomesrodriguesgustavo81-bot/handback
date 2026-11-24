@@ -54,7 +54,14 @@ export function BotaoAnalisar({
           })
         }
       >
-        {pendente ? `Analisando… ${segundos}s` : texto}
+        {pendente ? (
+          <>
+            <span aria-hidden className="rodinha" />
+            Analisando… {segundos}s
+          </>
+        ) : (
+          texto
+        )}
       </Botao>
       {pendente ? <p className="text-xs text-suave">A IA lê os arquivos e escreve a análise. Costuma levar de 20 segundos a 2 minutos.</p> : null}
       {msg && !msg.ok ? <Aviso tipo="erro">{msg.mensagem}</Aviso> : null}
@@ -86,7 +93,14 @@ export function AnalisarVarias({ slug, entregas, rotulo }: { slug: string; entre
             });
           }}
         >
-          {pendente ? "Colocando na fila…" : rotulo}
+          {pendente ? (
+          <>
+            <span aria-hidden className="rodinha" />
+            Colocando na fila…
+          </>
+        ) : (
+          rotulo
+        )}
         </Botao>
       ) : null}
       {janela}
@@ -136,7 +150,14 @@ export function AprovarProntas({ slug, etapaId, quantas }: { slug: string; etapa
             });
           }}
         >
-          {pendente ? "Aprovando…" : `Aprovar as ${quantas} prontas sem editar`}
+          {pendente ? (
+          <>
+            <span aria-hidden className="rodinha" />
+            Aprovando…
+          </>
+        ) : (
+          `Aprovar as ${quantas} prontas sem editar`
+        )}
         </Botao>
       ) : null}
       {janela}

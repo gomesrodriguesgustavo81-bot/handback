@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { contextoDaEmpresa } from "@/lib/empresa";
 import { completarVocabulario, o } from "@/lib/nomes";
+import { minusc } from "@/lib/textos";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { turmasDaEmpresa } from "@/lib/turma";
 import { passosDoComeco, PrimeirosPassos } from "../primeiros-passos";
@@ -24,41 +25,29 @@ export default async function Configuracoes({ params }: PageProps<"/app/[slug]/c
     supabase.from("membros").select("user_id", { count: "exact", head: true }).eq("org_id", empresa.id),
   ]);
   const base = `/app/${slug}`;
-  const comMoodle = turmas.filter((t) => t.moodle_conta).map((t) => t.nome);
   const ativas = turmas.filter((t) => !t.arquivada).length;
 
   const grupos: { titulo: string; itens: Item[] }[] = [
     {
-      titulo: "Pessoas",
-      itens: [
-        {
-          nome: "Quem usa o Handback",
-          detalhe: `${pessoas ?? 0} com acesso · ${vc.avaliadores.toLowerCase()} e administradores · convites`,
-          href: `${base}/pessoas`,
-        },
-      ],
-    },
-    {
-      titulo: `${vc.espacos} e entregas`,
-      itens: [
-        { nome: vc.espacos, detalhe: `${ativas} ativa(s) · criar, renomear, arquivar`, href: `${base}/configuracoes/turmas` },
-        { nome: "Google Classroom", detalhe: "Trazer alunos, tarefas e entregas da sua turma do Classroom e lançar as notas lá", href: `${base}/configuracoes/classroom` },
-        { nome: "Google Drive", detalhe: "Guardar os arquivos das entregas numa pasta do seu Drive", href: `${base}/configuracoes/drive` },
-        { nome: "Google Agenda", detalhe: "Os prazos da turma na sua agenda (e, se quiser, na dos alunos)", href: `${base}/configuracoes/agenda` },
-        { nome: "Lembretes para os alunos", detalhe: "E-mail de prazo para quem ainda não entregou", href: `${base}/configuracoes/lembretes` },
-        { nome: "Receber por e-mail", detalhe: "Endereço de cada turma e a etiqueta do assunto", href: `${base}/configuracoes/recebimento` },
-        { nome: "Moodle", detalhe: comMoodle.length ? `Ligado: ${comMoodle.join(", ")}` : "Trazer alunos, tarefas e entregas do Moodle", href: `${base}/moodle` },
-      ],
-    },
-    {
       titulo: "Avaliação",
       itens: [
-        { nome: "E-mail (Gmail)", detalhe: "De onde saem as devolutivas · conectar ou desconectar", href: `${base}/configuracoes/email` },
-        { nome: "Conceitos e IA", detalhe: "O que vale cada conceito, regra do checklist, exemplos", href: `${base}/configuracoes/avaliacao` },
+        { nome: "Conceitos e notas", detalhe: "O que vale cada conceito, a nota no Moodle e no Classroom, a regra do checklist e exemplos para a IA", href: `${base}/configuracoes/avaliacao` },
+        { nome: "Devolutiva por e-mail", detalhe: "Seu nome no remetente e cópia para você", href: `${base}/configuracoes/email` },
+      ],
+    },
+    {
+      titulo: "Organização",
+      itens: [
+        { nome: vc.espacos, detalhe: `${ativas} ativa(s) · ${minusc(vc.espaco)} nov${o(vc, "espaco")}, renomear, arquivar`, href: `${base}/configuracoes/turmas` },
         {
           nome: "Nomes usados aqui",
           detalhe: [vc.organizacao, vc.espaco, vc.etapa, vc.grupo, vc.pessoa, vc.avaliador].join(", "),
           href: `${base}/configuracoes/nomes`,
+        },
+        {
+          nome: "Quem usa o Handback",
+          detalhe: `${pessoas ?? 0} com acesso · ${vc.avaliadores.toLowerCase()} e administradores · convites`,
+          href: `${base}/pessoas`,
         },
       ],
     },
@@ -90,7 +79,7 @@ export default async function Configuracoes({ params }: PageProps<"/app/[slug]/c
           <ul className="flex flex-col divide-y divide-borda overflow-hidden rounded-2xl border border-borda bg-cartao">
             {g.itens.map((i) => (
               <li key={i.nome}>
-                <Link href={i.href} className="flex min-h-14 items-center justify-between gap-3 px-4 py-2.5 hover:bg-fundo">
+                <Link href={i.href} transitionTypes={["nav-forward"]} className="toque flex min-h-14 items-center justify-between gap-3 px-4 py-2.5 hover:bg-fundo">
                   <span className="flex min-w-0 flex-col">
                     <span className="font-semibold">{i.nome}</span>
                     <span className="text-xs text-suave [overflow-wrap:anywhere]">{i.detalhe}</span>
@@ -104,6 +93,10 @@ export default async function Configuracoes({ params }: PageProps<"/app/[slug]/c
           </ul>
         </section>
       ))}
+      <Link href={`${base}/contas`} className="toque flex min-h-13 items-center justify-between rounded-2xl bg-marca-clara px-4 font-semibold text-marca-forte">
+        Contas conectadas (Gmail, Google, Moodle)
+        <span aria-hidden>›</span>
+      </Link>
     </div>
   );
 }

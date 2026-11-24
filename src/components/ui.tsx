@@ -18,7 +18,7 @@ export function Botao({
       : "border border-borda bg-cartao text-texto hover:bg-fundo";
   return (
     <button
-      className={`inline-flex min-h-11 items-center justify-center rounded-xl px-4 font-medium transition-colors disabled:opacity-60 ${estilo} ${className}`}
+      className={`toque inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 font-medium disabled:opacity-60 ${estilo} ${className}`}
       {...props}
     />
   );
@@ -113,7 +113,7 @@ export function LinkBotao({
       : "border border-borda bg-cartao text-texto hover:bg-fundo";
   return (
     <Link
-      className={`inline-flex min-h-11 items-center justify-center rounded-xl px-4 font-medium transition-colors ${estilo} ${className}`}
+      className={`toque inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 font-medium ${estilo} ${className}`}
       {...props}
     />
   );

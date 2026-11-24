@@ -87,7 +87,7 @@ export default async function DetalheEtapa({ params, searchParams }: PageProps<"
 
   return (
     <section className="flex flex-col gap-4">
-      <Link href={`/app/${slug}/etapas`} className="text-sm text-suave hover:text-texto">
+      <Link href={`/app/${slug}/etapas`} transitionTypes={["nav-back"]} className="text-sm text-suave hover:text-texto">
         ← {v.etapas}
       </Link>
       {copiar}

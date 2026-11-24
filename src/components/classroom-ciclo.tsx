@@ -143,7 +143,14 @@ export function ClassroomDoCiclo({ slug, etapaId, info }: { slug: string; etapaI
                 });
               }}
             >
-              {pendente ? "Publicando…" : "Publicar no Classroom"}
+              {pendente ? (
+          <>
+            <span aria-hidden className="rodinha" />
+            Publicando…
+          </>
+        ) : (
+          "Publicar no Classroom"
+        )}
             </Botao>
           ) : (
             <p className="text-xs text-suave">Só quem ligou a turma ao Classroom pode publicar.</p>

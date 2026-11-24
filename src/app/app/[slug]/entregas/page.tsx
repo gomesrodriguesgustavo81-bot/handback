@@ -136,7 +136,7 @@ export default async function PainelDaAula({
         }
         erro={turma.moodle_erro}
         podeMarcar={podeGerir}
-        ajustesHref={podeGerir ? `/app/${slug}/moodle` : null}
+        ajustesHref={podeGerir ? `/app/${slug}/contas` : null}
         tarefas={(tarefas ?? []).map((t) => ({
           id: t.id,
           nome: `${v.etapa} ${t.numero} · ${t.titulo}`,
@@ -468,7 +468,8 @@ export default async function PainelDaAula({
                 {e ? (
                   <Link
                     href={`${base}/${e.id}`}
-                    className="flex min-h-14 items-center gap-3 px-3 py-2 hover:bg-fundo"
+                    transitionTypes={["nav-forward"]}
+                    className="toque flex min-h-14 items-center gap-3 px-3 py-2 hover:bg-fundo"
                   >
                     {linha}
                   </Link>

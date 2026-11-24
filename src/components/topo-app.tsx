@@ -58,7 +58,7 @@ export function TopoApp({
   const item = "flex min-h-12 w-full items-center rounded-lg px-3 text-left text-[15px] hover:bg-fundo";
 
   return (
-    <header className="border-b border-borda bg-cartao print:hidden">
+    <header className="border-b border-borda bg-cartao print:hidden" style={{ viewTransitionName: "topo-do-app" }}>
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
         <div className="flex min-w-0 items-center gap-2">
           <Marca href="/app" />
@@ -102,8 +102,8 @@ export function TopoApp({
                   Meus avisos
                 </Link>
                 {empresa?.avalia ? (
-                  <Link role="menuitem" href={`/app/${empresa.slug}/configuracoes/email`} onClick={() => setAberto(false)} className={item}>
-                    E-mail de envio (Gmail)
+                  <Link role="menuitem" href={`/app/${empresa.slug}/contas`} onClick={() => setAberto(false)} className={item}>
+                    Contas conectadas
                   </Link>
                 ) : null}
                 <div className="mx-1 my-1 border-t border-borda" />

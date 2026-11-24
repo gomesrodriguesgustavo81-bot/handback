@@ -53,7 +53,14 @@ export function EscolherTurma({ slug, cursos }: { slug: string; cursos: { id: st
           });
         }}
       >
-        {pendente ? "Criando e buscando…" : "Criar a turma e ligar"}
+        {pendente ? (
+          <>
+            <span aria-hidden className="rodinha" />
+            Criando e buscando…
+          </>
+        ) : (
+          "Criar a turma e ligar"
+        )}
       </Botao>
       {msg ? <Aviso tipo={msg.ok ? "info" : "erro"}>{msg.mensagem}</Aviso> : null}
       {janela}
@@ -81,7 +88,14 @@ export function AcoesLigada({ slug, podeDesligar }: { slug: string; podeDesligar
             })
           }
         >
-          {pendente ? "Buscando…" : "Buscar agora"}
+          {pendente ? (
+          <>
+            <span aria-hidden className="rodinha" />
+            Buscando…
+          </>
+        ) : (
+          "Buscar agora"
+        )}
         </Botao>
         {podeDesligar ? (
           <Botao

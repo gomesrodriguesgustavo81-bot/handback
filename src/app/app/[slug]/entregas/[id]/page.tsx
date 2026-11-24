@@ -338,7 +338,7 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
     <section className="mx-auto flex w-full max-w-2xl flex-col gap-3">
       <header className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between gap-2">
-          <Link href={painel} className="-ml-1.5 inline-flex min-h-11 items-center gap-0.5 px-1.5 font-semibold text-marca-forte hover:underline">
+          <Link href={painel} transitionTypes={["nav-back"]} className="-ml-1.5 inline-flex min-h-11 items-center gap-0.5 px-1.5 font-semibold text-marca-forte hover:underline">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d="M15 6l-6 6 6 6" />
             </svg>

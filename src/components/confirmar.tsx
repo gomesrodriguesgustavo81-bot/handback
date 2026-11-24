@@ -40,14 +40,14 @@ function JanelaConfirmar({ p, fechar }: { p: Pergunta; fechar: (ok: boolean) => 
   }, [fechar]);
   // Vai direto no <body>: assim cobre a tela toda, mesmo dentro de um cartão animado.
   return createPortal(
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 p-4 sm:items-center" onClick={() => fechar(false)}>
+    <div className="escurece fixed inset-0 z-[60] flex items-end justify-center bg-black/45 p-4 sm:items-center" onClick={() => fechar(false)}>
       <div
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="confirmar-titulo"
         aria-describedby={p.texto ? "confirmar-texto" : undefined}
         onClick={(e) => e.stopPropagation()}
-        className="entra flex w-full max-w-sm flex-col gap-3 rounded-2xl bg-cartao p-5 text-left text-texto shadow-xl"
+        className="cresce flex w-full max-w-sm flex-col gap-3 rounded-2xl bg-cartao p-5 text-left text-texto shadow-xl"
       >
         <h2 id="confirmar-titulo" className="text-lg font-bold">
           {p.titulo}

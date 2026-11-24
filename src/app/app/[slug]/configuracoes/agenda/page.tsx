@@ -1,23 +1,20 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { AvisoGmail } from "@/components/aviso-gmail";
-import { ConectarGmail } from "@/components/conectar-gmail";
 import { BotaoConfirmar } from "@/components/form-acao";
 import { contextoDaEmpresa } from "@/lib/empresa";
-import { gmailConfigurado } from "@/lib/gmail";
 import { completarVocabulario } from "@/lib/nomes";
 import { criarClienteAdmin } from "@/lib/supabase/admin";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { dataHoraBR } from "@/lib/textos";
 import { turmaAtual } from "@/lib/turma";
-import { atualizarAgendaAgora, desconectarAgenda } from "./acoes";
+import { atualizarAgendaAgora } from "./acoes";
+import { ContaNecessaria } from "@/components/conta-necessaria";
 import { ItensAgenda, LigarAgenda } from "./painel";
 
-export const metadata: Metadata = { title: "Google Agenda" };
+export const metadata: Metadata = { title: "Prazos no Google Agenda" };
 
-export default async function Agenda({ params, searchParams }: PageProps<"/app/[slug]/configuracoes/agenda">) {
+export default async function Agenda({ params }: PageProps<"/app/[slug]/configuracoes/agenda">) {
   const { slug } = await params;
-  const { gmail: aviso } = await searchParams;
   const { empresa, podeGerir } = await contextoDaEmpresa(slug);
   if (!podeGerir) notFound();
   const turma = await turmaAtual(empresa.id);
@@ -36,45 +33,16 @@ export default async function Agenda({ params, searchParams }: PageProps<"/app/[
   ]);
   const conectado = con && !con.invalida ? con : null;
   const minha = Boolean(t?.agenda_por && t.agenda_por === eu.user?.id);
-  const voltar = `/app/${slug}/configuracoes/agenda`;
 
   return (
     <div className="flex max-w-xl flex-col gap-4">
       <div>
-        <h1 className="text-2xl font-bold">Google Agenda</h1>
+        <h1 className="text-2xl font-bold">Prazos no Google Agenda</h1>
         <p className="text-sm text-suave">
           Da turma <strong>{turma.nome}</strong>. Os prazos aparecem no seu Google Agenda e mudam sozinhos quando você muda uma data aqui.
         </p>
       </div>
-      <AvisoGmail aviso={aviso} servico="agenda" />
-
-      <section aria-label="Sua conta Google" className="flex flex-col gap-3 rounded-2xl border border-borda bg-cartao p-4">
-        <h2 className="font-semibold">Sua conta Google</h2>
-        {!gmailConfigurado() ? (
-          <p className="text-sm text-suave">A conexão com o Google ainda não foi configurada no servidor.</p>
-        ) : conectado ? (
-          <>
-            <p className="text-sm">
-              <strong className="break-all">{conectado.email}</strong>
-              <span className="text-suave"> · conectado em {dataHoraBR(conectado.conectada_em)}</span>
-            </p>
-            <p className="text-xs text-suave">Permissão: só as agendas que o Handback criar. Ele não vê seus outros compromissos.</p>
-            <BotaoConfirmar
-              acao={desconectarAgenda.bind(null, slug)}
-              pergunta="Desconectar o Google Agenda? As agendas que o Handback criou continuam na sua conta, mas param de ser atualizadas."
-            >
-              Desconectar Google Agenda
-            </BotaoConfirmar>
-          </>
-        ) : (
-          <>
-            <p className="text-sm text-suave">
-              {con?.invalida ? "A conexão expirou. " : ""}Cada pessoa conecta a própria conta. O Handback só mexe nas agendas que ele mesmo criar.
-            </p>
-            <ConectarGmail voltar={voltar} servico="agenda" texto="Conectar Google Agenda" />
-          </>
-        )}
-      </section>
+      <ContaNecessaria slug={slug} nome="Google Agenda" conta={conectado ? conectado.email : con?.invalida ? "expirou" : null} />
 
       <section aria-label="Agenda da turma" className="flex flex-col gap-2 rounded-2xl border border-borda bg-cartao p-4">
         <LigarAgenda slug={slug} ligada={minha} turma={turma.nome} podeLigar={Boolean(conectado)} deOutro={dono} />

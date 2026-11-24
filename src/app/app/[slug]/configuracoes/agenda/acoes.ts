@@ -31,7 +31,7 @@ export async function ligarAgenda(slug: string, ligar: boolean): Promise<R> {
   if (!c) return { ok: false, mensagem: "Só quem administra pode mudar isso." };
   if (!ligar) {
     await apagarAgendaDaTurma(c.admin, c.turma.id);
-    revalidatePath(`/app/${slug}/configuracoes/agenda`);
+    revalidatePath(`/app/${slug}`, "layout");
     return { ok: true, mensagem: "Agenda desligada e apagada da sua conta Google." };
   }
   const { data: con } = await c.admin.from("conexoes_google").select("invalida").eq("user_id", c.user.id).eq("servico", "agenda").maybeSingle();
@@ -41,7 +41,7 @@ export async function ligarAgenda(slug: string, ligar: boolean): Promise<R> {
   if (t?.agenda_por && t.agenda_por !== c.user.id) await apagarAgendaDaTurma(c.admin, c.turma.id);
   await c.admin.from("turmas").update({ agenda_por: c.user.id }).eq("id", c.turma.id).eq("org_id", c.empresa.id);
   const r = await sincronizarAgenda(c.admin, c.turma.id, await origemDoSite());
-  revalidatePath(`/app/${slug}/configuracoes/agenda`);
+  revalidatePath(`/app/${slug}`, "layout");
   return r.ok
     ? { ok: true, mensagem: `Agenda criada na sua conta Google${r.criados ? ` com ${r.criados} ${r.criados === 1 ? "evento" : "eventos"}` : ""}.` }
     : { ok: false, mensagem: `Não deu certo: ${r.mensagem}` };
@@ -63,7 +63,7 @@ export async function salvarAgenda(slug: string, campo: string, valor: string): 
   const { error } = await c.supabase.from("turmas").update(mudanca).eq("id", c.turma.id).eq("org_id", c.empresa.id);
   if (error) return { ok: false, mensagem: "Não foi possível salvar. Tente de novo." };
   const r = await sincronizarAgenda(c.admin, c.turma.id, await origemDoSite());
-  revalidatePath(`/app/${slug}/configuracoes/agenda`);
+  revalidatePath(`/app/${slug}`, "layout");
   return r.ok || r.mensagem === "agenda desligada" ? { ok: true, mensagem: "Salvo." } : { ok: false, mensagem: `Salvo, mas a agenda não atualizou: ${r.mensagem}` };
 }
 
@@ -71,7 +71,7 @@ export async function atualizarAgendaAgora(slug: string): Promise<void> {
   const c = await contexto(slug);
   if (!c) return;
   await sincronizarAgenda(c.admin, c.turma.id, await origemDoSite());
-  revalidatePath(`/app/${slug}/configuracoes/agenda`);
+  revalidatePath(`/app/${slug}`, "layout");
 }
 
 /** Desconecta o Google Agenda de quem está logado (as agendas que já existem ficam na conta da pessoa). */
@@ -93,5 +93,5 @@ export async function desconectarAgenda(slug: string): Promise<void> {
     await admin.from("turmas").update({ agenda_por: null, agenda_id: null, agenda_em: null }).eq("agenda_por", user.id);
     await registrarAcesso(supabase, "desconectou_agenda");
   }
-  revalidatePath(`/app/${slug}/configuracoes/agenda`);
+  revalidatePath(`/app/${slug}`, "layout");
 }

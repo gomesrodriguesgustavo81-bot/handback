@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { turmaAtual } from "@/lib/turma";
 import Link from "next/link";
-import { LinkBotao, Vazio } from "@/components/ui";
+import { Vazio } from "@/components/ui";
+import { NovoCiclo } from "./novo-ciclo";
 import { contextoDaEmpresa } from "@/lib/empresa";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { dataBR, minusc } from "@/lib/textos";
@@ -24,21 +25,19 @@ export default async function ListaEtapas({ params, searchParams }: PageProps<"/
   const turma = await turmaAtual(empresa.id);
   const { data: etapas } = await supabase
     .from("etapas")
-    .select("id, numero, titulo, data, recebe_de, recebe_ate, entregaveis")
+    .select("id, numero, titulo, data, recebe_de, recebe_ate, entregaveis, classroom_tarefa, classroom_nosso, moodle_tarefa")
     .eq("org_id", empresa.id)
     .eq("turma_id", turma?.id ?? "")
     .order("numero");
   return (
     <section className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">{v.etapas}</h2>
+        <div>
+          <h1 className="text-2xl font-bold">{v.etapas}</h1>
+          <p className="text-sm text-suave">As tarefas desta turma. Criar ou trazer, tudo aqui.</p>
+        </div>
         {podeGerir ? (
-          <div className="flex flex-wrap gap-2">
-            <LinkBotao href={`/app/${slug}/etapas/plano`} variante="secundario">
-              Criar a partir do plano de ensino
-            </LinkBotao>
-            <LinkBotao href={`/app/${slug}/etapas/nova`}>Adicionar {minusc(v.etapa)}</LinkBotao>
-          </div>
+          <NovoCiclo slug={slug} etapa={v.etapa} classroom={Boolean(turma?.classroom_curso)} />
         ) : null}
       </div>
       {typeof criados === "string" && /^\d+$/.test(criados) ? (
@@ -56,7 +55,7 @@ export default async function ListaEtapas({ params, searchParams }: PageProps<"/
       {!etapas?.length ? (
         <Vazio>
           {podeGerir
-            ? `Nada cadastrado ainda. Toque em “Adicionar ${minusc(v.etapa)}” para começar.`
+            ? `Nada cadastrado ainda. Toque em “+ Nov${/a$/i.test(v.etapa) ? "a" : "o"} ${minusc(v.etapa)}” para começar.`
             : "Nada cadastrado ainda."}
         </Vazio>
       ) : (
@@ -65,10 +64,20 @@ export default async function ListaEtapas({ params, searchParams }: PageProps<"/
             <li key={e.id}>
               <Link
                 href={`/app/${slug}/etapas/${e.id}`}
-                className="flex flex-col gap-1 rounded-2xl border border-borda bg-cartao p-4 hover:border-marca"
+                transitionTypes={["nav-forward"]}
+                className="toque flex flex-col gap-1 rounded-2xl border border-borda bg-cartao p-4 hover:border-marca"
               >
-                <span className="font-semibold">
-                  {v.etapa} {e.numero} · {e.titulo}
+                <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="font-semibold">
+                    {v.etapa} {e.numero} · {e.titulo}
+                  </span>
+                  {e.classroom_tarefa ? (
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${e.classroom_nosso ? "bg-ok-fundo text-ok" : "bg-info-fundo text-info"}`}>
+                      {e.classroom_nosso ? "Publicado no Classroom" : "Veio do Classroom"}
+                    </span>
+                  ) : e.moodle_tarefa ? (
+                    <span className="rounded-full bg-info-fundo px-2 py-0.5 text-xs font-semibold text-info">Veio do Moodle</span>
+                  ) : null}
                 </span>
                 <span className="text-sm text-suave">
                   {[

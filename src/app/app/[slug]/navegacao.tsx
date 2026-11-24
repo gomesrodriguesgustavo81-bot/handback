@@ -2,12 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, ViewTransition, type ReactNode } from "react";
 
-export type Icone = "entregas" | "aulas" | "calendario" | "equipes" | "relatorios" | "moodle" | "config" | "conta" | "avisos" | "drive" | "classroom";
-export type ItemNav = { href: string; nome: string; icone: Icone };
+export type Icone = "inicio" | "entregas" | "aulas" | "calendario" | "equipes" | "relatorios" | "moodle" | "config" | "conta" | "avisos" | "drive" | "classroom" | "ajustes" | "contas";
+/** tambem: outros caminhos que acendem este item (ex.: as páginas de dentro dele). */
+export type ItemNav = { href: string; nome: string; icone: Icone; tambem?: string[] };
 
 const TRACOS: Record<Icone | "mais", ReactNode> = {
+  inicio: (
+    <>
+      <path d="M4 11l8-7 8 7v9H4z" />
+      <path d="M10 20v-6h4v6" />
+    </>
+  ),
+  ajustes: <path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0M14 4v4M8 10v4M16 16v4" />,
+  contas: <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />,
   entregas: <path d="M4 13h4l2 3h4l2-3h4M4 13l2-8h12l2 8v6H4z" />,
   aulas: <path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM5 17a3 3 0 0 1 3-3h11M9 8h6" />,
   calendario: (
@@ -56,30 +65,26 @@ function Desenho({ icone }: { icone: Icone | "mais" }) {
   );
 }
 
+/** Um grupo do menu (no computador vira um título que abre e fecha; no celular, um título na gaveta "Mais"). */
+export type GrupoNav = { nome: string; itens: ItemNav[] };
+/** Link "← Voltar" das páginas de dentro de um lugar (ex.: Ajustes da turma › Google Drive). */
+export type Volta = { href: string; nome: string; prefixos: string[] };
+
 /**
- * Navegação da turma. No celular: barra fixa embaixo (as seções do dia a dia
- * e "Mais"). No computador: menu na lateral, com tudo à vista.
+ * Navegação. No celular: barra fixa embaixo (Início e o dia a dia da turma)
+ * e "Mais" (o resto, em grupos). No computador: menu na lateral, em grupos
+ * que abrem e fecham.
  */
-export function Navegacao({
-  abas,
-  mais,
-  configuracoes,
-  paginasDeConfiguracao,
-}: {
-  abas: ItemNav[];
-  mais: ItemNav[];
-  configuracoes: string | null;
-  paginasDeConfiguracao: string[];
-}) {
+export function Navegacao({ abas, grupos }: { abas: ItemNav[]; grupos: GrupoNav[] }) {
   const caminho = usePathname();
   const [aberto, setAberto] = useState(false);
   const dentro = (href: string) => caminho === href || caminho.startsWith(href + "/");
-  const emConfiguracao = Boolean(configuracoes && (dentro(configuracoes) || paginasDeConfiguracao.some(dentro)));
-  const extras: ItemNav[] = [...mais, ...(configuracoes ? [{ href: configuracoes, nome: "Configurações", icone: "config" as const }] : [])];
-  // A aba mais específica ganha (Relatórios fica acesa, não Entregas).
+  const extras = grupos.flatMap((g) => g.itens).filter((x) => !abas.some((a) => a.href === x.href));
   const todas = [...abas, ...extras];
-  const melhor = todas.filter((x) => dentro(x.href)).sort((a, b) => b.href.length - a.href.length)[0];
-  const ativa = (item: ItemNav) => (melhor ? melhor.href === item.href : item.icone === "config" && emConfiguracao);
+  // A aba mais específica ganha (Relatórios fica acesa, não Entregas; Google Drive acende Ajustes da turma).
+  const alcance = (x: ItemNav) => Math.max(-1, ...[x.href, ...(x.tambem ?? [])].filter(dentro).map((h) => h.length));
+  const melhor = todas.map((x) => [x, alcance(x)] as const).filter(([, n]) => n >= 0).sort((a, b) => b[1] - a[1])[0]?.[0];
+  const ativa = (item: ItemNav) => melhor?.href === item.href;
   const maisAtivo = extras.some(ativa);
 
   // Esc fecha a gaveta; trocar de página também.
@@ -95,12 +100,14 @@ export function Navegacao({
     setAberto(false);
   }
 
-  // Menu do lado recolhido (lembrado neste navegador).
+  // Menu do lado recolhido e grupos fechados (lembrados neste navegador).
   const [recolhido, setRecolhido] = useState(false);
+  const [fechados, setFechados] = useState<string[]>([]);
   useEffect(() => {
     try {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setRecolhido(localStorage.getItem("hb-menu-recolhido") === "1");
+      setFechados(JSON.parse(localStorage.getItem("hb-menu-grupos") ?? "[]"));
     } catch {}
   }, []);
   const alternarMenu = () =>
@@ -110,15 +117,39 @@ export function Navegacao({
       } catch {}
       return !x;
     });
+  const alternarGrupo = (nome: string) =>
+    setFechados((x) => {
+      const novo = x.includes(nome) ? x.filter((n) => n !== nome) : [...x, nome];
+      try {
+        localStorage.setItem("hb-menu-grupos", JSON.stringify(novo));
+      } catch {}
+      return novo;
+    });
 
   const mostrarBarra = abas.length + (extras.length ? 1 : 0) > 1;
+  const linkLado = (a: ItemNav) => (
+    <Link
+      key={a.href}
+      href={a.href}
+      aria-current={ativa(a) ? "page" : undefined}
+      title={recolhido ? a.nome : undefined}
+      className={`toque flex min-h-11 items-center gap-3 rounded-xl px-3 text-[15px] transition-colors ${
+        ativa(a) ? "bg-acento/40 font-semibold text-texto dark:bg-marca-clara" : "font-medium text-suave hover:bg-cartao hover:text-texto"
+      }`}
+    >
+      <span className="shrink-0">
+        <Desenho icone={a.icone} />
+      </span>
+      <span className={recolhido ? "sr-only" : "truncate"}>{a.nome}</span>
+    </Link>
+  );
 
   return (
     <>
-      {/* Computador: menu na lateral (dá para recolher e deixar só os ícones). */}
+      {/* Computador: menu na lateral, em grupos (dá para recolher e deixar só os ícones). */}
       <nav
         aria-label="Seções da empresa"
-        className={`hidden flex-col gap-1 self-start transition-[width] duration-200 lg:sticky lg:top-6 lg:flex print:hidden ${recolhido ? "lg:w-12" : "lg:w-52"}`}
+        className={`hidden flex-col gap-1 self-start transition-[width] duration-200 lg:sticky lg:top-6 lg:flex print:hidden ${recolhido ? "lg:w-12" : "lg:w-56"}`}
       >
         <button
           type="button"
@@ -126,7 +157,7 @@ export function Navegacao({
           aria-expanded={!recolhido}
           aria-label={recolhido ? "Abrir o menu" : "Recolher o menu"}
           title={recolhido ? "Abrir o menu" : "Recolher o menu"}
-          className="mb-1 flex min-h-10 items-center gap-3 rounded-xl px-3 text-sm font-medium text-suave hover:bg-cartao hover:text-texto"
+          className="toque mb-1 flex min-h-10 items-center gap-3 rounded-xl px-3 text-sm font-medium text-suave hover:bg-cartao hover:text-texto"
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0">
             <rect x="3" y="4" width="18" height="16" rx="2" />
@@ -134,22 +165,29 @@ export function Navegacao({
           </svg>
           {recolhido ? null : <span>Recolher</span>}
         </button>
-        {todas.map((a) => (
-          <Link
-            key={a.href}
-            href={a.href}
-            aria-current={ativa(a) ? "page" : undefined}
-            title={recolhido ? a.nome : undefined}
-            className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-[15px] transition-colors ${
-              ativa(a) ? "bg-acento/40 font-semibold text-texto dark:bg-marca-clara" : "font-medium text-suave hover:bg-cartao hover:text-texto"
-            }`}
-          >
-            <span className="shrink-0">
-              <Desenho icone={a.icone} />
-            </span>
-            <span className={recolhido ? "sr-only" : "truncate"}>{a.nome}</span>
-          </Link>
-        ))}
+        {grupos.map((g) => {
+          const fechado = fechados.includes(g.nome) && !g.itens.some(ativa);
+          return (
+            <div key={g.nome} className="flex flex-col gap-1">
+              {g.nome && !recolhido ? (
+                <button
+                  type="button"
+                  onClick={() => alternarGrupo(g.nome)}
+                  aria-expanded={!fechado}
+                  className="toque mt-2 flex min-h-9 items-center justify-between rounded-lg px-3 text-[11px] font-semibold uppercase tracking-wide text-suave hover:text-texto"
+                >
+                  {g.nome}
+                  <span aria-hidden className={`transition-transform duration-200 ${fechado ? "-rotate-90" : ""}`}>
+                    ▾
+                  </span>
+                </button>
+              ) : g.nome ? (
+                <span aria-hidden className="mx-3 my-1 border-t border-borda" />
+              ) : null}
+              {fechado ? null : g.itens.map(linkLado)}
+            </div>
+          );
+        })}
       </nav>
 
       {/* Celular: barra fixa embaixo, perto do dedo. */}
@@ -157,6 +195,7 @@ export function Navegacao({
         <nav
           aria-label="Seções da empresa"
           className="fixed inset-x-0 bottom-0 z-30 border-t border-borda bg-cartao/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden print:hidden"
+          style={{ viewTransitionName: "barra-de-baixo" }}
         >
           <ul className="mx-auto flex max-w-xl">
             {abas.map((a) => (
@@ -164,10 +203,17 @@ export function Navegacao({
                 <Link
                   href={a.href}
                   aria-current={ativa(a) ? "page" : undefined}
-                  className={`flex min-h-16 flex-col items-center justify-center gap-0.5 text-xs ${ativa(a) ? "font-bold text-texto" : "font-medium text-suave"}`}
+                  className={`toque flex min-h-16 flex-col items-center justify-center gap-0.5 text-xs ${ativa(a) ? "font-bold text-texto" : "font-medium text-suave"}`}
                 >
-                  <span className={`flex h-7 w-14 items-center justify-center rounded-full transition-colors ${ativa(a) ? "bg-acento text-sobre-acento" : ""}`}>
-                    <Desenho icone={a.icone} />
+                  <span className="relative flex h-7 w-14 items-center justify-center">
+                    {ativa(a) ? (
+                      <ViewTransition name="pilula-da-barra" share="pilula" default="none">
+                        <span aria-hidden className="absolute inset-0 rounded-full bg-acento" />
+                      </ViewTransition>
+                    ) : null}
+                    <span className={`relative ${ativa(a) ? "text-sobre-acento" : ""}`}>
+                      <Desenho icone={a.icone} />
+                    </span>
                   </span>
                   {a.nome}
                 </Link>
@@ -180,10 +226,17 @@ export function Navegacao({
                   aria-expanded={aberto}
                   aria-haspopup="dialog"
                   onClick={() => setAberto(true)}
-                  className={`flex min-h-16 w-full flex-col items-center justify-center gap-0.5 text-xs ${maisAtivo ? "font-bold text-texto" : "font-medium text-suave"}`}
+                  className={`toque flex min-h-16 w-full flex-col items-center justify-center gap-0.5 text-xs ${maisAtivo ? "font-bold text-texto" : "font-medium text-suave"}`}
                 >
-                  <span className={`flex h-7 w-14 items-center justify-center rounded-full ${maisAtivo ? "bg-acento text-sobre-acento" : ""}`}>
-                    <Desenho icone="mais" />
+                  <span className="relative flex h-7 w-14 items-center justify-center">
+                    {maisAtivo ? (
+                      <ViewTransition name="pilula-da-barra" share="pilula" default="none">
+                        <span aria-hidden className="absolute inset-0 rounded-full bg-acento" />
+                      </ViewTransition>
+                    ) : null}
+                    <span className={`relative ${maisAtivo ? "text-sobre-acento" : ""}`}>
+                      <Desenho icone="mais" />
+                    </span>
                   </span>
                   Mais
                 </button>
@@ -194,7 +247,7 @@ export function Navegacao({
       ) : null}
 
       {aberto ? (
-        <div className="fixed inset-0 z-40 flex items-end bg-texto/45 lg:hidden" onClick={() => setAberto(false)}>
+        <div className="escurece fixed inset-0 z-40 flex items-end bg-texto/45 lg:hidden" onClick={() => setAberto(false)}>
           <div
             role="dialog"
             aria-modal="true"
@@ -203,21 +256,30 @@ export function Navegacao({
             className="sobe flex max-h-[85vh] w-full flex-col gap-1 overflow-y-auto rounded-t-3xl bg-cartao px-4 pt-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
           >
             <span aria-hidden className="mb-2 h-1 w-10 self-center rounded-full bg-borda" />
-            {extras.map((a) => (
-              <Link
-                key={a.href}
-                href={a.href}
-                aria-current={ativa(a) ? "page" : undefined}
-                className={`flex min-h-13 items-center gap-3 rounded-xl px-3 text-base ${ativa(a) ? "bg-marca-clara font-semibold" : "hover:bg-fundo"}`}
-              >
-                <Desenho icone={a.icone} />
-                <span className="flex-1">{a.nome}</span>
-                <span aria-hidden className="text-suave">
-                  ›
-                </span>
-              </Link>
-            ))}
-            <button type="button" onClick={() => setAberto(false)} className="mt-2 min-h-12 rounded-xl border border-borda font-semibold">
+            {grupos.map((g) => {
+              const itens = g.itens.filter((x) => extras.includes(x));
+              if (!itens.length) return null;
+              return (
+                <div key={g.nome} className="flex flex-col gap-1">
+                  {g.nome ? <span className="mt-2 px-3 text-[11px] font-semibold uppercase tracking-wide text-suave">{g.nome}</span> : null}
+                  {itens.map((a) => (
+                    <Link
+                      key={a.href}
+                      href={a.href}
+                      aria-current={ativa(a) ? "page" : undefined}
+                      className={`toque flex min-h-13 items-center gap-3 rounded-xl px-3 text-base ${ativa(a) ? "bg-marca-clara font-semibold" : "hover:bg-fundo"}`}
+                    >
+                      <Desenho icone={a.icone} />
+                      <span className="flex-1">{a.nome}</span>
+                      <span aria-hidden className="text-suave">
+                        ›
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              );
+            })}
+            <button type="button" onClick={() => setAberto(false)} className="toque mt-3 min-h-12 rounded-xl border border-borda font-semibold">
               Fechar
             </button>
           </div>
@@ -227,15 +289,18 @@ export function Navegacao({
   );
 }
 
-/** Nas páginas de configuração, o caminho de volta para a lista. */
-export function VoltarConfiguracoes({ configuracoes, paginasDeConfiguracao }: { configuracoes: string; paginasDeConfiguracao: string[] }) {
+/** Nas páginas de dentro de um lugar, o caminho de volta (← Configurações, ← Ajustes da turma, ← Nova turma). */
+export function Voltar({ voltas }: { voltas: Volta[] }) {
   const caminho = usePathname();
   const dentro = (href: string) => caminho === href || caminho.startsWith(href + "/");
-  const sub = caminho !== configuracoes && (dentro(configuracoes) || paginasDeConfiguracao.some(dentro));
-  if (!sub) return null;
+  const v = voltas
+    .map((x) => [x, Math.max(-1, ...x.prefixos.filter(dentro).map((p) => p.length))] as const)
+    .filter(([x, n]) => n >= 0 && caminho !== x.href)
+    .sort((a, b) => b[1] - a[1])[0]?.[0];
+  if (!v) return null;
   return (
-    <Link href={configuracoes} className="self-start text-sm font-medium text-marca-forte hover:underline print:hidden">
-      ← Configurações
+    <Link href={v.href} transitionTypes={["nav-back"]} className="self-start text-sm font-medium text-marca-forte hover:underline print:hidden">
+      ← {v.nome}
     </Link>
   );
 }

@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CampoAuto } from "@/components/campo-auto";
+import { FormAcao } from "@/components/form-acao";
+import { Campo } from "@/components/ui";
+import { salvarNotasMoodle } from "../../moodle/acoes";
 import { contextoDaEmpresa } from "@/lib/empresa";
 import { ROTULO_REGRA, type RegraChecklist } from "@/lib/ia/regras";
 import { criarClienteServidor } from "@/lib/supabase/server";
 
-export const metadata: Metadata = { title: "Conceitos e IA" };
+export const metadata: Metadata = { title: "Conceitos e notas" };
 
 const RESUMO: Record<string, string> = { EXCELENTE: "tudo e com qualidade", BOM: "tudo, com ajustes", REGULAR: "faltou parte", RUIM: "quase nada" };
 
@@ -16,18 +19,19 @@ export default async function Avaliacao({ params }: PageProps<"/app/[slug]/confi
   const supabase = await criarClienteServidor();
   const { data: c } = await supabase
     .from("organizacoes")
-    .select("conceitos, regra_checklist, exemplos_devolutiva, enviar_conceito")
+    .select("conceitos, regra_checklist, exemplos_devolutiva, enviar_conceito, notas_moodle")
     .eq("id", empresa.id)
     .single();
   const conceitos = (c?.conceitos ?? {}) as Record<string, string>;
+  const notas = (c?.notas_moodle ?? {}) as Record<string, number>;
   return (
     <div className="flex max-w-xl flex-col gap-4">
       <div>
-        <h1 className="text-2xl font-bold">Conceitos e IA</h1>
+        <h1 className="text-2xl font-bold">Conceitos e notas</h1>
         <p className="text-sm text-suave">A IA usa estas descrições para sugerir o conceito. Sem notas: só os quatro conceitos. Tudo salva sozinho.</p>
       </div>
       {(["EXCELENTE", "BOM", "REGULAR", "RUIM"] as const).map((k, i) => (
-        <details key={k} open={i === 0} className="group rounded-2xl border border-borda bg-cartao">
+        <details key={k} open={i === 0} className="dobra group rounded-2xl border border-borda bg-cartao">
           <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-2 px-4 [&::-webkit-details-marker]:hidden">
             <span className="flex items-center gap-2">
               <span className="rounded-full bg-marca-clara px-2.5 py-0.5 text-xs font-bold text-marca-forte">{k}</span>
@@ -72,6 +76,19 @@ export default async function Avaliacao({ params }: PageProps<"/app/[slug]/confi
           dica="A IA imita o tom e o tamanho destes exemplos. Separe um do outro com uma linha só com ---. Vazio: ela usa as últimas devolutivas aprovadas aqui."
         />
       </div>
+      <section id="notas" aria-label="Nota para cada conceito" className="flex scroll-mt-6 flex-col gap-3 rounded-2xl border border-borda bg-cartao p-4">
+        <div>
+          <h2 className="font-semibold">Nota para cada conceito</h2>
+          <p className="text-sm text-suave">Quando a nota vai para o Moodle ou para o Classroom: a porcentagem da nota máxima da tarefa. Ex.: BOM = 80% de 10 = 8,0.</p>
+        </div>
+        <FormAcao acao={salvarNotasMoodle.bind(null, slug)} textoBotao="Salvar notas">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {(["EXCELENTE", "BOM", "REGULAR", "RUIM"] as const).map((k) => (
+              <Campo key={k} rotulo={`${k} (%)`} name={`nota_${k}`} inputMode="decimal" required defaultValue={String(notas[k] ?? "")} />
+            ))}
+          </div>
+        </FormAcao>
+      </section>
     </div>
   );
 }

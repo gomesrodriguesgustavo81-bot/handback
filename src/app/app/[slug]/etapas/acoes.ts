@@ -1,7 +1,7 @@
 "use server";
 
 import { ErroClassroom } from "@/lib/classroom/cliente";
-import { apagarNoClassroom } from "@/lib/classroom/sincronizar";
+import { apagarNoClassroom, publicarNoClassroom } from "@/lib/classroom/sincronizar";
 
 import { revalidatePath } from "next/cache";
 import { turmaAtual } from "@/lib/turma";
@@ -72,9 +72,22 @@ export async function criarEtapa(slug: string, _a: Resultado, dados: FormData): 
     .single();
   if (error) return { ok: false, mensagem: erroDoBanco(error, etapa.numero, empresa.vocabulario.etapa) };
 
+  // Turma do Classroom: publica a tarefa lá também (assim o Handback pode lançar a nota).
+  let aviso = "";
+  if (dados.get("publicar_classroom") === "on") {
+    const admin = criarClienteAdmin();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    try {
+      if (admin && user) await publicarNoClassroom(admin, data.id, user.id);
+    } catch (e) {
+      aviso = `&erro=${encodeURIComponent(e instanceof ErroClassroom ? `Salvo aqui, mas não foi para o Classroom: ${e.message}` : "Salvo aqui, mas não foi para o Classroom. Tente “Publicar no Classroom” de novo.")}`;
+    }
+  }
   await atualizarAgendaDepois(empresa.id);
   revalidatePath(`/app/${slug}`, "layout");
-  redirect(`/app/${slug}/etapas/${data.id}?salvo=1`);
+  redirect(`/app/${slug}/etapas/${data.id}?salvo=1${aviso}`);
 }
 
 export async function salvarEtapa(slug: string, id: string, _a: Resultado, dados: FormData): Promise<Resultado> {

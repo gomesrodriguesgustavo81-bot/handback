@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Campo, Cartao, Escolha } from "@/components/ui";
+import { Campo, Cartao, Escolha, LinkBotao } from "@/components/ui";
 import { FormAcao } from "@/components/form-acao";
 import { contextoDaEmpresa } from "@/lib/empresa";
 import { completarVocabulario, o } from "@/lib/nomes";
@@ -51,8 +51,11 @@ export default async function Turmas({ params }: PageProps<"/app/[slug]/configur
           </li>
         ))}
       </ul>
+      <LinkBotao href={`/app/${slug}/nova-turma`} className="self-start">
+        + Nov{o(vc, "espaco")} {vc.espaco.toLowerCase()} (e-mail, Moodle ou Classroom)
+      </LinkBotao>
       <details className="text-sm">
-        <summary className="cursor-pointer font-medium text-marca-forte">+ Criar {vc.espaco.toLowerCase()}</summary>
+        <summary className="cursor-pointer font-medium text-marca-forte">+ Criar {vc.espaco.toLowerCase()} rápido (por e-mail)</summary>
         <div className="mt-3">
           <FormAcao acao={criarTurma.bind(null, slug)} textoBotao="Criar" limparAoSalvar confirmar={{ titulo: "Criar esta turma?", sim: "Sim, criar" }}>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

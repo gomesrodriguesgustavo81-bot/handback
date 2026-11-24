@@ -16,7 +16,7 @@ export async function passosDoComeco(slug: string, empresa: MinhaEmpresa): Promi
     supabase.auth.getUser(),
     supabase.from("etapas").select("id", { count: "exact", head: true }).eq("turma_id", tId),
     supabase.from("grupos").select("id", { count: "exact", head: true }).eq("turma_id", tId).eq("escondido", false),
-    supabase.from("turmas").select("mensagem_copiada_em, moodle_conta").eq("id", tId).maybeSingle(),
+    supabase.from("turmas").select("mensagem_copiada_em, moodle_conta, classroom_curso").eq("id", tId).maybeSingle(),
     supabase.from("contas_gmail").select("invalida").maybeSingle(),
   ]);
   const base = `/app/${slug}`;
@@ -43,20 +43,20 @@ export async function passosDoComeco(slug: string, empresa: MinhaEmpresa): Promi
     },
     {
       titulo: `${plural(umaEquipe)} e alunos`,
-      texto: "Cadastre à mão, cole uma lista ou ligue o Moodle",
+      texto: "Cadastre à mão, cole uma lista ou traga do Moodle ou do Classroom",
       href: `${base}/grupos`,
-      feito: (equipes ?? 0) > 0 || Boolean(t?.moodle_conta),
+      feito: (equipes ?? 0) > 0 || Boolean(t?.moodle_conta) || Boolean(t?.classroom_curso),
     },
     {
       titulo: "Mandar a mensagem para a turma",
       texto: "Copie a mensagem pronta com o endereço de entrega",
       href: `${base}/configuracoes/recebimento`,
-      feito: Boolean(t?.mensagem_copiada_em) || Boolean(t?.moodle_conta),
+      feito: Boolean(t?.mensagem_copiada_em) || Boolean(t?.moodle_conta) || Boolean(t?.classroom_curso),
     },
     {
       titulo: "Conectar seu Gmail",
       texto: "Para as devolutivas saírem do seu e-mail",
-      href: `${base}/configuracoes/email`,
+      href: `${base}/contas`,
       feito: Boolean(gmail && !gmail.invalida),
     },
   ];

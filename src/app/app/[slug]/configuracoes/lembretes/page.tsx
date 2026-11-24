@@ -67,7 +67,7 @@ export default async function Lembretes({ params }: PageProps<"/app/[slug]/confi
           <p className="rounded-xl bg-alerta-fundo px-3 py-2 text-sm text-alerta">
             {souEu ? (
               <>
-                Seu Gmail não está conectado: os lembretes não saem. <Link href={`/app/${slug}/configuracoes/email`} className="font-semibold underline">Conectar meu Gmail</Link>
+                Seu Gmail não está conectado: os lembretes não saem. <Link href={`/app/${slug}/contas`} className="font-semibold underline">Conectar meu Gmail</Link>
               </>
             ) : (
               "O Gmail de quem ligou os lembretes não está conectado: eles não saem."

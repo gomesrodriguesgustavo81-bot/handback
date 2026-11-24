@@ -6,7 +6,7 @@ import { acessoAtivo } from "@/lib/suporte";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { dataHoraBR } from "@/lib/textos";
 import { contextoDaEmpresa } from "@/lib/empresa";
-import { Navegacao, VoltarConfiguracoes, type ItemNav } from "./navegacao";
+import { Navegacao, Voltar, type GrupoNav, type ItemNav, type Volta } from "./navegacao";
 import { completarVocabulario, o, quemEntrega } from "@/lib/nomes";
 import { turmaAtual, turmasDaEmpresa } from "@/lib/turma";
 import { SeletorTurma } from "./seletor-turma";
@@ -34,24 +34,52 @@ export default async function LayoutEmpresa({
   const acesso = await acessoAtivo(await criarClienteServidor(), empresa.id);
   const entrega = quemEntrega(v, atual?.modo ?? "grupos");
 
-  const abas: ItemNav[] = [
-    ...(podeAvaliar ? [{ href: `/app/${slug}/entregas`, nome: "Entregas", icone: "entregas" as const }] : []),
-    { href: `/app/${slug}/etapas`, nome: v.etapas, icone: "aulas" },
-    { href: `/app/${slug}/calendario`, nome: "Calendário", icone: "calendario" },
-    ...(podeAvaliar ? [{ href: `/app/${slug}/grupos`, nome: entrega.varios, icone: "equipes" as const }] : []),
-  ];
-  const mais: ItemNav[] = [
-    ...(podeAvaliar ? [{ href: `/app/${slug}/relatorios`, nome: "Relatórios", icone: "relatorios" as const }] : []),
-    ...(podeGerir ? [{ href: `/app/${slug}/moodle`, nome: "Moodle", icone: "moodle" as const }] : []),
-    ...(podeGerir ? [{ href: `/app/${slug}/configuracoes/classroom`, nome: "Google Classroom", icone: "classroom" as const }] : []),
-    ...(podeGerir ? [{ href: `/app/${slug}/configuracoes/drive`, nome: "Google Drive", icone: "drive" as const }] : []),
-  ];
-  const configuracoes = podeGerir ? `/app/${slug}/configuracoes` : null;
-  const paginasDeConfiguracao = podeGerir ? ["ajustes", "pessoas", "registro"].map((p) => `/app/${slug}/${p}`) : [];
+  const b = `/app/${slug}`;
+  const inicio: ItemNav = { href: `${b}/inicio`, nome: "Início", icone: "inicio" };
+  const entregas: ItemNav = { href: `${b}/entregas`, nome: "Entregas", icone: "entregas" };
+  const ciclos: ItemNav = { href: `${b}/etapas`, nome: v.etapas, icone: "aulas" };
+  const alunos: ItemNav = { href: `${b}/grupos`, nome: entrega.varios, icone: "equipes" };
+  const ajustesTurma = ["drive", "agenda", "lembretes", "recebimento"].map((p) => `${b}/configuracoes/${p}`);
+  const abas: ItemNav[] = podeAvaliar ? [inicio, entregas, ciclos, alunos] : [ciclos, { href: `${b}/calendario`, nome: "Calendário", icone: "calendario" }];
+  const grupos: GrupoNav[] = [
+    { nome: "", itens: podeAvaliar ? [inicio] : [] },
+    {
+      nome: v.espaco,
+      itens: [
+        ...(podeAvaliar ? [entregas] : []),
+        ciclos,
+        ...(podeAvaliar ? [alunos] : []),
+        { href: `${b}/calendario`, nome: "Calendário", icone: "calendario" as const },
+        ...(podeAvaliar ? [{ href: `${b}/relatorios`, nome: "Relatórios", icone: "relatorios" as const }] : []),
+        ...(podeGerir ? [{ href: `${b}/turma`, nome: `Ajustes d${o(v, "espaco")} ${v.espaco.toLowerCase()}`, icone: "ajustes" as const, tambem: ajustesTurma }] : []),
+      ],
+    },
+    {
+      nome: "Sua conta",
+      itens: podeGerir
+        ? [
+            { href: `${b}/contas`, nome: "Contas conectadas", icone: "contas" as const },
+            {
+              href: `${b}/configuracoes`,
+              nome: "Configurações",
+              icone: "config" as const,
+              tambem: ["pessoas", "registro", "ajustes", "nova-turma", "moodle"].map((p) => `${b}/${p}`),
+            },
+          ]
+        : [],
+    },
+  ].filter((g) => g.itens.length);
+  const voltas: Volta[] = podeGerir
+    ? [
+        { href: `${b}/turma`, nome: `Ajustes d${o(v, "espaco")} ${v.espaco.toLowerCase()}`, prefixos: ajustesTurma },
+        { href: `${b}/nova-turma`, nome: `Nov${o(v, "espaco")} ${v.espaco.toLowerCase()}`, prefixos: [`${b}/moodle`, `${b}/configuracoes/classroom`] },
+        { href: `${b}/configuracoes`, nome: "Configurações", prefixos: [`${b}/configuracoes`, `${b}/pessoas`, `${b}/registro`, `${b}/nova-turma`] },
+      ]
+    : [];
 
   return (
     <div className="flex flex-col gap-4 pb-20 lg:grid lg:grid-cols-[auto_minmax(0,1fr)] lg:items-start lg:gap-8 lg:pb-0 print:block print:pb-0">
-      <Navegacao abas={abas} mais={mais} configuracoes={configuracoes} paginasDeConfiguracao={paginasDeConfiguracao} />
+      <Navegacao abas={abas} grupos={grupos} />
       <div className="flex min-w-0 flex-col gap-4">
       <SoForaDaFolha>
         <Saudacao nome={eu.nome} email={eu.email} />
@@ -101,11 +129,11 @@ export default async function LayoutEmpresa({
             rotulo={v.espaco}
             turmas={ativas.map((t) => ({ id: t.id, nome: t.moodle_conta ? `${t.nome} (Moodle)` : t.classroom_curso ? `${t.nome} (Classroom)` : t.nome }))}
             atual={atual?.id ?? null}
-            criarHref={podeGerir ? `/app/${slug}/configuracoes/turmas` : null}
+            criarHref={podeGerir ? `/app/${slug}/nova-turma` : null}
           />
         </SoForaDaFolha>
       ) : null}
-      {configuracoes ? <VoltarConfiguracoes configuracoes={configuracoes} paginasDeConfiguracao={paginasDeConfiguracao} /> : null}
+      <Voltar voltas={voltas} />
       </div>
       {children}
       </div>

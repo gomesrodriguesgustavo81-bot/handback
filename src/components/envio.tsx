@@ -64,7 +64,14 @@ export function BotaoEnviar({
           });
         }}
       >
-        {pendente ? "Enviando…" : texto}
+        {pendente ? (
+          <>
+            <span aria-hidden className="rodinha" />
+            Enviando…
+          </>
+        ) : (
+          texto
+        )}
       </Botao>
       {janela}
       <AvisoEnvio msg={msg} conectarHref={conectarHref} />
@@ -246,7 +253,14 @@ export function DevolverMoodle({
           });
         }}
       >
-        {pendente ? "Devolvendo…" : moodle.enviada ? "Devolver de novo" : "Devolver"}
+        {pendente ? (
+          <>
+            <span aria-hidden className="rodinha" />
+            Devolvendo…
+          </>
+        ) : (
+          moodle.enviada ? "Devolver de novo" : "Devolver"
+        )}
       </Botao>
       {janela}
       {msgs.map((m, i) => (
@@ -311,7 +325,14 @@ export function DevolverClassroom({ slug, entregaId, classroom }: { slug: string
             });
           }}
         >
-          {pendente ? "Lançando…" : classroom.enviada ? "Lançar de novo no Classroom" : "Devolver no Classroom"}
+          {pendente ? (
+          <>
+            <span aria-hidden className="rodinha" />
+            Lançando…
+          </>
+        ) : (
+          classroom.enviada ? "Lançar de novo no Classroom" : "Devolver no Classroom"
+        )}
         </Botao>
       )}
       {msg ? <Aviso tipo={msg.ok ? "info" : "erro"}>{msg.mensagem}</Aviso> : null}
