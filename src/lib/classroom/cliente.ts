@@ -166,6 +166,16 @@ export async function criarTarefa(
   });
 }
 
+/** Apaga uma tarefa criada pelo Handback (se já não existir lá, tudo bem). */
+export async function apagarTarefa(acesso: string, cursoId: string, tarefaId: string): Promise<void> {
+  try {
+    await pedir(acesso, `/courses/${id(cursoId)}/courseWork/${id(tarefaId)}`, { method: "DELETE" });
+  } catch (e) {
+    if (e instanceof ErroClassroom && e.status === 404) return;
+    throw e;
+  }
+}
+
 /** Lança a nota (rascunho e definitiva) e devolve o trabalho ao aluno. */
 export async function lancarNota(acesso: string, cursoId: string, tarefaId: string, envioId: string, nota: number): Promise<void> {
   const base = `/courses/${id(cursoId)}/courseWork/${id(tarefaId)}/studentSubmissions/${id(envioId)}`;

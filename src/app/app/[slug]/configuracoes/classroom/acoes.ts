@@ -10,12 +10,13 @@ import {
   trazerArquivosEscolhidos,
   type ResultadoClassroom,
 } from "@/lib/classroom/sincronizar";
-import { contextoDaEmpresa } from "@/lib/empresa";
+import { cookies } from "next/headers";
+import { contextoDaEmpresa, mensagemDeErro } from "@/lib/empresa";
 import { decifrar, revogar } from "@/lib/gmail";
 import { registrarAcesso } from "@/lib/registro";
 import { criarClienteAdmin } from "@/lib/supabase/admin";
 import { criarClienteServidor } from "@/lib/supabase/server";
-import { turmaAtual } from "@/lib/turma";
+import { cookieDaTurma, turmaAtual } from "@/lib/turma";
 
 type R = { ok: boolean; mensagem: string; reconectar?: boolean };
 
@@ -47,30 +48,49 @@ function resumoDaBusca(r: ResultadoClassroom): string {
   return `${plural(r.alunos, "aluno", "alunos")}, ${plural(r.tarefas, "tarefa", "tarefas")} e ${plural(r.novas, "entrega nova", "entregas novas")}${r.faltam ? ` (mais ${r.faltam} na próxima busca)` : ""}.`;
 }
 
-/** Liga a turma atual do Handback a uma turma do Classroom e já traz tudo. */
+/**
+ * Cria uma turma nova no Handback, ligada a uma sala do Classroom (com o
+ * nome da sala), e já traz alunos, tarefas e entregas. Assim nada se mistura
+ * com as turmas do Moodle ou feitas à mão.
+ */
 export async function ligarClassroom(slug: string, cursoId: string): Promise<R> {
-  const c = await contexto(slug);
-  if (!c?.podeGerir) return { ok: false, mensagem: "Só quem administra pode ligar o Classroom." };
-  const a = await acessoDoClassroom(c.admin, c.user.id);
+  const { empresa, podeGerir } = await contextoDaEmpresa(slug);
+  if (!podeGerir) return { ok: false, mensagem: "Só quem administra pode ligar o Classroom." };
+  const { supabase, user, admin } = await eu();
+  if (!user || !admin) return { ok: false, mensagem: "O servidor ainda não está pronto. Avise o suporte." };
+  const a = await acessoDoClassroom(admin, user.id);
   if (!a) return { ok: false, mensagem: "Conecte o seu Google Classroom primeiro.", reconectar: true };
+  let turmaId: string;
   try {
     const curso = (await meusCursos(a.acesso)).find((x) => x.id === cursoId);
-    if (!curso) return { ok: false, mensagem: "Essa turma não apareceu no seu Classroom. Atualize a página e escolha de novo." };
-    const nome = [curso.name, curso.section].filter(Boolean).join(" · ").slice(0, 300);
-    const { error } = await c.admin
+    if (!curso) return { ok: false, mensagem: "Essa sala não apareceu no seu Classroom. Atualize a página e escolha de novo." };
+    const nomeSala = [curso.name, curso.section].filter(Boolean).join(" · ").slice(0, 300);
+    const { data: existentes } = await supabase.from("turmas").select("nome").eq("org_id", empresa.id);
+    const usados = new Set((existentes ?? []).map((t) => String(t.nome).trim().toLowerCase()));
+    const base = (nomeSala || `Sala ${cursoId}`).slice(0, 110);
+    let nome = base;
+    for (let n = 2; usados.has(nome.toLowerCase()); n++) nome = `${base} (${n})`;
+    const { data: turma, error } = await supabase
       .from("turmas")
-      .update({ classroom_curso: curso.id, classroom_curso_nome: nome, classroom_por: c.user.id, classroom_buscado_em: null, classroom_erro: "" })
-      .eq("id", c.turma.id)
-      .eq("org_id", c.empresa.id);
+      .insert({ org_id: empresa.id, nome, modo: "individual", classroom_curso: curso.id, classroom_curso_nome: nomeSala, classroom_por: user.id })
+      .select("id")
+      .single();
     if (error) {
-      return { ok: false, mensagem: error.code === "23505" ? "Essa turma do Classroom já está ligada a outra turma sua." : "Não foi possível ligar. Tente de novo." };
+      return { ok: false, mensagem: error.code === "23505" ? "Essa sala do Classroom já está ligada a uma turma sua." : mensagemDeErro(error, "Não foi possível criar a turma. Tente de novo.") };
     }
-    const r = await sincronizarClassroom(c.admin, c.turma.id, 0);
+    turmaId = turma.id;
+  } catch (e) {
+    return falha(e, "Não foi possível falar com o Classroom. Tente de novo.");
+  }
+  (await cookies()).set(cookieDaTurma(empresa.id), turmaId, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 365 });
+  try {
+    const r = await sincronizarClassroom(admin, turmaId, 0);
     revalidatePath(`/app/${slug}`, "layout");
-    return { ok: true, mensagem: r ? `Ligada. Chegaram ${resumoDaBusca(r)}` : "Ligada." };
+    return { ok: true, mensagem: r ? `Turma criada. Chegaram ${resumoDaBusca(r)}` : "Turma criada." };
   } catch (e) {
     revalidatePath(`/app/${slug}`, "layout");
-    return falha(e, "Ligada, mas a primeira busca falhou. Toque em Buscar agora.");
+    const f = falha(e, "A turma foi criada, mas a primeira busca falhou. Toque em Buscar agora.");
+    return { ...f, ok: true, mensagem: `Turma criada, mas a primeira busca falhou: ${f.mensagem}` };
   }
 }
 

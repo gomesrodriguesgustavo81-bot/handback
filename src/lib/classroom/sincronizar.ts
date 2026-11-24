@@ -8,6 +8,7 @@ import { levarParaODrive } from "../drive";
 import { emailValido, nomeArquivoSeguro } from "../textos";
 import {
   alunos as alunosDoCurso,
+  apagarTarefa,
   baixarDoDrive,
   criarTarefa,
   entregueEm,
@@ -97,7 +98,11 @@ async function atualizarTarefas(admin: SupabaseClient, t: Turma, acesso: string)
   const lista = (await tarefasDoCurso(acesso, t.classroom_curso)).sort(
     (a, b) => (prazoDaTarefa(a) ?? "9999").localeCompare(prazoDaTarefa(b) ?? "9999") || String(a.creationTime).localeCompare(String(b.creationTime)),
   );
-  const { data: etapas } = await admin.from("etapas").select("id, numero, classroom_tarefa").eq("turma_id", t.id);
+  const [{ data: etapas }, { data: ignoradas }] = await Promise.all([
+    admin.from("etapas").select("id, numero, classroom_tarefa").eq("turma_id", t.id),
+    admin.from("classroom_ignoradas").select("tarefa").eq("turma_id", t.id),
+  ]);
+  const fora = new Set((ignoradas ?? []).map((x) => String(x.tarefa)));
   const porTarefa = new Map((etapas ?? []).filter((e) => e.classroom_tarefa).map((e) => [String(e.classroom_tarefa), String(e.id)]));
   let numero = Math.max(0, ...(etapas ?? []).map((e) => Number(e.numero)));
   for (const tarefa of lista) {
@@ -107,6 +112,7 @@ async function atualizarTarefas(admin: SupabaseClient, t: Turma, acesso: string)
       classroom_link: (tarefa.alternateLink ?? "").slice(0, 500),
     };
     const existente = porTarefa.get(tarefa.id);
+    if (!existente && fora.has(tarefa.id)) continue; // o professor apagou este ciclo no Handback
     if (existente) {
       await admin.from("etapas").update(extra).eq("id", existente);
       continue;
@@ -295,6 +301,18 @@ export async function publicarNoClassroom(admin: SupabaseClient, etapaId: string
     .is("classroom_tarefa", null);
   if (error) throw new ErroClassroom(`A tarefa foi criada no Classroom, mas não deu para guardar aqui (${error.message}).`);
   return { link };
+}
+
+/**
+ * Antes de apagar um ciclo: se a tarefa foi criada pelo Handback no
+ * Classroom, apaga lá também. Tarefa criada à mão no Classroom fica lá.
+ */
+export async function apagarNoClassroom(admin: SupabaseClient, etapaId: string, userId: string): Promise<void> {
+  const { data: e } = await admin.from("etapas").select("classroom_tarefa, classroom_nosso, turmas!inner(classroom_curso, classroom_por)").eq("id", etapaId).maybeSingle();
+  const t = e?.turmas as unknown as { classroom_curso: string | null; classroom_por: string | null } | undefined;
+  if (!e?.classroom_tarefa || !e.classroom_nosso || !t?.classroom_curso) return;
+  if (t.classroom_por !== userId) throw new ErroClassroom("Só quem ligou esta turma ao Classroom pode apagar este ciclo (a tarefa também sai do Classroom).");
+  await apagarTarefa(await acessoOuErro(admin, userId), t.classroom_curso, e.classroom_tarefa);
 }
 
 /** Lança no Classroom a nota da devolutiva aprovada (para cada aluno da equipe que entregou) e devolve o trabalho. */

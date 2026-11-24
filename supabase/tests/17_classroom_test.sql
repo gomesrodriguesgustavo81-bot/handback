@@ -115,5 +115,20 @@ select pg_temp.erro_contem($$select public.reservar_envio_classroom('c4000000-00
 reset role;
 select pg_temp.confere(exists (select 1 from public.atividades where acao = 'devolveu_classroom' and descricao like '%(8,0)'), 'lançar a nota fica no registro');
 
+-- 5) Uma turma vem de um lugar só: Moodle ou Classroom.
+insert into public.contas_moodle (id, org_id, user_id, site, moodle_usuario, token_cifrado)
+  values ('c5000000-0000-0000-0000-000000000001', current_setting('t.org')::uuid, '30000000-0000-0000-0000-00000000000b', 'https://ava-classroom.test', 9, 'x');
+select pg_temp.erro_contem($$update public.turmas set moodle_conta = 'c5000000-0000-0000-0000-000000000001' where id = 'c1000000-0000-0000-0000-000000000001'$$,
+  'turmas_uma_origem', 'turma do Classroom não liga no Moodle também');
+
+-- 6) Ciclo do Classroom apagado no Handback não volta na próxima busca.
+delete from public.etapas where id = 'c2000000-0000-0000-0000-000000000001';
+select pg_temp.confere(exists (select 1 from public.classroom_ignoradas where turma_id = 'c1000000-0000-0000-0000-000000000001' and tarefa = '501'),
+  'a tarefa apagada fica marcada para a busca pular');
+set role authenticated;
+select pg_temp.como('30000000-0000-0000-0000-00000000000b', 'admin@epsilon.test');
+select pg_temp.erro_contem($$select * from public.classroom_ignoradas$$, '42501', 'o app não mexe na lista de tarefas puladas');
+reset role;
+
 \echo
 \echo 'TODOS OS TESTES DO CLASSROOM PASSARAM'

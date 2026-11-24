@@ -66,7 +66,7 @@ export async function generateMetadata({ params }: PageProps<"/app/[slug]/etapas
 
 export default async function DetalheEtapa({ params, searchParams }: PageProps<"/app/[slug]/etapas/[id]">) {
   const { slug, id } = await params;
-  const { salvo } = await searchParams;
+  const { salvo, erro } = await searchParams;
   const { empresa, podeGerir, podeAvaliar, etapa } = await carregar(slug, id);
   const v = empresa.vocabulario;
   // Mensagem pronta desta aula para a turma (prazo, o que entregar e o assunto exato).
@@ -96,6 +96,7 @@ export default async function DetalheEtapa({ params, searchParams }: PageProps<"
       {podeGerir ? (
         <>
           {salvo ? <Aviso>Cadastro salvo.</Aviso> : null}
+          {typeof erro === "string" ? <Aviso tipo="erro">{erro}</Aviso> : null}
           <Cartao className="flex flex-col gap-4">
             <h2 className="text-lg font-semibold">
               {v.etapa} {etapa.numero} · {etapa.titulo}
@@ -107,7 +108,13 @@ export default async function DetalheEtapa({ params, searchParams }: PageProps<"
           <div className="flex justify-end">
             <BotaoConfirmar
               acao={apagarEtapa.bind(null, slug, id)}
-              pergunta={`Apagar “${v.etapa} ${etapa.numero} · ${etapa.titulo}”? Isso não pode ser desfeito.`}
+              pergunta={`Apagar “${v.etapa} ${etapa.numero} · ${etapa.titulo}”? Isso não pode ser desfeito.${
+                etapa.classroom_tarefa
+                  ? etapa.classroom_nosso
+                    ? " A tarefa também é apagada do Google Classroom, com o que os alunos entregaram lá."
+                    : " A tarefa continua no Google Classroom (foi criada lá), mas o Handback para de trazer as entregas dela."
+                  : ""
+              }`}
             >
               Apagar {minusc(v.etapa)}
             </BotaoConfirmar>

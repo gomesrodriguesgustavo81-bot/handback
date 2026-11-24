@@ -8,18 +8,19 @@ import { buscarNoClassroom, desligarClassroom, ligarClassroom } from "./acoes";
 
 type Msg = { ok: boolean; mensagem: string } | null;
 
-/** Escolher qual turma do Classroom é a turma atual do Handback. */
-export function EscolherTurma({ slug, turma, cursos }: { slug: string; turma: string; cursos: { id: string; nome: string; detalhe: string }[] }) {
+/** Escolher uma sala do Classroom: o Handback cria uma turma nova ligada a ela. */
+export function EscolherTurma({ slug, cursos }: { slug: string; cursos: { id: string; nome: string; detalhe: string }[] }) {
   const router = useRouter();
   const { pedir, janela } = useConfirmar();
   const [escolhido, setEscolhido] = useState(cursos[0]?.id ?? "");
   const [pendente, iniciar] = useTransition();
   const [msg, setMsg] = useState<Msg>(null);
-  const nome = cursos.find((c) => c.id === escolhido)?.nome ?? "";
+  const sala = cursos.find((c) => c.id === escolhido);
+  const nome = [sala?.nome, sala?.detalhe].filter(Boolean).join(" · ");
   return (
     <div className="flex flex-col gap-2">
       <fieldset className="flex flex-col gap-2" disabled={pendente}>
-        <legend className="sr-only">Turmas do seu Classroom</legend>
+        <legend className="sr-only">Salas do seu Classroom</legend>
         {cursos.map((c) => (
           <label
             key={c.id}
@@ -40,9 +41,9 @@ export function EscolherTurma({ slug, turma, cursos }: { slug: string; turma: st
         onClick={async () => {
           if (
             !(await pedir({
-              titulo: "Ligar ao Classroom?",
-              texto: `A turma ${turma} passa a receber os alunos, as tarefas e as entregas de “${nome}”.`,
-              sim: "Sim, ligar",
+              titulo: "Criar a turma e ligar ao Classroom?",
+              texto: `O Handback cria a turma “${nome}” e traz os alunos, as tarefas e as entregas dessa sala.`,
+              sim: "Sim, criar e ligar",
             }))
           )
             return;
@@ -52,7 +53,7 @@ export function EscolherTurma({ slug, turma, cursos }: { slug: string; turma: st
           });
         }}
       >
-        {pendente ? "Ligando e buscando…" : "Ligar esta turma"}
+        {pendente ? "Criando e buscando…" : "Criar a turma e ligar"}
       </Botao>
       {msg ? <Aviso tipo={msg.ok ? "info" : "erro"}>{msg.mensagem}</Aviso> : null}
       {janela}

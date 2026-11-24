@@ -40,15 +40,18 @@ export default async function Classroom({ params, searchParams }: PageProps<"/ap
   const minha = ligada && turma.classroom_por === meuId;
   const admin = criarClienteAdmin();
 
-  // Turmas do Classroom para escolher (só quando conectado e esta turma ainda não está ligada).
+  // Salas do Classroom já ligadas a turmas suas (cada sala vira uma turma própria).
+  const { data: ligadas } = await supabase.from("turmas").select("id, nome, classroom_curso").eq("org_id", empresa.id).eq("classroom_por", meuId).not("classroom_curso", "is", null);
+  const jaLigadas = new Set((ligadas ?? []).map((t) => String(t.classroom_curso)));
+  // Salas do Classroom para escolher (só quando conectado).
   let cursos: { id: string; nome: string; detalhe: string }[] = [];
   let erroCursos = "";
-  if (conectado && !ligada && admin) {
+  if (conectado && admin) {
     const a = await acessoDoClassroom(admin, meuId);
     if (!a) erroCursos = "A conexão com o Google Classroom expirou. Conecte de novo.";
     else {
       try {
-        cursos = (await meusCursos(a.acesso)).map((c) => ({ id: c.id, nome: c.name, detalhe: c.section ?? "" }));
+        cursos = (await meusCursos(a.acesso)).filter((c) => !jaLigadas.has(c.id)).map((c) => ({ id: c.id, nome: c.name, detalhe: c.section ?? "" }));
       } catch (e) {
         erroCursos = e instanceof ErroClassroom ? e.message : "Não foi possível ver suas turmas do Classroom agora. Atualize a página.";
       }
@@ -70,7 +73,7 @@ export default async function Classroom({ params, searchParams }: PageProps<"/ap
       <div>
         <h1 className="text-2xl font-bold">Google Classroom</h1>
         <p className="text-sm text-suave">
-          Da turma <strong>{turma.nome}</strong>. Traz os alunos, as tarefas e as entregas do Classroom e lança a nota lá dentro.
+          Traz os alunos, as tarefas e as entregas das suas salas do Classroom e lança a nota lá dentro. Turma escolhida agora: <strong>{turma.nome}</strong>.
         </p>
       </div>
       <AvisoGmail aviso={aviso} servico="classroom" />
@@ -119,15 +122,25 @@ export default async function Classroom({ params, searchParams }: PageProps<"/ap
           {!minha ? <p className="text-sm text-suave">Ligada por outra pessoa da equipe. Só ela busca e traz os arquivos.</p> : null}
           <AcoesLigada slug={slug} podeDesligar />
         </section>
-      ) : conectado ? (
-        <section aria-label="Escolher a turma do Classroom" className="flex flex-col gap-3 rounded-2xl border border-borda bg-cartao p-4">
-          <h2 className="font-semibold">Qual turma do Classroom é esta?</h2>
+      ) : null}
+
+      {conectado ? (
+        <section aria-label="Ligar uma sala do Classroom" className="flex flex-col gap-3 rounded-2xl border border-borda bg-cartao p-4">
+          <div>
+            <h2 className="font-semibold">Ligar uma sala do Classroom</h2>
+            <p className="text-sm text-suave">Cada sala vira uma turma nova no Handback, com o nome da sala. Não se mistura com as turmas do Moodle nem com as outras.</p>
+          </div>
+          {ligadas?.length ? (
+            <p className="text-sm">
+              <span className="text-suave">Já ligadas:</span> {ligadas.map((t) => t.nome).join(", ")}
+            </p>
+          ) : null}
           {erroCursos ? (
             <Aviso tipo="erro">{erroCursos}</Aviso>
           ) : cursos.length ? (
-            <EscolherTurma slug={slug} turma={turma.nome} cursos={cursos} />
+            <EscolherTurma slug={slug} cursos={cursos} />
           ) : (
-            <p className="text-sm text-suave">Nenhuma turma ativa em que você é professor apareceu no seu Classroom.</p>
+            <p className="text-sm text-suave">{ligadas?.length ? "Todas as suas salas do Classroom já estão ligadas." : "Nenhuma sala ativa em que você é professor apareceu no seu Classroom."}</p>
           )}
         </section>
       ) : null}

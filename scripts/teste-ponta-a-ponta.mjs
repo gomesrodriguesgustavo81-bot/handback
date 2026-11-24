@@ -1560,13 +1560,6 @@ try {
     const classroomFalso = async () => (await fetch(`${GOOGLE}/__classroom`)).json();
     const anaId = sql(`select id from auth.users where email = '${ANA}'`);
     const daOrg = `(select id from public.organizacoes where slug = '${SLUG}')`;
-    await ana.p.goto(`${APP}/app/${SLUG}/configuracoes/turmas`);
-    await ana.p.locator("summary", { hasText: "+ Criar turma" }).click();
-    const formC = ana.p.locator("details", { hasText: "+ Criar turma" });
-    await formC.getByLabel("Nome").fill("Cálculo");
-    await formC.getByRole("button", { name: "Criar" }).click();
-    await ana.p.getByText("“Cálculo” criada").waitFor();
-    await trocarTurma(ana.p, "Cálculo");
     await ana.p.goto(`${APP}/app/${SLUG}/configuracoes`);
     await ana.p.getByRole("link", { name: /^Google Classroom/ }).click();
     await ana.p.getByRole("heading", { name: "Google Classroom", exact: true }).waitFor();
@@ -1575,16 +1568,19 @@ try {
     await Promise.all([ana.p.waitForEvent("popup"), ana.p.getByRole("link", { name: "Conectar Google Classroom" }).click()]);
     await ana.p.getByRole("region", { name: "Sua conta Google" }).getByText("professora@gmail.test").waitFor();
     confere(sql(`select count(*) from public.conexoes_google where user_id = '${anaId}' and servico = 'classroom'`) === "1", "classroom: cada professor conecta a própria conta");
-    const escolher = ana.p.getByRole("region", { name: "Escolher a turma do Classroom" });
+    const escolher = ana.p.getByRole("region", { name: "Ligar uma sala do Classroom" });
     await escolher.getByText("Turma 2026").waitFor();
     confere((await escolher.getByRole("radio").count()) === 2 && (await escolher.getByRole("radio").first().isChecked()), "classroom: mostra as turmas do Classroom do professor para escolher");
     await largura(ana.p, "classroom: escolher a turma");
     await ana.p.screenshot({ path: `${FOTOS}/53-classroom-escolher.png`, fullPage: true });
-    await escolher.getByRole("button", { name: "Ligar esta turma" }).click();
+    await escolher.getByRole("button", { name: "Criar a turma e ligar" }).click();
     const ligadaC = ana.p.getByRole("region", { name: "Turma do Classroom" });
     await ligadaC.getByText(/1 tarefa virou \S+ e 2 entregas chegaram \(1 arquivo espera/).waitFor({ timeout: 30000 });
-    confere(pediuConfirmacao("Conectar seu Google Classroom?") && pediuConfirmacao("Ligar ao Classroom?"), "classroom: conectar e ligar pedem confirmação");
-    const daCalculo = `from public.integrantes i join public.turmas t on t.id = i.turma_id where t.nome = 'Cálculo' and t.org_id = ${daOrg}`;
+    confere(pediuConfirmacao("Conectar seu Google Classroom?") && pediuConfirmacao("Criar a turma e ligar ao Classroom?"), "classroom: conectar e ligar pedem confirmação");
+    const turmaC = sql(`select id from public.turmas where nome = 'Cálculo I · Turma 2026' and org_id = ${daOrg} and modo = 'individual' and moodle_conta is null`);
+    confere(Boolean(turmaC) && (await ana.p.locator('select[name="turma"]').inputValue()) === turmaC, "classroom: a sala vira uma turma nova, separada, já escolhida no topo");
+    confere(await escolher.getByText(/Já ligadas: Cálculo I · Turma 2026/).isVisible() && (await escolher.getByRole("radio").count()) === 1, "classroom: a sala ligada sai da lista para não ligar duas vezes");
+    const daCalculo = `from public.integrantes i where i.turma_id = '${turmaC}'`;
     confere(sql(`select count(*) ${daCalculo}`) === "3" && sql(`select count(distinct i.grupo_id) ${daCalculo}`) === "3", "classroom: os 3 alunos entraram, cada um no seu cadastro");
     await largura(ana.p, "classroom: ligada");
     await ana.p.screenshot({ path: `${FOTOS}/54-classroom-ligada.png`, fullPage: true });
@@ -1624,7 +1620,6 @@ try {
     confere(!(await ana.p.getByRole("button", { name: "Devolver no Classroom" }).count()), "classroom: tarefa criada à mão não oferece lançar nota (o Google não deixa)");
 
     // Ciclo criado no Handback e publicado no Classroom: aí dá para lançar a nota
-    const turmaC = sql(`select id from public.turmas where nome = 'Cálculo' and org_id = ${daOrg}`);
     const etapa2 = sql(`insert into public.etapas (org_id, turma_id, numero, titulo, data, recebe_ate, entregaveis) values (${daOrg}, '${turmaC}', 2, 'Lista 2 · Derivadas', '2099-04-10', '2099-04-10', '{Exercícios 1 a 5}') returning id`).split("\n")[0];
     await ana.p.goto(`${APP}/app/${SLUG}/etapas/${etapa2}`);
     const cartao2 = ana.p.getByRole("region", { name: "Google Classroom" });
@@ -1664,6 +1659,23 @@ try {
       `classroom: a nota vai para o Classroom e o trabalho volta para o aluno (${lancou})`,
     );
     confere(pediuConfirmacao("Devolver no Classroom?") && sql(`select count(*) from public.atividades where acao = 'devolveu_classroom' and org_id = ${daOrg}`) === "1", "classroom: devolver pede confirmação e fica no registro");
+
+    // Apagar ciclos: o publicado pelo Handback sai do Classroom; o que veio de lá não volta na busca
+    await ana.p.goto(`${APP}/app/${SLUG}/etapas/${etapa2}`);
+    await ana.p.getByRole("button", { name: /^Apagar/ }).click();
+    await ana.p.waitForURL(/\/etapas$/);
+    confere(pediuConfirmacao(/também é apagada do Google Classroom/) && !(await classroomFalso())["111"].tarefas[criada.id], "classroom: apagar o ciclo publicado apaga a tarefa no Classroom (com confirmação)");
+    await ana.p.goto(`${APP}/app/${SLUG}/etapas/${etapaC}`);
+    await ana.p.getByRole("button", { name: /^Apagar/ }).click();
+    await ana.p.waitForURL(/\/etapas$/);
+    sql(`update public.turmas set classroom_buscado_em = null where id = '${turmaC}'`);
+    await ana.p.goto(`${APP}/app/${SLUG}/configuracoes/classroom`);
+    await ana.p.getByRole("button", { name: "Buscar agora" }).click();
+    await ana.p.getByText("Pronto: 3 alunos, 1 tarefa e 0 entregas novas.").waitFor({ timeout: 30000 });
+    confere(
+      pediuConfirmacao(/continua no Google Classroom/) && sql(`select count(*) from public.etapas where turma_id = '${turmaC}'`) === "0" && Boolean((await classroomFalso())["111"].tarefas["501"]),
+      "classroom: ciclo que veio do Classroom, apagado aqui, fica lá e não volta na busca",
+    );
 
     await ana.p.goto(`${APP}/app/${SLUG}/configuracoes/classroom`);
     await ana.p.getByRole("button", { name: "Desconectar Google Classroom" }).click();

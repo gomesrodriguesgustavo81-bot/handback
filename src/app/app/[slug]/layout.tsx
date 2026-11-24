@@ -99,7 +99,7 @@ export default async function LayoutEmpresa({
           <SeletorTurma
             slug={slug}
             rotulo={v.espaco}
-            turmas={ativas.map((t) => ({ id: t.id, nome: t.moodle_conta ? `${t.nome} (Moodle)` : t.nome }))}
+            turmas={ativas.map((t) => ({ id: t.id, nome: t.moodle_conta ? `${t.nome} (Moodle)` : t.classroom_curso ? `${t.nome} (Classroom)` : t.nome }))}
             atual={atual?.id ?? null}
             criarHref={podeGerir ? `/app/${slug}/configuracoes/turmas` : null}
           />

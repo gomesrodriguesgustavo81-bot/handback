@@ -290,6 +290,11 @@ createServer(async (req, res) => {
     if (!tarefaId) return json(200, { courseWork: [...c.tarefas.values()].map((x) => ({ ...x, envios: undefined })) });
     const t = c.tarefas.get(tarefaId);
     if (!t) return json(404, { error: { message: "Requested entity was not found." } });
+    if (!envioId && req.method === "DELETE") {
+      if (!t.associatedWithDeveloper) return json(403, { error: { message: "@ProjectPermissionDenied The Developer Project is not permitted to make this request.", status: "PERMISSION_DENIED" } });
+      c.tarefas.delete(tarefaId);
+      return json(200, {});
+    }
     if (!envioId) {
       const estados = url.searchParams.getAll("states");
       return json(200, { studentSubmissions: [...t.envios.values()].filter((e) => !estados.length || estados.includes(e.state)) });

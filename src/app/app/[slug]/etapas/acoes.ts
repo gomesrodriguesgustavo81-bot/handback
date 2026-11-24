@@ -1,5 +1,8 @@
 "use server";
 
+import { ErroClassroom } from "@/lib/classroom/cliente";
+import { apagarNoClassroom } from "@/lib/classroom/sincronizar";
+
 import { revalidatePath } from "next/cache";
 import { turmaAtual } from "@/lib/turma";
 import { redirect } from "next/navigation";
@@ -100,6 +103,22 @@ export async function apagarEtapa(slug: string, id: string): Promise<void> {
   const { empresa, podeGerir } = await contextoDaEmpresa(slug);
   if (!podeGerir) return;
   const supabase = await criarClienteServidor();
+  // Tarefa publicada pelo Handback no Classroom sai de lá também (antes de apagar aqui).
+  const admin = criarClienteAdmin();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: daqui } = await supabase.from("etapas").select("id").eq("id", id).eq("org_id", empresa.id).maybeSingle();
+  if (!daqui) return;
+  if (admin && user) {
+    let erro = "";
+    try {
+      await apagarNoClassroom(admin, id, user.id);
+    } catch (e) {
+      erro = e instanceof ErroClassroom ? e.message : "Não foi possível apagar a tarefa no Classroom. Tente de novo.";
+    }
+    if (erro) redirect(`/app/${slug}/etapas/${id}?erro=${encodeURIComponent(erro)}`);
+  }
   await supabase.from("etapas").delete().eq("id", id).eq("org_id", empresa.id);
   await atualizarAgendaDepois(empresa.id);
   revalidatePath(`/app/${slug}`, "layout");
