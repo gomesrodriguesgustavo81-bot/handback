@@ -1753,7 +1753,11 @@ try {
 
   // 7l4) Passo a passo: cada ciclo mostra a trilha de 5 passos e o próximo passo
   {
-    await ana.p.goto(`${APP}/app/${SLUG}/etapas`);
+    await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
+    const antes = await ana.p.locator('select[name="turma"]').inputValue();
+    const turmaA = sql(`select id from public.turmas where nome = 'Turma A' and org_id = (select id from public.organizacoes where slug = '${SLUG}')`);
+    await ana.p.goto(`${APP}/app/${SLUG}/ir?turma=${turmaA}&para=${encodeURIComponent(`/app/${SLUG}/etapas`)}`);
+    await ana.p.waitForURL(/\/etapas$/);
     confere(await ana.p.getByText(/^Passo [1-5] de 5 · |^Concluído$/).first().isVisible(), "ciclos: cada um diz em que passo está");
     await ana.p.locator('ul li a[href*="/etapas/"]').first().click();
     await ana.p.waitForURL(/\/etapas\/[0-9a-f-]{36}$/);
@@ -1766,6 +1770,7 @@ try {
     confere(r.status() === 200, "ciclo: a tela Enviar abre");
     await largura(ana.p, "ciclo: trilha");
     await ana.p.screenshot({ path: `${FOTOS}/56-trilha-do-ciclo.png`, fullPage: true });
+    await ana.p.goto(`${APP}/app/${SLUG}/ir?turma=${antes}&para=${encodeURIComponent(`/app/${SLUG}/inicio`)}`);
   }
 
   // 7l5) Piloto automático: liga e desliga em Ajustes da turma (com confirmação)
