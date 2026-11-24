@@ -22,6 +22,9 @@ const ESTILO_TENDENCIA: Record<Tendencia, { classe: string; seta: string }> = {
   "sem-dados": { classe: "bg-neutro-fundo text-neutro", seta: "·" },
 };
 
+/** Nome curto do conceito nas caixinhas (cabe várias numa linha, sem rolar de lado). */
+const CURTO: Record<string, string> = { EXCELENTE: "Exc.", BOM: "Bom", REGULAR: "Reg.", RUIM: "Ruim" };
+
 type Linha = { id: string; grupo_id: string; etapa_id: string; analises: { status: string; conceito: string | null } | null };
 
 export default async function Evolucao({ params, searchParams }: PageProps<"/app/[slug]/entregas/evolucao">) {
@@ -101,6 +104,24 @@ export default async function Evolucao({ params, searchParams }: PageProps<"/app
             </ul>
           </nav>
 
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-suave">
+            <span className="flex items-center gap-1.5">
+              <span className="rounded-md bg-ok-fundo px-1.5 py-0.5 font-bold text-ok">Bom</span> aprovado
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="rounded-md border border-dashed border-ok px-1.5 py-0.5 font-bold text-ok">Bom</span> falta você revisar
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="rounded-md bg-ruim-fundo px-1.5 py-0.5 font-bold text-ruim">×</span> não entregou
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="rounded-md border border-borda px-1.5 py-0.5 font-bold">—</span> sem análise
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="rounded-md border border-dashed border-borda px-1.5 py-0.5 text-[10px] font-semibold">aberto</span> ainda no prazo
+            </span>
+          </p>
+
           {!visiveis.length ? (
             <Vazio>Nenhuma neste filtro.</Vazio>
           ) : (
@@ -119,7 +140,20 @@ export default async function Evolucao({ params, searchParams }: PageProps<"/app
                       {ROTULO_TENDENCIA[ev.tendencia]}
                     </Pilula>
                   </div>
-                  <ol aria-label={`Conceitos de ${g.nome} por ${minusc(v.etapa)}`} className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
+                  {(() => {
+                    const ultimos = celulas.filter((c): c is Extract<Celula, { tipo: "aprovado" }> => c.tipo === "aprovado");
+                    const ultimo = ultimos.at(-1);
+                    const antes = ultimos.at(-2);
+                    return ultimo ? (
+                      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-suave">
+                        Último: <b className={`rounded-full px-2 py-0.5 text-xs ${(ESTILO_CONCEITO[ultimo.conceito] ?? ESTILO_CONCEITO.PENDENTE).fundo} ${(ESTILO_CONCEITO[ultimo.conceito] ?? ESTILO_CONCEITO.PENDENTE).texto}`}>{CURTO[ultimo.conceito] ?? ultimo.conceito}</b>
+                        {antes ? <span>· antes: {CURTO[antes.conceito] ?? antes.conceito}</span> : null}
+                      </p>
+                    ) : (
+                      <p className="text-[13px] text-suave">Ainda sem conceito aprovado.</p>
+                    );
+                  })()}
+                  <ol aria-label={`Conceitos de ${g.nome} por ${minusc(v.etapa)}`} className="flex flex-wrap gap-1.5">
                     {celulas.map((c, i) => {
                       const et = etapas[i];
                       const conteudo = <Caixinha celula={c} rotulo={abrev(et.numero)} titulo={`${v.etapa} ${et.numero} · ${et.titulo}`} />;
@@ -141,10 +175,6 @@ export default async function Evolucao({ params, searchParams }: PageProps<"/app
               ))}
             </ul>
           )}
-          <p className="text-xs text-suave">
-            Conceito com borda tracejada: ainda para revisar (sugestão da IA). “—”: entregue e sem análise. “×”: não entregou. Em branco: ainda
-            dentro do prazo.
-          </p>
         </>
       )}
     </section>
@@ -157,12 +187,12 @@ function Caixinha({ celula, rotulo, titulo }: { celula: Celula; rotulo: string; 
   let descricao = "";
   if (celula.tipo === "aprovado") {
     const e = ESTILO_CONCEITO[celula.conceito] ?? ESTILO_CONCEITO.PENDENTE;
-    texto = celula.conceito;
+    texto = CURTO[celula.conceito] ?? celula.conceito;
     classe = `${e.fundo} ${e.texto}`;
     descricao = `aprovado ${celula.conceito}`;
   } else if (celula.tipo === "revisar") {
     const e = ESTILO_CONCEITO[celula.conceito ?? ""] ?? ESTILO_CONCEITO.PENDENTE;
-    texto = celula.conceito ?? "?";
+    texto = celula.conceito ? (CURTO[celula.conceito] ?? celula.conceito) : "?";
     classe = `border border-dashed ${e.borda} ${e.texto} bg-cartao`;
     descricao = `para revisar, IA sugeriu ${celula.conceito ?? "?"}`;
   } else if (celula.tipo === "sem-analise") {
@@ -173,12 +203,14 @@ function Caixinha({ celula, rotulo, titulo }: { celula: Celula; rotulo: string; 
     classe = "border border-ruim/30 bg-ruim-fundo text-ruim";
     descricao = "não entregou";
   } else {
+    texto = "aberto";
+    classe = "border border-dashed border-borda bg-cartao text-[10px] font-semibold text-suave";
     descricao = "dentro do prazo";
   }
   return (
-    <span title={titulo} className="flex w-[5.25rem] flex-col items-center gap-1 py-0.5">
+    <span title={titulo} className="flex w-14 flex-col items-center gap-0.5 py-0.5">
       <span className="text-[11px] font-semibold text-suave">{rotulo}</span>
-      <span className={`flex h-8 w-full items-center justify-center rounded-lg text-[11px] font-bold tracking-wide ${classe}`}>
+      <span className={`flex h-8 w-full items-center justify-center rounded-lg text-xs font-bold ${classe}`}>
         {texto}
         <span className="sr-only">
           {" "}

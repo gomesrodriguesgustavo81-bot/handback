@@ -7,6 +7,7 @@ import { criarClienteServidor } from "@/lib/supabase/server";
 import { hojeISO } from "@/lib/textos";
 import { turmasDaEmpresa } from "@/lib/turma";
 import { ConviteAvisos } from "./convite-avisos";
+import { SemanaInterativa } from "./semana";
 
 export const metadata: Metadata = { title: "Início" };
 
@@ -154,9 +155,7 @@ export default async function Inicio({ params, searchParams }: PageProps<"/app/[
 
   const prazosVisiveis = (prazos ?? []).filter((p) => nomeDa.has(p.turma_id) && (!escolhida || p.turma_id === escolhida.id));
   const deHoje = prazosVisiveis.filter((p) => p.recebe_ate === hoje);
-  const proximos = prazosVisiveis.filter((p) => p.recebe_ate !== hoje);
   const dias = Array.from({ length: 7 }, (_, i) => maisDias(hoje, i));
-  const comPrazo = new Set(prazosVisiveis.map((p) => String(p.recebe_ate)));
   const chip = (ativo: boolean) =>
     `toque inline-flex min-h-9 items-center rounded-full px-3.5 text-[13px] font-semibold ${ativo ? "bg-marca text-sobre-marca" : "bg-cartao text-texto shadow-cartao"}`;
   const [primeiro, ...resto] = grupos;
@@ -263,32 +262,22 @@ export default async function Inicio({ params, searchParams }: PageProps<"/app/[
                 Calendário ›
               </Link>
             </div>
-            <div className="grid grid-cols-7 gap-1 text-center">
-              {dias.map((d, i) => (
-                <span key={d} className={`flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-[11px] ${i === 0 ? "bg-marca text-sobre-marca" : "text-suave"}`}>
-                  {SEMANA[new Date(`${d}T12:00:00Z`).getUTCDay()]}
-                  <b className={`text-[14px] ${i === 0 ? "" : "text-texto"}`}>{Number(d.slice(8))}</b>
-                  <span aria-hidden className={`size-1.5 rounded-full ${comPrazo.has(d) ? (i === 0 ? "bg-sobre-marca" : "bg-marca") : "bg-transparent"}`} />
-                </span>
-              ))}
-            </div>
-            {proximos.length ? (
-              <ul className="flex flex-col gap-1 text-[13px]">
-                {proximos.slice(0, 4).map((p) => (
-                  <li key={p.id}>
-                    <Link href={ir(p.turma_id, `etapas/${p.id}`)} className="text-suave hover:underline">
-                      <b className="text-texto">
-                        {SEMANA[new Date(`${p.recebe_ate}T12:00:00Z`).getUTCDay()]} {Number(String(p.recebe_ate).slice(8))}
-                      </b>{" "}
-                      · {v.etapa} {p.numero} · <span className="text-texto">{p.titulo}</span>
-                    </Link>
-                  </li>
-                ))}
-                {proximos.length > 4 ? <li className="text-suave">e mais {proximos.length - 4} no calendário</li> : null}
-              </ul>
-            ) : (
-              <p className="text-[13px] text-suave">{deHoje.length ? "Nenhum outro prazo nos próximos dias." : "Nenhum prazo nos próximos 7 dias."}</p>
-            )}
+            <SemanaInterativa
+              dias={dias.map((d) => ({
+                dia: d,
+                sigla: SEMANA[new Date(`${d}T12:00:00Z`).getUTCDay()],
+                numero: Number(d.slice(8)),
+                prazos: prazosVisiveis
+                  .filter((p) => p.recebe_ate === d)
+                  .map((p) => ({
+                    id: p.id,
+                    href: ir(p.turma_id, `etapas/${p.id}`),
+                    ciclo: `${v.etapa} ${p.numero}`,
+                    titulo: p.titulo,
+                    turma: turmas.length > 1 && !escolhida ? nomeDa.get(p.turma_id)?.nome ?? "" : "",
+                  })),
+              }))}
+            />
           </section>
         </aside>
       </div>

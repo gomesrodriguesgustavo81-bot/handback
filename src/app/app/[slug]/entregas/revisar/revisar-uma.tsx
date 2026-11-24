@@ -141,10 +141,19 @@ export function RevisarUma({
       <div className="fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 rounded-2xl border border-borda bg-cartao/95 px-4 py-2.5 shadow-lg backdrop-blur lg:static lg:shadow-none">
         <div className="mx-auto flex max-w-xl gap-2">
           {pularHref ? (
-            <Link href={pularHref} className="inline-flex min-h-12 items-center justify-center rounded-xl border border-borda px-4 font-semibold">
+            <Link href={pularHref} className="inline-flex min-h-12 items-center justify-center rounded-xl border border-borda px-3.5 font-semibold">
               Pular
             </Link>
           ) : null}
+          <Link
+            href={completa}
+            className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-xl border border-borda px-3.5 font-semibold text-marca-forte"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M14 4h6v6M20 4l-8 8M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
+            </svg>
+            Ver entrega
+          </Link>
           <button
             type="button"
             onClick={aprovar}
@@ -154,9 +163,6 @@ export function RevisarUma({
             {indo ? "Aprovando…" : "Aprovar e próxima"}
           </button>
         </div>
-        <Link href={completa} className="mx-auto mt-1 block max-w-xl text-center text-xs font-medium text-marca-forte underline">
-          Abrir a entrega completa
-        </Link>
       </div>
     </div>
   );
