@@ -1693,6 +1693,7 @@ try {
     await ana.p.locator("summary", { hasText: "+ Criar turma" }).click();
     const formT = ana.p.locator("details", { hasText: "+ Criar turma" });
     await formT.getByLabel("Nome").fill("Projeto Final");
+    await formT.getByLabel("Quem entrega").selectOption("grupos");
     await formT.getByRole("button", { name: "Criar" }).click();
     await ana.p.getByText("“Projeto Final” criada").waitFor();
     await trocarTurma(ana.p, "Projeto Final");
