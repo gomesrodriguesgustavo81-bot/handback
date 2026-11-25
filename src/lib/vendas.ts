@@ -1,4 +1,4 @@
-/** Textos da página de vendas em português, inglês e espanhol. */
+/** Textos da página de entrada (vitrine) em português, inglês e espanhol. */
 
 export type Idioma = "pt" | "en" | "es";
 
@@ -12,29 +12,25 @@ type Item = { titulo: string; texto: string };
 
 export type TextosVendas = {
   meta: { titulo: string; descricao: string };
-  menu: { como: string; recursos: string; seguranca: string; perguntas: string; entrar: string };
-  hero: { selo: string; titulo1: string; titulo2: string; texto: string; testar: string; entrar: string; nota: string };
+  menu: { como: string; controle: string; seguranca: string; perguntas: string; entrar: string; criar: string };
+  hero: { selo: string; titulo1: string; titulo2: string; texto: string; testar: string; verComo: string; funcionaCom: string; integracoes: string };
   previa: {
-    equipe: string;
-    etapa: string;
+    ciclo: string;
+    turma: string;
+    passos: [string, string, string, string, string];
+    aluno: string;
     conceito: string;
-    conceitoValor: string;
-    pedido: string;
-    itens: { item: string; status: "ok" | "parcial" | "falta"; nota: string }[];
+    itens: { item: string; status: "ok" | "parcial" | "falta" }[];
     devolutiva: string;
-    devolutivaTexto: string;
-    aprovar: string;
     ia: string;
+    aprovar: string;
   };
-  dor: { titulo: string; itens: Item[] };
   como: { titulo: string; passos: Item[] };
-  paraQuem: { titulo: string; itens: Item[] };
-  recursos: { titulo: string; itens: Item[] };
+  controle: { titulo: string; itens: Item[] };
   seguranca: { titulo: string; texto: string; itens: string[]; politica: string };
-  planos: { titulo: string; texto: string; botao: string };
   perguntas: { titulo: string; itens: { p: string; r: string }[] };
   final: { titulo: string; texto: string; botao: string };
-  rodape: { privacidade: string; termos: string; aviso: string };
+  rodape: { privacidade: string; termos: string; contato: string; aviso: string };
   assuntoEmail: string;
 };
 
@@ -43,312 +39,237 @@ export const TEXTOS: Record<Idioma, TextosVendas> = {
     meta: {
       titulo: "Handback · Entregas conferidas com IA, aprovadas por você",
       descricao:
-        "O Handback recebe as entregas por e-mail, confere com IA o que foi pedido e prepara a devolutiva. Você revisa, aprova e ela sai do seu próprio e-mail.",
+        "As entregas chegam pelo Google Classroom, Moodle ou e-mail. A IA confere o checklist e escreve a devolutiva. Você revisa, aprova e ela volta para o aluno.",
     },
-    menu: { como: "Como funciona", recursos: "Recursos", seguranca: "Segurança", perguntas: "Dúvidas", entrar: "Entrar" },
+    menu: { como: "Como funciona", controle: "Você no controle", seguranca: "Segurança", perguntas: "Perguntas", entrar: "Entrar", criar: "Criar conta grátis" },
     hero: {
-      selo: "Para professores, mentores, gestores e consultores",
+      selo: "Para professores, coordenadores e escolas",
       titulo1: "Você recebe,",
       titulo2: "a gente devolve conferido.",
       texto:
-        "O Handback recebe as entregas por e-mail, confere com IA o que foi pedido e escreve um rascunho de devolutiva. Você revisa, aprova, e ela sai do seu próprio e-mail. Nada vai sem a sua aprovação.",
+        "As entregas chegam sozinhas pelo Google Classroom, Moodle ou e-mail. A IA confere o checklist que você pediu e escreve a devolutiva. Você revisa, aprova, e ela volta para o aluno. Nada sai sem você.",
       testar: "Criar minha conta grátis",
-      entrar: "Já tenho conta",
-      nota: "Quem entrega não precisa criar conta: só manda um e-mail.",
+      verComo: "Ver como funciona",
+      funcionaCom: "Funciona com:",
+      integracoes: "Google Classroom · Moodle · E-mail · Google Drive · Google Agenda",
     },
     previa: {
-      equipe: "Equipe Azul",
-      etapa: "Aula 3 · Protótipo",
-      conceito: "Conceito",
-      conceitoValor: "BOM",
-      pedido: "O que foi pedido",
+      ciclo: "Ciclo 3 · Derivadas",
+      turma: "Cálculo I",
+      passos: ["Tarefa", "Receber", "Analisar", "Revisar", "Enviar"],
+      aluno: "Ana Souza",
+      conceito: "BOM",
       itens: [
-        { item: "Protótipo navegável", status: "ok", nota: "Link do Figma no e-mail" },
-        { item: "Roteiro de teste", status: "parcial", nota: "Tem as tarefas, faltam as perguntas" },
-        { item: "Relatório com 5 usuários", status: "ok", nota: "PDF, páginas 2 a 6" },
+        { item: "Exercícios 1 a 5 resolvidos", status: "ok" },
+        { item: "Regra da cadeia explicada", status: "ok" },
+        { item: "Gráfico da função (parcial)", status: "parcial" },
       ],
-      devolutiva: "Devolutiva",
-      devolutivaTexto: "Pessoal, boa entrega! O protótipo está claro e o relatório traz evidências reais. Para a próxima, completem o roteiro com as perguntas de cada tarefa…",
-      aprovar: "Aprovar e enviar",
-      ia: "Sugerido pela IA · você decide",
-    },
-    dor: {
-      titulo: "Corrigir entregas não deveria tomar o seu fim de semana",
-      itens: [
-        { titulo: "Caixa de entrada lotada", texto: "Arquivos, links e respostas misturados no e-mail, cada um com um nome diferente." },
-        { titulo: "Conferência repetitiva", texto: "Abrir um por um para ver se entregaram tudo o que foi pedido." },
-        { titulo: "Devolutiva que atrasa", texto: "Escrever um retorno bom para cada equipe leva tempo, e ele chega tarde." },
-      ],
+      devolutiva: "Ana, muito bom o uso da regra da cadeia nos exercícios 3 e 4. No gráfico, faltou marcar os pontos críticos…",
+      ia: "Sugerido pela IA · você aprova",
+      aprovar: "Aprovar e próxima",
     },
     como: {
-      titulo: "Como funciona",
+      titulo: "Cada ciclo em 5 passos. Você sempre sabe o próximo.",
       passos: [
-        { titulo: "Recebe", texto: "Quem entrega manda um e-mail para o endereço da turma. O Handback separa por etapa e por grupo ou pessoa, sozinho." },
-        { titulo: "Confere", texto: "A IA lê arquivos, PDFs, fotos e links e confere item por item o que foi pedido, sem dar nota." },
-        { titulo: "Você aprova", texto: "Você vê o conceito sugerido, o checklist e a devolutiva pronta. Ajusta o que quiser e aprova." },
-        { titulo: "Devolve", texto: "A devolutiva sai do seu Gmail, na mesma conversa do e-mail da entrega. A evolução de cada um fica registrada." },
+        { titulo: "Tarefa pronta", texto: "Você escreve o checklist do que o aluno entrega. Pode publicar a tarefa no Classroom." },
+        { titulo: "Receber", texto: "As entregas chegam sozinhas. Quem ainda não entregou recebe um lembrete." },
+        { titulo: "Analisar", texto: "A IA lê arquivos, PDFs, fotos e links e confere item por item o que foi pedido." },
+        { titulo: "Revisar", texto: "Uma entrega por vez: ajuste o conceito e o texto, aprove e vá para a próxima." },
+        { titulo: "Enviar", texto: "Um botão: a nota vai para o Classroom ou o Moodle e a devolutiva vai por e-mail." },
       ],
     },
-    paraQuem: {
-      titulo: "Para quem é",
+    controle: {
+      titulo: "Você no controle, do começo ao fim",
       itens: [
-        { titulo: "Universidades e escolas", texto: "Turmas com alunos individuais ou em grupos." },
-        { titulo: "Hubs e residências", texto: "Programas com times de residentes e ciclos de entrega." },
-        { titulo: "Consultorias", texto: "Equipes de projeto entregando para revisão." },
-        { titulo: "Empresas", texto: "Times entregando para o gestor, sprint a sprint." },
-        { titulo: "Escritórios", texto: "Clientes enviando o que foi pedido no mês." },
-      ],
-    },
-    recursos: {
-      titulo: "Tudo o que você precisa, sem complicar",
-      itens: [
-        { titulo: "Conceitos, não notas", texto: "Excelente, Bom, Regular ou Ruim, com a definição de cada um feita por você." },
-        { titulo: "Checklist automático", texto: "Cada item pedido aparece como entregue, parcial ou faltando, com onde a IA encontrou." },
-        { titulo: "Devolutiva no seu tom", texto: "A IA aprende com as devolutivas que você aprova e com os motivos quando você muda o conceito." },
-        { titulo: "Turmas e programas", texto: "Várias turmas na mesma conta, cada uma com o próprio endereço de entrega." },
-        { titulo: "Evolução e relatório", texto: "Veja quem melhorou, quem caiu e quem precisa de atenção. Relatório da aula pronto para imprimir." },
-        { titulo: "Com as palavras de vocês", texto: "Aula, ciclo, sprint; equipe, time, aluno, residente: o Handback fala do seu jeito." },
+        { titulo: "Nada sai sem a sua aprovação", texto: "A IA sugere o conceito e a devolutiva. Quem decide é você, e ela aprende com as suas correções." },
+        { titulo: "Piloto automático", texto: "Ligue numa turma e o que chega já é analisado. Você recebe um aviso quando estiver pronto para revisar." },
+        { titulo: "Acompanhe a turma", texto: "Quem melhorou, quem caiu e quem precisa de atenção ao longo dos ciclos, com relatório em PDF." },
       ],
     },
     seguranca: {
-      titulo: "Feito para documentos importantes",
-      texto: "Empresas e escolas confiam ao Handback trabalhos, relatórios e documentos. Por isso, segurança vem de fábrica.",
+      titulo: "Seguro e de acordo com a LGPD",
+      texto: "Os dados dos seus alunos ficam protegidos, e só você e quem você autorizar enxergam.",
       itens: [
-        "Senha forte e verificação em duas etapas (código no celular)",
-        "Cada empresa só enxerga os próprios dados",
-        "Arquivos em área privada, com links que expiram",
-        "Registro de quem abriu, baixou, aprovou ou enviou cada coisa",
-        "A IA usada não treina com os seus dados",
+        "Cada professor conecta a própria conta, só com o necessário",
+        "Documentos pessoais (RG, CPF) nunca vão para a IA",
+        "Verificação em duas etapas e registro de quem fez o quê",
+        "A IA usada não treina com os trabalhos dos seus alunos",
         "Seu Gmail só envia: o Handback pede ao Google só a permissão de enviar e-mails e nunca lê a sua caixa",
+        "Arquivos em área privada, com links que expiram",
       ],
       politica: "Leia a política de privacidade",
     },
-    planos: {
-      titulo: "Planos",
-      texto: "Estamos abrindo os primeiros pilotos com condições especiais. Conte como você vai usar e montamos o plano com você.",
-      botao: "Falar com a gente",
-    },
     perguntas: {
-      titulo: "Perguntas frequentes",
+      titulo: "Perguntas",
       itens: [
-        { p: "Quem entrega precisa criar conta?", r: "Não. A pessoa só manda um e-mail para o endereço da turma, com os arquivos ou links." },
-        { p: "A IA dá nota?", r: "Não. O Handback usa conceitos (Excelente, Bom, Regular, Ruim), e quem decide o conceito final é você." },
-        { p: "A devolutiva sai sozinha?", r: "Nunca. Uma pessoa revisa e aprova cada devolutiva antes do envio." },
-        { p: "Preciso usar Gmail?", r: "Para enviar a devolutiva do seu próprio e-mail, sim. Sem Gmail, você copia o texto pronto e envia como preferir." },
+        { p: "A IA corrige sozinha?", r: "Não. A IA sugere o conceito e escreve um rascunho. Você revisa e aprova cada devolutiva antes de ela sair." },
+        { p: "O aluno precisa criar conta?", r: "Não. Ele entrega como já faz hoje: no Google Classroom, no Moodle ou mandando um e-mail para o endereço da turma." },
+        { p: "Funciona com a minha escola?", r: "Funciona com o Google Classroom, com o Moodle da sua instituição e com e-mail. Cada professor conecta a própria conta." },
+        { p: "Quanto custa?", r: "Por enquanto é grátis para os primeiros professores, sem cartão de crédito. Os planos vão ser anunciados antes de qualquer cobrança." },
         { p: "A IA aprende com os trabalhos dos alunos?", r: "Não. Usamos a IA paga do Google, que não treina com o conteúdo enviado. O Handback aprende o seu critério só dentro da sua conta." },
-        { p: "Funciona no celular?", r: "Sim. O Handback foi pensado primeiro para o celular." },
+        { p: "Funciona no celular?", r: "Sim. O Handback foi pensado primeiro para o celular, e dá para receber avisos nele." },
       ],
     },
-    final: { titulo: "Pronto para devolver mais rápido?", texto: "Crie o seu espaço em 1 minuto. Grátis por enquanto, sem cartão.", botao: "Criar minha conta grátis" },
-    rodape: { privacidade: "Política de privacidade", termos: "Termos de uso", aviso: "" },
+    final: { titulo: "Corrija a próxima turma com o Handback", texto: "Crie sua conta em 1 minuto. Sem cartão de crédito.", botao: "Criar minha conta grátis" },
+    rodape: { privacidade: "Privacidade", termos: "Termos", contato: "Contato", aviso: "" },
     assuntoEmail: "Quero testar o Handback",
   },
   en: {
     meta: {
       titulo: "Handback · Submissions checked by AI, approved by you",
       descricao:
-        "Handback receives submissions by email, checks what was requested with AI and drafts the feedback. You review, approve, and it goes out from your own email.",
+        "Submissions arrive from Google Classroom, Moodle or email. AI checks the checklist and drafts the feedback. You review, approve, and it goes back to the student.",
     },
-    menu: { como: "How it works", recursos: "Features", seguranca: "Security", perguntas: "FAQ", entrar: "Sign in" },
+    menu: { como: "How it works", controle: "You're in control", seguranca: "Security", perguntas: "FAQ", entrar: "Sign in", criar: "Request a trial" },
     hero: {
-      selo: "For teachers, mentors, managers and consultants",
+      selo: "For teachers, coordinators and schools",
       titulo1: "You receive it,",
       titulo2: "we hand it back checked.",
       texto:
-        "Handback receives submissions by email, checks what was requested with AI and drafts the feedback. You review, approve, and it goes out from your own email. Nothing is sent without your approval.",
+        "Submissions arrive on their own from Google Classroom, Moodle or email. AI checks the checklist you asked for and drafts the feedback. You review, approve, and it goes back to the student. Nothing is sent without you.",
       testar: "Request a trial",
-      entrar: "I have an account",
-      nota: "Submitters don't need an account: they just send an email.",
+      verComo: "See how it works",
+      funcionaCom: "Works with:",
+      integracoes: "Google Classroom · Moodle · Email · Google Drive · Google Calendar",
     },
     previa: {
-      equipe: "Blue Team",
-      etapa: "Class 3 · Prototype",
-      conceito: "Grade",
-      conceitoValor: "GOOD",
-      pedido: "What was requested",
+      ciclo: "Cycle 3 · Derivatives",
+      turma: "Calculus I",
+      passos: ["Task", "Receive", "Analyze", "Review", "Send"],
+      aluno: "Ana Souza",
+      conceito: "GOOD",
       itens: [
-        { item: "Clickable prototype", status: "ok", nota: "Figma link in the email" },
-        { item: "Test script", status: "parcial", nota: "Has the tasks, questions missing" },
-        { item: "Report with 5 users", status: "ok", nota: "PDF, pages 2 to 6" },
+        { item: "Exercises 1 to 5 solved", status: "ok" },
+        { item: "Chain rule explained", status: "ok" },
+        { item: "Function graph (partial)", status: "parcial" },
       ],
-      devolutiva: "Feedback",
-      devolutivaTexto: "Great work, team! The prototype is clear and the report brings real evidence. Next time, complete the script with the questions for each task…",
-      aprovar: "Approve and send",
-      ia: "Suggested by AI · you decide",
-    },
-    dor: {
-      titulo: "Grading submissions shouldn't take your weekend",
-      itens: [
-        { titulo: "An overflowing inbox", texto: "Files, links and replies mixed together, each one named differently." },
-        { titulo: "Repetitive checking", texto: "Opening them one by one to see if everything requested was delivered." },
-        { titulo: "Late feedback", texto: "Writing good feedback for every team takes time, and it arrives late." },
-      ],
+      devolutiva: "Ana, great use of the chain rule in exercises 3 and 4. In the graph, the critical points are missing…",
+      ia: "Suggested by AI · you approve",
+      aprovar: "Approve and next",
     },
     como: {
-      titulo: "How it works",
+      titulo: "Every cycle in 5 steps. You always know what's next.",
       passos: [
-        { titulo: "Receive", texto: "Submitters email the class address. Handback sorts by stage and by group or person, on its own." },
-        { titulo: "Check", texto: "AI reads files, PDFs, photos and links and checks every requested item, without numeric grades." },
-        { titulo: "You approve", texto: "See the suggested grade, the checklist and ready-to-send feedback. Adjust anything and approve." },
-        { titulo: "Hand back", texto: "Feedback goes out from your Gmail, in the same thread as the submission. Everyone's progress is recorded." },
+        { titulo: "Task ready", texto: "You write the checklist of what students hand in. You can publish the task to Classroom." },
+        { titulo: "Receive", texto: "Submissions arrive on their own. Whoever hasn't submitted gets a reminder." },
+        { titulo: "Analyze", texto: "AI reads files, PDFs, photos and links and checks each requested item." },
+        { titulo: "Review", texto: "One at a time: adjust the grade and the text, approve and move on." },
+        { titulo: "Send", texto: "One button: the grade goes to Classroom or Moodle and the feedback goes by email." },
       ],
     },
-    paraQuem: {
-      titulo: "Who it's for",
+    controle: {
+      titulo: "You're in control, start to finish",
       itens: [
-        { titulo: "Universities and schools", texto: "Classes with individual students or groups." },
-        { titulo: "Hubs and residencies", texto: "Programs with resident teams and delivery cycles." },
-        { titulo: "Consulting firms", texto: "Project teams submitting work for review." },
-        { titulo: "Companies", texto: "Teams delivering to their manager, sprint by sprint." },
-        { titulo: "Professional offices", texto: "Clients sending what was requested each month." },
-      ],
-    },
-    recursos: {
-      titulo: "Everything you need, nothing you don't",
-      itens: [
-        { titulo: "Levels, not scores", texto: "Excellent, Good, Fair or Poor, each one defined by you." },
-        { titulo: "Automatic checklist", texto: "Each requested item shows as delivered, partial or missing, with where the AI found it." },
-        { titulo: "Feedback in your voice", texto: "AI learns from the feedback you approve and from your reasons when you change a grade." },
-        { titulo: "Classes and programs", texto: "Several classes in one account, each with its own submission address." },
-        { titulo: "Progress and reports", texto: "See who improved, who dropped and who needs attention. Class report ready to print." },
-        { titulo: "Your own words", texto: "Class, cycle, sprint; team, group, student, resident: Handback speaks your language." },
+        { titulo: "Nothing goes out without you", texto: "AI suggests the grade and the feedback. You decide, and it learns from your corrections." },
+        { titulo: "Autopilot", texto: "Turn it on for a class and new submissions are analyzed right away. You get a notice when they're ready." },
+        { titulo: "Follow the class", texto: "Who improved, who dropped and who needs attention across cycles, with a PDF report." },
       ],
     },
     seguranca: {
-      titulo: "Built for important documents",
-      texto: "Schools and companies trust Handback with assignments, reports and documents. That's why security comes built in.",
+      titulo: "Secure and privacy-first",
+      texto: "Your students' data stays protected, visible only to you and the people you authorize.",
       itens: [
-        "Strong passwords and two-step verification (code on your phone)",
-        "Each organization only sees its own data",
-        "Files kept private, with expiring links",
-        "Log of who opened, downloaded, approved or sent each item",
-        "The AI we use doesn't train on your data",
-        "Your Gmail only sends: Handback asks Google only for permission to send email and never reads your inbox",
+        "Each teacher connects their own account, with only what's needed",
+        "Personal documents (IDs) never go to the AI",
+        "Two-step verification and a log of who did what",
+        "The AI we use doesn't train on your students' work",
+        "Your Gmail only sends: Handback asks Google only for permission to send emails and never reads your inbox",
+        "Files in a private area, with expiring links",
       ],
-      politica: "Read the privacy policy (Portuguese)",
-    },
-    planos: {
-      titulo: "Pricing",
-      texto: "We're opening our first pilots with special terms. Tell us how you'll use it and we'll build the plan with you.",
-      botao: "Talk to us",
+      politica: "Read the privacy policy",
     },
     perguntas: {
-      titulo: "Frequently asked questions",
+      titulo: "FAQ",
       itens: [
-        { p: "Do submitters need an account?", r: "No. They just send an email to the class address, with files or links." },
-        { p: "Does the AI give numeric grades?", r: "No. Handback uses levels (Excellent, Good, Fair, Poor), and you decide the final one." },
-        { p: "Is feedback sent automatically?", r: "Never. A person reviews and approves every piece of feedback before it's sent." },
-        { p: "Do I need Gmail?", r: "To send feedback from your own email, yes. Without Gmail, you copy the ready text and send it as you prefer." },
+        { p: "Does the AI grade on its own?", r: "No. AI suggests a grade and drafts the feedback. You review and approve each one before it goes out." },
+        { p: "Do students need an account?", r: "No. They submit as they already do: in Google Classroom, in Moodle or by emailing the class address." },
+        { p: "Does it work with my school?", r: "It works with Google Classroom, your institution's Moodle and email. Each teacher connects their own account." },
+        { p: "How much does it cost?", r: "Early teachers use it for free, no credit card. Plans will be announced before any charge." },
         { p: "Does the AI learn from students' work?", r: "No. We use Google's paid AI, which doesn't train on submitted content. Handback learns your criteria only inside your account." },
-        { p: "Does it work on mobile?", r: "Yes. Handback was designed mobile-first." },
+        { p: "Does it work on my phone?", r: "Yes. Handback was designed mobile-first, with notifications." },
       ],
     },
-    final: { titulo: "Ready to hand back faster?", texto: "Tell us how you work. We'll set everything up for your first cycle.", botao: "Request a trial" },
-    rodape: { privacidade: "Privacy policy", termos: "Terms of use", aviso: "The app is currently in Portuguese; English is coming soon." },
+    final: { titulo: "Grade your next class with Handback", texto: "Tell us how you work. We'll set everything up for your first cycle.", botao: "Request a trial" },
+    rodape: { privacidade: "Privacy", termos: "Terms", contato: "Contact", aviso: "The app is currently in Portuguese; English is coming soon." },
     assuntoEmail: "Handback trial request",
   },
   es: {
     meta: {
       titulo: "Handback · Entregas revisadas con IA, aprobadas por ti",
       descricao:
-        "Handback recibe las entregas por correo, revisa con IA lo que se pidió y prepara la retroalimentación. Tú revisas, apruebas y sale desde tu propio correo.",
+        "Las entregas llegan desde Google Classroom, Moodle o correo. La IA revisa la lista y redacta la retroalimentación. Tú revisas, apruebas y vuelve al estudiante.",
     },
-    menu: { como: "Cómo funciona", recursos: "Funciones", seguranca: "Seguridad", perguntas: "Preguntas", entrar: "Entrar" },
+    menu: { como: "Cómo funciona", controle: "Tú decides", seguranca: "Seguridad", perguntas: "Preguntas", entrar: "Entrar", criar: "Quiero probar" },
     hero: {
-      selo: "Para profesores, mentores, gerentes y consultores",
+      selo: "Para profesores, coordinadores y escuelas",
       titulo1: "Tú recibes,",
       titulo2: "nosotros devolvemos revisado.",
       texto:
-        "Handback recibe las entregas por correo, revisa con IA lo que se pidió y redacta la retroalimentación. Tú revisas, apruebas y sale desde tu propio correo. Nada se envía sin tu aprobación.",
+        "Las entregas llegan solas desde Google Classroom, Moodle o correo. La IA revisa la lista que pediste y redacta la retroalimentación. Tú revisas, apruebas y vuelve al estudiante. Nada sale sin ti.",
       testar: "Quiero probar",
-      entrar: "Ya tengo cuenta",
-      nota: "Quien entrega no necesita crear cuenta: solo envía un correo.",
+      verComo: "Ver cómo funciona",
+      funcionaCom: "Funciona con:",
+      integracoes: "Google Classroom · Moodle · Correo · Google Drive · Google Calendar",
     },
     previa: {
-      equipe: "Equipo Azul",
-      etapa: "Clase 3 · Prototipo",
-      conceito: "Concepto",
-      conceitoValor: "BUENO",
-      pedido: "Lo que se pidió",
+      ciclo: "Ciclo 3 · Derivadas",
+      turma: "Cálculo I",
+      passos: ["Tarea", "Recibir", "Analizar", "Revisar", "Enviar"],
+      aluno: "Ana Souza",
+      conceito: "BUENO",
       itens: [
-        { item: "Prototipo navegable", status: "ok", nota: "Enlace de Figma en el correo" },
-        { item: "Guion de prueba", status: "parcial", nota: "Tiene las tareas, faltan las preguntas" },
-        { item: "Informe con 5 usuarios", status: "ok", nota: "PDF, páginas 2 a 6" },
+        { item: "Ejercicios 1 a 5 resueltos", status: "ok" },
+        { item: "Regla de la cadena explicada", status: "ok" },
+        { item: "Gráfico de la función (parcial)", status: "parcial" },
       ],
-      devolutiva: "Retroalimentación",
-      devolutivaTexto: "¡Buen trabajo, equipo! El prototipo es claro y el informe trae evidencia real. Para la próxima, completen el guion con las preguntas de cada tarea…",
-      aprovar: "Aprobar y enviar",
-      ia: "Sugerido por la IA · tú decides",
-    },
-    dor: {
-      titulo: "Revisar entregas no debería ocupar tu fin de semana",
-      itens: [
-        { titulo: "Bandeja de entrada llena", texto: "Archivos, enlaces y respuestas mezclados, cada uno con un nombre distinto." },
-        { titulo: "Revisión repetitiva", texto: "Abrir una por una para ver si entregaron todo lo que se pidió." },
-        { titulo: "Retroalimentación tardía", texto: "Escribir una buena respuesta para cada equipo lleva tiempo, y llega tarde." },
-      ],
+      devolutiva: "Ana, muy buen uso de la regla de la cadena en los ejercicios 3 y 4. En el gráfico faltaron los puntos críticos…",
+      ia: "Sugerido por la IA · tú apruebas",
+      aprovar: "Aprobar y siguiente",
     },
     como: {
-      titulo: "Cómo funciona",
+      titulo: "Cada ciclo en 5 pasos. Siempre sabes el siguiente.",
       passos: [
-        { titulo: "Recibe", texto: "Quien entrega envía un correo a la dirección del grupo. Handback ordena por etapa y por equipo o persona, solo." },
-        { titulo: "Revisa", texto: "La IA lee archivos, PDFs, fotos y enlaces y revisa cada ítem pedido, sin notas numéricas." },
-        { titulo: "Tú apruebas", texto: "Ves el concepto sugerido, el checklist y la retroalimentación lista. Ajustas lo que quieras y apruebas." },
-        { titulo: "Devuelve", texto: "La retroalimentación sale de tu Gmail, en la misma conversación de la entrega. La evolución de cada uno queda registrada." },
+        { titulo: "Tarea lista", texto: "Escribes la lista de lo que el estudiante entrega. Puedes publicar la tarea en Classroom." },
+        { titulo: "Recibir", texto: "Las entregas llegan solas. Quien aún no entregó recibe un recordatorio." },
+        { titulo: "Analizar", texto: "La IA lee archivos, PDF, fotos y enlaces y revisa cada punto pedido." },
+        { titulo: "Revisar", texto: "Una a la vez: ajusta la nota y el texto, aprueba y pasa a la siguiente." },
+        { titulo: "Enviar", texto: "Un botón: la nota va a Classroom o Moodle y la retroalimentación va por correo." },
       ],
     },
-    paraQuem: {
-      titulo: "Para quién es",
+    controle: {
+      titulo: "Tú decides, de principio a fin",
       itens: [
-        { titulo: "Universidades y escuelas", texto: "Grupos con alumnos individuales o en equipos." },
-        { titulo: "Hubs y residencias", texto: "Programas con equipos de residentes y ciclos de entrega." },
-        { titulo: "Consultoras", texto: "Equipos de proyecto que entregan para revisión." },
-        { titulo: "Empresas", texto: "Equipos que entregan al gerente, sprint a sprint." },
-        { titulo: "Despachos", texto: "Clientes que envían lo que se pidió cada mes." },
-      ],
-    },
-    recursos: {
-      titulo: "Todo lo que necesitas, sin complicaciones",
-      itens: [
-        { titulo: "Conceptos, no notas", texto: "Excelente, Bueno, Regular o Malo, con la definición de cada uno hecha por ti." },
-        { titulo: "Checklist automático", texto: "Cada ítem pedido aparece como entregado, parcial o faltante, con dónde lo encontró la IA." },
-        { titulo: "Retroalimentación con tu tono", texto: "La IA aprende de las respuestas que apruebas y de tus motivos cuando cambias un concepto." },
-        { titulo: "Grupos y programas", texto: "Varios grupos en la misma cuenta, cada uno con su propia dirección de entrega." },
-        { titulo: "Evolución e informe", texto: "Mira quién mejoró, quién bajó y quién necesita atención. Informe de la clase listo para imprimir." },
-        { titulo: "Con sus propias palabras", texto: "Clase, ciclo, sprint; equipo, alumno, residente: Handback habla como ustedes." },
+        { titulo: "Nada sale sin tu aprobación", texto: "La IA sugiere la nota y la retroalimentación. Tú decides, y aprende con tus correcciones." },
+        { titulo: "Piloto automático", texto: "Actívalo en un grupo y lo que llega se analiza al instante. Recibes un aviso cuando está listo." },
+        { titulo: "Sigue al grupo", texto: "Quién mejoró, quién bajó y quién necesita atención a lo largo de los ciclos, con informe en PDF." },
       ],
     },
     seguranca: {
-      titulo: "Hecho para documentos importantes",
-      texto: "Escuelas y empresas confían a Handback trabajos, informes y documentos. Por eso, la seguridad viene de fábrica.",
+      titulo: "Seguro y privado",
+      texto: "Los datos de tus estudiantes quedan protegidos y solo tú y quien autorices los ven.",
       itens: [
-        "Contraseña fuerte y verificación en dos pasos (código en el celular)",
-        "Cada organización solo ve sus propios datos",
-        "Archivos en un área privada, con enlaces que caducan",
-        "Registro de quién abrió, descargó, aprobó o envió cada cosa",
-        "La IA que usamos no se entrena con tus datos",
+        "Cada profesor conecta su propia cuenta, solo con lo necesario",
+        "Los documentos personales nunca van a la IA",
+        "Verificación en dos pasos y registro de quién hizo qué",
+        "La IA que usamos no entrena con los trabajos de tus estudiantes",
         "Tu Gmail solo envía: Handback pide a Google solo el permiso de enviar correos y nunca lee tu bandeja",
+        "Archivos en un área privada, con enlaces que expiran",
       ],
-      politica: "Lee la política de privacidad (en portugués)",
-    },
-    planos: {
-      titulo: "Planes",
-      texto: "Estamos abriendo los primeros pilotos con condiciones especiales. Cuéntanos cómo lo vas a usar y armamos el plan contigo.",
-      botao: "Hablar con nosotros",
+      politica: "Lee la política de privacidad",
     },
     perguntas: {
-      titulo: "Preguntas frecuentes",
+      titulo: "Preguntas",
       itens: [
-        { p: "¿Quien entrega necesita crear una cuenta?", r: "No. Solo envía un correo a la dirección del grupo, con los archivos o enlaces." },
-        { p: "¿La IA pone notas?", r: "No. Handback usa conceptos (Excelente, Bueno, Regular, Malo), y el concepto final lo decides tú." },
-        { p: "¿La retroalimentación se envía sola?", r: "Nunca. Una persona revisa y aprueba cada respuesta antes del envío." },
-        { p: "¿Necesito Gmail?", r: "Para enviar desde tu propio correo, sí. Sin Gmail, copias el texto listo y lo envías como prefieras." },
-        { p: "¿La IA aprende con los trabajos de los alumnos?", r: "No. Usamos la IA de pago de Google, que no se entrena con el contenido enviado. Handback aprende tu criterio solo dentro de tu cuenta." },
-        { p: "¿Funciona en el celular?", r: "Sí. Handback se pensó primero para el celular." },
+        { p: "¿La IA corrige sola?", r: "No. La IA sugiere la nota y redacta un borrador. Tú revisas y apruebas cada retroalimentación antes de enviarla." },
+        { p: "¿El estudiante necesita una cuenta?", r: "No. Entrega como ya lo hace: en Google Classroom, en Moodle o enviando un correo a la dirección del grupo." },
+        { p: "¿Funciona con mi escuela?", r: "Funciona con Google Classroom, con el Moodle de tu institución y con correo. Cada profesor conecta su propia cuenta." },
+        { p: "¿Cuánto cuesta?", r: "Por ahora es gratis para los primeros profesores, sin tarjeta. Los planes se anunciarán antes de cualquier cobro." },
+        { p: "¿La IA aprende de los trabajos?", r: "No. Usamos la IA de pago de Google, que no entrena con el contenido enviado. Handback aprende tu criterio solo dentro de tu cuenta." },
+        { p: "¿Funciona en el celular?", r: "Sí. Handback fue pensado primero para el celular, con avisos." },
       ],
     },
-    final: { titulo: "¿Listo para devolver más rápido?", texto: "Cuéntanos cómo trabajas. Preparamos todo para tu primer ciclo.", botao: "Quiero probar" },
-    rodape: { privacidade: "Política de privacidad", termos: "Términos de uso", aviso: "La aplicación está en portugués por ahora; el español llegará pronto." },
+    final: { titulo: "Corrige tu próximo grupo con Handback", texto: "Cuéntanos cómo trabajas. Preparamos todo para tu primer ciclo.", botao: "Quiero probar" },
+    rodape: { privacidade: "Privacidad", termos: "Términos", contato: "Contacto", aviso: "La aplicación está en portugués por ahora; el español llegará pronto." },
     assuntoEmail: "Quiero probar Handback",
   },
 };

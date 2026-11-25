@@ -1264,6 +1264,7 @@ try {
     menu = await menuConta(ana.p);
     await ana.p.mouse.click(10, 500);
     confere(!(await ana.p.getByRole("menu", { name: "Sua conta" }).count()), "menu da conta fecha ao tocar fora");
+    menu = await menuConta(ana.p);
 
     // E-mail: conectar abre só uma janelinha do Google, que fecha sozinha
     await menu.getByRole("menuitem", { name: "Contas conectadas" }).click();
