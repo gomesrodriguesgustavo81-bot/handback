@@ -30,7 +30,11 @@ export async function recuperarAnexos(admin: SupabaseClient, emailId: string): P
   }
   const guardados = [...((m.anexos ?? []) as Guardado[])];
   const faltaram: string[] = [];
-  for (const [i, p] of pendentes.entries()) {
+  // "*": o e-mail falava de anexo e nenhum tinha chegado. Agora vale qualquer anexo que o serviço tiver.
+  const jaGuardados = new Set(guardados.map((g) => g.nome));
+  const novos = anexos.filter((a) => !jaGuardados.has(a.nome) && !pendentes.some((p) => p.nome === a.nome));
+  const lista = pendentes.flatMap((p) => (p.nome === "*" ? (novos.length ? novos.map((a) => ({ nome: a.nome, tamanho: a.conteudo.length, tipo: a.tipo })) : [p]) : [p]));
+  for (const [i, p] of lista.entries()) {
     const a = anexos.find((x) => x.nome === p.nome);
     if (!a || a.conteudo.length > LIMITE_ARQUIVO) {
       faltaram.push(p.nome);
@@ -44,7 +48,7 @@ export async function recuperarAnexos(admin: SupabaseClient, emailId: string): P
     }
     guardados.push({ caminho, nome: a.nome, tamanho: a.conteudo.length, tipo: a.tipo });
   }
-  const restantes = pendentes.filter((p) => faltaram.includes(p.nome));
+  const restantes = lista.filter((p) => faltaram.includes(p.nome));
   await admin.from("emails_recebidos").update({ anexos: guardados, anexos_pendentes: restantes }).eq("id", emailId);
-  return { voltaram: pendentes.length - faltaram.length, faltaram };
+  return { voltaram: lista.length - faltaram.length, faltaram: faltaram.map((n) => (n === "*" ? "o anexo citado no e-mail (o serviço não tem nenhum)" : n)) };
 }

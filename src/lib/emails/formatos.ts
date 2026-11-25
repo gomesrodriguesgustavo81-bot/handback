@@ -140,3 +140,11 @@ export function codigosDaCaixa(destinatarios: string[]): string[] {
   }
   return [...achados];
 }
+
+/**
+ * O texto fala de anexo ("segue em anexo", "anexei", "attached")? Usado para
+ * avisar quando o e-mail diz que tem arquivo, mas nenhum chegou.
+ */
+export function falaDeAnexo(texto: string): boolean {
+  return /\banex|\battach|\badjunt|\bsegue\s+(em\s+)?(o|a|os|as)?\s*(arquivo|trabalho|pdf|documento|entrega|atividade)/i.test(texto ?? "");
+}

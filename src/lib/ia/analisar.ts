@@ -1,4 +1,5 @@
 import "server-only";
+import { falaDeAnexo } from "../emails/formatos";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Vocabulario } from "../frentes";
 import { dataHoraBR } from "../textos";
@@ -26,6 +27,7 @@ type EntregaCompleta = {
   etapa_id: string;
   grupo_id: string;
   origem: "email" | "manual";
+  assunto: string;
   enviada_em: string;
   atrasada: boolean;
   status: string;
@@ -46,7 +48,7 @@ export async function analisarEntrega(supabase: SupabaseClient, entregaId: strin
   const { data, error } = await supabase
     .from("entregas")
     .select(
-      "id, org_id, etapa_id, grupo_id, origem, enviada_em, atrasada, status, comentario, links, etapas(numero, titulo, entregaveis, criterios, observacoes_ia), grupos(nome, tema), organizacoes(vocabulario, conceitos, regra_checklist, exemplos_devolutiva, limite_analises_mes), arquivos_entrega(caminho, nome, tipo, drive_id, drive_por)",
+      "id, org_id, etapa_id, grupo_id, origem, assunto, enviada_em, atrasada, status, comentario, links, etapas(numero, titulo, entregaveis, criterios, observacoes_ia), grupos(nome, tema), organizacoes(vocabulario, conceitos, regra_checklist, exemplos_devolutiva, limite_analises_mes), arquivos_entrega(caminho, nome, tipo, drive_id, drive_por)",
     )
     .eq("id", entregaId)
     .maybeSingle();
@@ -56,6 +58,11 @@ export async function analisarEntrega(supabase: SupabaseClient, entregaId: strin
   const itens = e.etapas.entregaveis;
   if (!itens.length) {
     throw new Error(`Cadastre o checklist (“O que deve ser entregue”) d${/a$/i.test(v.etapa) ? "a" : "o"} ${v.etapa.toLowerCase()} antes de analisar.`);
+  }
+
+  // "Segue em anexo" e nenhum arquivo nem link: não adianta analisar (a IA daria RUIM por uma falha de envio).
+  if (!e.arquivos_entrega.length && !e.links.length && falaDeAnexo(`${e.assunto ?? ""}\n${e.comentario ?? ""}`)) {
+    throw new Error("O e-mail diz que tem anexo, mas nenhum arquivo chegou. Use “Buscar anexos de novo” na entrega ou peça para mandar de novo. A IA não analisou para não dar um conceito injusto.");
   }
 
   // Espaços do cadastro têm um limite de análises de IA por mês (controle de custo).

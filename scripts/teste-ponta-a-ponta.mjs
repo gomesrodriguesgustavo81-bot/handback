@@ -941,6 +941,23 @@ try {
     await ana.p.goto(`${APP}/app/${SLUG}/entregas/caixa`);
     confere(await ana.p.locator("li.rounded-2xl", { hasText: "nova@aluno.test" }).getByText("trabalho-resend.pdf").isVisible(), "Resend: anexo baixado e guardado");
 
+    // "Segue em anexo" mas nenhum arquivo chegou: avisa e deixa buscar de novo (nada some calado).
+    {
+      const idSem = `em_sem_${sufixo}`;
+      await fetch(`${process.env.RESEND_API_BASE}/__emails`, {
+        method: "POST",
+        body: JSON.stringify({
+          id: idSem, from: "Pessoa Nova <nova@aluno.test>", to: [ENDERECO.replace("@caixa.handback.test", "@abc.resend.app")],
+          subject: "entrega", text: "segue em anexo", headers: { "message-id": `<sem-${sufixo}@aluno>` }, anexos: [],
+        }),
+      });
+      const ev3 = JSON.stringify({ type: "email.received", created_at: new Date().toISOString(), data: { email_id: idSem } });
+      const ass3 = `v1,${createHmac("sha256", chave).update(`msg3_${sufixo}.${ts}.${ev3}`).digest("base64")}`;
+      const r3 = await (await fetch(`${APP}/api/emails/resend`, { method: "POST", headers: { "content-type": "application/json", "svix-id": `msg3_${sufixo}`, "svix-timestamp": ts, "svix-signature": ass3 }, body: ev3 })).json();
+      const aviso = sql(`select array_to_string(avisos, '|') || '#' || anexos_pendentes::text from public.emails_recebidos where id = '${r3.emailId}'`);
+      confere(r3.ok === true && /diz que tem anexo, mas nenhum arquivo chegou/.test(aviso) && /"\*"/.test(aviso), `“segue em anexo” sem arquivo vira aviso e dá para buscar de novo (${aviso.slice(0, 80)})`);
+    }
+
     // E-mail ignorado (veio de alguém da escola) com vídeo: o anexo não é guardado,
     // mas volta quando alguém diz que era entrega.
     const idIgn = `em_ign_${sufixo}`;

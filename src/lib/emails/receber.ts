@@ -1,4 +1,5 @@
 import "server-only";
+import { falaDeAnexo } from "./formatos";
 import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { nomeArquivoSeguro } from "../textos";
@@ -45,6 +46,9 @@ export async function receberEmail(admin: SupabaseClient, email: EmailRecebido):
 
   // Anexos que contam (sem logos/assinaturas coladas no corpo).
   const anexos = email.anexos.filter((a) => !(a.embutido && a.conteudo.length < TAMANHO_MIN_IMAGEM_EMBUTIDA));
+  // "Segue em anexo" sem nenhum arquivo nem link: algo se perdeu no caminho. Avisa e deixa buscar de novo.
+  const semArquivoCitado =
+    !anexos.length && !(email.problemasAnexos?.length) && falaDeAnexo(`${email.assunto}\n${email.texto}`) && !/https?:\/\//i.test(email.texto);
 
   const [etapas, grupos, equipe, comEntrega] = await Promise.all([
     admin.from("etapas").select("id, numero, titulo, recebe_de, recebe_ate").eq("turma_id", turma.id),
@@ -120,6 +124,7 @@ export async function receberEmail(admin: SupabaseClient, email: EmailRecebido):
       motivo: triagem.motivo,
       avisos: [
         ...triagem.avisos,
+        ...(semArquivoCitado ? ["O e-mail diz que tem anexo, mas nenhum arquivo chegou. Use “Buscar anexos de novo” ou peça para mandar de novo."] : []),
         ...(email.problemasAnexos ?? []),
         ...guardados.filter((g) => !g.caminho).map((g) => `Anexo não guardado: ${g.nome}`),
       ],
@@ -137,7 +142,11 @@ export async function receberEmail(admin: SupabaseClient, email: EmailRecebido):
 
   // Anexos não guardados (e-mail ignorado ou falha): guarda só o nome e de onde
   // buscar de novo, se alguém disser que era uma entrega.
-  const pendentes = guardados.filter((g) => !g.caminho).map((g) => ({ nome: g.nome, tamanho: g.tamanho, tipo: g.tipo }));
+  const pendentes = [
+    ...guardados.filter((g) => !g.caminho).map((g) => ({ nome: g.nome, tamanho: g.tamanho, tipo: g.tipo })),
+    // "*" = buscar de novo qualquer anexo que aparecer (o e-mail falava de anexo e nenhum chegou).
+    ...(semArquivoCitado || email.problemasAnexos?.length ? [{ nome: "*", tamanho: 0, tipo: "" }] : []),
+  ];
   if (email.idOrigem || pendentes.length) {
     await admin.from("emails_recebidos").update({ origem_id: email.idOrigem ?? null, anexos_pendentes: pendentes }).eq("id", emailId);
   }

@@ -1,6 +1,7 @@
 import { createHmac } from "node:crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { assinaturaValida, buscarEmailResend } from "./resend";
+import { falaDeAnexo } from "./formatos";
 
 const SEGREDO = `whsec_${Buffer.from("segredo-de-teste-123").toString("base64")}`;
 function assinar(id: string, ts: string, corpo: string) {
@@ -76,5 +77,18 @@ describe("buscarEmailResend", () => {
     const e = await buscarEmailResend({ type: "email.received", data: { email_id: "em_2" } }, "re_chave");
     expect(e.anexos).toHaveLength(0);
     expect(e.problemasAnexos?.[0]).toMatch(/“video.mp4” chegou, mas o Handback não conseguiu baixá-lo \(download do anexo: HTTP 500\)/);
+  });
+});
+
+describe("e-mail que fala de anexo", () => {
+  it("reconhece os jeitos comuns de dizer que tem arquivo", () => {
+    for (const t of ["segue em anexo", "Segue o trabalho em anexo.", "anexei o pdf", "arquivo anexado", "segue o arquivo", "see attached", "adjunto el trabajo"]) {
+      expect(falaDeAnexo(t)).toBe(true);
+    }
+  });
+  it("não confunde com texto comum", () => {
+    for (const t of ["Segue nossa entrega.", "Oi professor, tudo bem?", "segue o link: https://x.com", "entrega"]) {
+      expect(falaDeAnexo(t)).toBe(false);
+    }
   });
 });

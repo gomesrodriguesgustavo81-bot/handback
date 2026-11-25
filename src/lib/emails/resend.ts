@@ -116,13 +116,24 @@ export async function buscarEmailResend(evento: Json, chave: string): Promise<Em
   // (ou do resumo do evento). Nada some calado: cada falha vira um aviso.
   const problemas: string[] = [];
   let infos = (lista(e.attachments).length ? lista(e.attachments) : lista(resumo.attachments)) as Json[];
-  try {
-    const r = await tentar(() => api(`/emails/receiving/${encodeURIComponent(id)}/attachments`, chave));
-    const l = lista(r.data ?? r.attachments) as Json[];
-    if (l.length) infos = l;
-  } catch (erro) {
-    if (infos.length) problemas.push(`Não deu para listar os anexos no Resend (${mensagem(erro)}).`);
+  // Quantos anexos o Resend disse que o e-mail tinha (para nunca sumir nada calado).
+  const avisados = Math.max(lista(e.attachments).length, lista(resumo.attachments).length);
+  let erroLista: unknown = null;
+  // O Resend já usou dois nomes para esse caminho; tenta os dois.
+  for (const caminho of [`/emails/receiving/${encodeURIComponent(id)}/attachments`, `/emails/inbound/${encodeURIComponent(id)}/attachments`]) {
+    try {
+      const r = await tentar(() => api(caminho, chave));
+      const l = lista(r.data ?? r.attachments) as Json[];
+      if (l.length) {
+        infos = l;
+        erroLista = null;
+        break;
+      }
+    } catch (erro) {
+      erroLista ??= erro;
+    }
   }
+  if (erroLista && infos.length) problemas.push(`Não deu para listar os anexos no Resend (${mensagem(erroLista)}).`);
   const anexos: AnexoRecebido[] = [];
   let total = 0;
   for (const a of infos) {
@@ -155,6 +166,10 @@ export async function buscarEmailResend(evento: Json, chave: string): Promise<Em
       console.error("[emails/resend] anexo", nome, erro);
       problemas.push(`O anexo “${nome}” chegou, mas o Handback não conseguiu baixá-lo (${mensagem(erro)}).`);
     }
+  }
+
+  if (avisados > 0 && !anexos.length && !problemas.length) {
+    problemas.push(`O Resend avisou ${avisados === 1 ? "1 anexo" : `${avisados} anexos`}, mas não mandou os arquivos. Use “Buscar anexos de novo”.`);
   }
 
   const html = texto(e.html);
