@@ -111,7 +111,7 @@ export const TEXTOS: Record<Idioma, TextosVendas> = {
       ],
     },
     final: { titulo: "Corrija a próxima turma com o Handback", texto: "Crie sua conta em 1 minuto. Sem cartão de crédito.", botao: "Criar minha conta grátis" },
-    rodape: { privacidade: "Privacidade", termos: "Termos", contato: "Contato", aviso: "" },
+    rodape: { privacidade: "Política de privacidade", termos: "Termos de uso", contato: "Contato", aviso: "" },
     assuntoEmail: "Quero testar o Handback",
   },
   en: {
@@ -190,7 +190,7 @@ export const TEXTOS: Record<Idioma, TextosVendas> = {
       ],
     },
     final: { titulo: "Grade your next class with Handback", texto: "Tell us how you work. We'll set everything up for your first cycle.", botao: "Request a trial" },
-    rodape: { privacidade: "Privacy", termos: "Terms", contato: "Contact", aviso: "The app is currently in Portuguese; English is coming soon." },
+    rodape: { privacidade: "Privacy policy", termos: "Terms of use", contato: "Contact", aviso: "The app is currently in Portuguese; English is coming soon." },
     assuntoEmail: "Handback trial request",
   },
   es: {
@@ -269,7 +269,7 @@ export const TEXTOS: Record<Idioma, TextosVendas> = {
       ],
     },
     final: { titulo: "Corrige tu próximo grupo con Handback", texto: "Cuéntanos cómo trabajas. Preparamos todo para tu primer ciclo.", botao: "Quiero probar" },
-    rodape: { privacidade: "Privacidad", termos: "Términos", contato: "Contacto", aviso: "La aplicación está en portugués por ahora; el español llegará pronto." },
+    rodape: { privacidade: "Política de privacidad", termos: "Términos de uso", contato: "Contacto", aviso: "La aplicación está en portugués por ahora; el español llegará pronto." },
     assuntoEmail: "Quiero probar Handback",
   },
 };
