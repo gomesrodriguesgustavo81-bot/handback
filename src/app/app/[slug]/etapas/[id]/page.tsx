@@ -20,6 +20,7 @@ import { LinkBotao } from "@/components/ui";
 import { trilhasDaTurma } from "@/lib/trilha-dados";
 import { LembrarQuemFalta } from "./lembrar";
 import { DobraEditar } from "./dobra-editar";
+import { MenuDobra } from "@/components/menu-dobra";
 import type { Passo, Trilha } from "@/lib/trilha";
 
 /** Números do Classroom deste ciclo (entregas, arquivos que chegaram e que esperam). */
@@ -163,11 +164,13 @@ export default async function DetalheEtapa({ params, searchParams }: PageProps<"
           </p>
         </div>
         {podeAvaliar ? (
-          <details className="relative shrink-0">
-            <summary className="toque flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-xl border border-borda bg-cartao px-3.5 text-sm font-semibold [&::-webkit-details-marker]:hidden">
-              Mais <span aria-hidden>▾</span>
-            </summary>
-            <div className="cresce absolute right-0 z-20 mt-2 flex w-64 flex-col gap-0.5 rounded-2xl border border-borda bg-cartao p-2 shadow-lg">
+          <MenuDobra
+            rotulo={
+              <>
+                Mais <span aria-hidden>▾</span>
+              </>
+            }
+          >
               <Link href={painel} className="flex min-h-11 items-center rounded-lg px-3 text-[15px] hover:bg-fundo">
                 Painel de entregas (filtros e busca)
               </Link>
@@ -182,8 +185,7 @@ export default async function DetalheEtapa({ params, searchParams }: PageProps<"
                   Editar {minusc(v.etapa)}
                 </a>
               ) : null}
-            </div>
-          </details>
+          </MenuDobra>
         ) : null}
       </div>
 

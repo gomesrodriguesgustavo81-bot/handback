@@ -1242,20 +1242,28 @@ try {
 
   // 7h) Aparência, aba E-mail e calendário
   {
+    // A aparência fica em Minha conta (o menu da conta só leva até lá).
     await ana.p.goto(`${APP}/app/${SLUG}/entregas`);
     let menu = await menuConta(ana.p);
-    await menu.getByRole("button", { name: "Escuro" }).click();
+    await menu.getByRole("menuitem", { name: /Aparência/ }).click();
+    await ana.p.waitForURL(/\/conta/);
+    const aparencia = ana.p.getByRole("radiogroup", { name: "Aparência" });
+    await aparencia.getByRole("radio", { name: /^Escuro/ }).click();
     confere((await ana.p.evaluate(() => document.documentElement.dataset.tema)) === "escuro", "tema escuro muda a tela na hora");
     await ana.p.reload();
     confere((await ana.p.evaluate(() => document.documentElement.dataset.tema)) === "escuro", "tema escuro continua depois de recarregar");
     confere((await ana.p.evaluate(() => getComputedStyle(document.body).backgroundColor)) === "rgb(11, 18, 32)", "no tema escuro o fundo fica escuro");
     await ana.p.screenshot({ path: `${FOTOS}/40-tema-escuro.png`, fullPage: true });
-    menu = await menuConta(ana.p);
-    confere((await menu.getByRole("button", { name: "Escuro" }).getAttribute("aria-pressed")) === "true", "menu mostra o tema escolhido");
-    await menu.getByRole("button", { name: "Claro" }).click();
+    confere((await aparencia.getByRole("radio", { name: /^Escuro/ }).getAttribute("aria-checked")) === "true", "Minha conta mostra o tema escolhido");
+    await aparencia.getByRole("radio", { name: /^Claro/ }).click();
     confere((await ana.p.evaluate(() => getComputedStyle(document.body).backgroundColor)) === "rgb(245, 247, 251)", "tema claro volta o fundo claro");
-    await menu.getByRole("button", { name: "Sistema" }).click();
-    confere((await ana.p.evaluate(() => document.documentElement.dataset.tema)) === undefined, "tema Sistema segue o aparelho");
+    await aparencia.getByRole("radio", { name: /^Igual ao aparelho/ }).click();
+    confere((await ana.p.evaluate(() => document.documentElement.dataset.tema)) === undefined, "tema “igual ao aparelho” segue o aparelho");
+    // O menu da conta fecha ao tocar fora (e fica por cima de tudo).
+    await ana.p.goto(`${APP}/app/${SLUG}/inicio`);
+    menu = await menuConta(ana.p);
+    await ana.p.mouse.click(10, 500);
+    confere(!(await ana.p.getByRole("menu", { name: "Sua conta" }).count()), "menu da conta fecha ao tocar fora");
 
     // E-mail: conectar abre só uma janelinha do Google, que fecha sozinha
     await menu.getByRole("menuitem", { name: "Contas conectadas" }).click();

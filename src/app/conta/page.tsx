@@ -9,6 +9,7 @@ import { criarClienteServidor } from "@/lib/supabase/server";
 import { dataHoraBR } from "@/lib/textos";
 import { sairDeTodos } from "./acoes";
 import { CadastroDuasEtapas } from "./formularios";
+import { EscolhaTema } from "@/components/escolha-tema";
 
 export const metadata: Metadata = { title: "Minha conta" };
 
@@ -32,6 +33,11 @@ export default async function MinhaConta() {
           <h1 className="text-2xl font-semibold">Minha conta</h1>
           <p className="break-words text-sm text-suave">{eu.email}</p>
         </div>
+        <Cartao id="aparencia" className="flex scroll-mt-20 flex-col gap-3">
+          <h2 className="font-semibold">Aparência</h2>
+          <p className="text-sm text-suave">Vale só para você, neste aparelho.</p>
+          <EscolhaTema />
+        </Cartao>
         <Cartao className="flex flex-col gap-3">
           <h2 className="font-semibold">Senha</h2>
           <p className="text-sm text-suave">Troque se desconfiar que alguém sabe a sua senha.</p>

@@ -62,6 +62,10 @@ export default async function Configuracoes({ params }: PageProps<"/app/[slug]/c
         { nome: "Registro de atividades", detalhe: "Quem fez o quê e quando", href: `${base}/registro` },
       ],
     },
+    {
+      titulo: "Você",
+      itens: [{ nome: "Aparência", detalhe: "Claro, escuro ou igual ao aparelho (vale só para você)", href: "/conta#aparencia" }],
+    },
   ];
 
   return (
