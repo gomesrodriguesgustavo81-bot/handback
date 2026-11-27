@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useActionState, useState, useTransition } from "react";
-import { comecarDuasEtapas, conferirCodigo, confirmarDuasEtapas, definirSenha, type Estado } from "./acoes";
+import { comecarDuasEtapas, conferirCodigo, confirmarDuasEtapas, definirSenha, usarCodigoDeRecuperacao, type Estado } from "./acoes";
 import { CampoSenha } from "@/components/campo-senha";
 import { Aviso, Botao, Campo } from "@/components/ui";
 
-export function FormSenha({ pedirNome = false, pedirAceite = false, email = "" }: { pedirNome?: boolean; pedirAceite?: boolean; email?: string }) {
+export function FormSenha({ pedirNome = false, pedirAceite = false, pedirAtual = false, email = "" }: { pedirNome?: boolean; pedirAceite?: boolean; pedirAtual?: boolean; email?: string }) {
   const [estado, acao, enviando] = useActionState<Estado, FormData>(definirSenha, null);
   // Guardado aqui para não sumir se a senha for recusada.
   const [nome, setNome] = useState("");
@@ -29,6 +29,7 @@ export function FormSenha({ pedirNome = false, pedirAceite = false, email = "" }
           dica="É este nome que os alunos veem nos e-mails do Handback (devolutivas e lembretes). Dá para trocar depois em Configurações › E-mail."
         />
       ) : null}
+      {pedirAtual ? <Campo rotulo="Senha de agora" name="atual" type="password" autoComplete="current-password" required dica="Pedimos a senha de agora para ter certeza de que é você." /> : null}
       <CampoSenha valor={senha} aoMudar={setSenha} email={email} aoGerar={setRepetida} />
       <Campo rotulo="Repita a senha" name="repetir" type="password" autoComplete="new-password" required value={repetida} onChange={(e) => setRepetida(e.target.value)} />
       {pedirAceite ? (
@@ -79,6 +80,19 @@ export function FormCodigo({ voltar }: { voltar: string }) {
       {estado && !estado.ok ? <Aviso tipo="erro">{estado.mensagem}</Aviso> : null}
       <Botao type="submit" disabled={enviando}>
         {enviando ? "Conferindo…" : "Confirmar"}
+      </Botao>
+    </form>
+  );
+}
+
+export function FormRecuperar() {
+  const [estado, acao, enviando] = useActionState<Estado, FormData>(usarCodigoDeRecuperacao, null);
+  return (
+    <form action={acao} className="flex flex-col gap-4">
+      <Campo rotulo="Código de recuperação" name="codigo" autoComplete="off" required placeholder="XXXXX-XXXXX" maxLength={14} />
+      {estado && !estado.ok ? <Aviso tipo="erro">{estado.mensagem}</Aviso> : null}
+      <Botao type="submit" disabled={enviando}>
+        {enviando ? "Conferindo…" : "Usar o código"}
       </Botao>
     </form>
   );

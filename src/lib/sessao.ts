@@ -12,6 +12,18 @@ import type { Frente, Papel, Vocabulario } from "./frentes";
  * (Row Level Security), então um erro aqui nunca expõe dados de outra empresa.
  */
 
+/** Lê os "métodos de entrada" (amr) do token que o Supabase já conferiu. */
+function metodosDaSessao(token?: string): string[] {
+  try {
+    const partes = token?.split(".") ?? [];
+    if (partes.length < 2) return [];
+    const amr = JSON.parse(Buffer.from(partes[1], "base64url").toString("utf8")).amr;
+    return Array.isArray(amr) ? amr.map((a: { method?: string }) => String(a?.method ?? "")) : [];
+  } catch {
+    return [];
+  }
+}
+
 /** Só confere o login (usado pelas telas de criar senha e cadastrar as 2 etapas). */
 export const sessaoBasica = cache(async () => {
   await connection(); // sempre na hora do acesso, nunca pré-montada
@@ -22,7 +34,11 @@ export const sessaoBasica = cache(async () => {
   } = await supabase.auth.getUser();
   if (!user) redirect("/entrar");
   const { data: nivel } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  // Como a sessão começou: com a senha, ou por um link do e-mail (esqueci a senha, convite)?
+  const { data: sessao } = await supabase.auth.getSession();
+  const viaSenha = metodosDaSessao(sessao.session?.access_token).includes("password");
   return {
+    viaSenha,
     id: user.id,
     email: user.email ?? "",
     senhaDefinida: user.app_metadata?.senha_definida === true,
@@ -41,6 +57,15 @@ export const usuarioAtual = cache(async () => {
   const s = await sessaoBasica();
   if (!s.senhaDefinida) redirect("/definir-senha");
   if (s.temSegundaEtapa && s.nivel !== "aal2") redirect("/entrar/codigo");
+  // Quem administra entra de novo a cada 24 horas.
+  {
+    const supabase = await criarClienteServidor();
+    const { data: vencida } = await supabase.rpc("sessao_de_admin_vencida");
+    if (vencida === true) {
+      await supabase.auth.signOut();
+      redirect("/entrar?erro=sessao");
+    }
+  }
   // Nos 14 primeiros dias (sem o app cadastrado), a senha basta: só aparece um lembrete.
   let prazoDuasEtapas: string | null = null;
   if (s.nivel !== "aal2") {

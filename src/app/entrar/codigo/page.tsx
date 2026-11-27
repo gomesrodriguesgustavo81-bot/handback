@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { TelaSimples } from "@/components/tela-simples";
 import { caminhoSeguro } from "@/lib/caminhos";
@@ -18,7 +19,10 @@ export default async function Codigo({ searchParams }: PageProps<"/entrar/codigo
       titulo="Verificação em duas etapas"
       rodape={
         <form action="/sair" method="post">
-          Perdeu o celular? Fale com o administrador da sua empresa. ·{" "}
+          <Link href="/entrar/recuperar" className="underline hover:text-texto">
+            Perdi o celular
+          </Link>{" "}
+          ·{" "}
           <button type="submit" className="underline hover:text-texto">
             Sair
           </button>

@@ -4,24 +4,23 @@ import { criarClienteAdmin } from "./supabase/admin";
 
 /**
  * Limite de tentativas de entrar: 5 senhas erradas seguidas para o mesmo e-mail
- * travam a entrada por 15 minutos. Guardamos só uma marca embaralhada do e-mail.
+ * travam a entrada (1 minuto na 1ª vez, 5 na 2ª, 15 da 3ª em diante, contando 24 horas). Guardamos só uma marca embaralhada do e-mail.
  * Se o banco não responder, não trava ninguém (o limite do Supabase continua valendo).
  */
 export const MAX_TENTATIVAS = 5;
-export const MINUTOS_DE_TRAVA = 15;
 
-function marca(email: string): string {
+function marca(email: string, escopo = "login"): string {
   return createHmac("sha256", process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? "handback")
-    .update(`login:${email.trim().toLowerCase()}`)
+    .update(`${escopo}:${email.trim().toLowerCase()}`)
     .digest("hex");
 }
 
 /** Quantos minutos faltam para destravar (0 se a entrada está livre). */
-export async function minutosDeTrava(email: string): Promise<number> {
+export async function minutosDeTrava(email: string, escopo = "login"): Promise<number> {
   const admin = criarClienteAdmin();
   if (!admin) return 0;
   try {
-    const { data } = await admin.rpc("login_bloqueio", { p_hash: marca(email) });
+    const { data } = await admin.rpc("login_bloqueio", { p_hash: marca(email, escopo) });
     return paraMinutos(data);
   } catch {
     return 0;
@@ -29,11 +28,11 @@ export async function minutosDeTrava(email: string): Promise<number> {
 }
 
 /** Conta uma senha errada. Devolve os minutos de trava, se essa foi a que travou. */
-export async function contarSenhaErrada(email: string): Promise<number> {
+export async function contarSenhaErrada(email: string, escopo = "login"): Promise<number> {
   const admin = criarClienteAdmin();
   if (!admin) return 0;
   try {
-    const { data } = await admin.rpc("login_falhou", { p_hash: marca(email) });
+    const { data } = await admin.rpc("login_falhou", { p_hash: marca(email, escopo) });
     return paraMinutos(data);
   } catch {
     return 0;
@@ -41,11 +40,11 @@ export async function contarSenhaErrada(email: string): Promise<number> {
 }
 
 /** Entrou: zera a contagem. */
-export async function zerarTentativas(email: string): Promise<void> {
+export async function zerarTentativas(email: string, escopo = "login"): Promise<void> {
   const admin = criarClienteAdmin();
   if (!admin) return;
   try {
-    await admin.rpc("login_ok", { p_hash: marca(email) });
+    await admin.rpc("login_ok", { p_hash: marca(email, escopo) });
   } catch {
     // Sem problema: a contagem vence sozinha.
   }

@@ -14,6 +14,7 @@ export const metadata: Metadata = { title: "Entrar" };
 
 const ERROS: Record<string, string> = {
   link: "O link expirou ou já foi usado. Entre com sua senha ou peça um link novo em “Esqueci minha senha”.",
+  sessao: "Por segurança, quem administra entra de novo a cada 24 horas. Entre com a sua senha.",
   google: "Não foi possível entrar com o Google. Se você ainda não tem acesso, peça um convite ao administrador da sua empresa.",
 };
 

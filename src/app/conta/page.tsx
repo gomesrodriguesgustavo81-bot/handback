@@ -10,14 +10,26 @@ import { dataHoraBR } from "@/lib/textos";
 import { sairDeTodos } from "./acoes";
 import { CadastroDuasEtapas } from "./formularios";
 import { EscolhaTema } from "@/components/escolha-tema";
+import { CodigosDeRecuperacao } from "@/components/codigos-recuperacao";
 
 export const metadata: Metadata = { title: "Minha conta" };
+
+/** "Chrome em Windows", "Safari em iPhone"… a partir do texto que o navegador manda. */
+function resumoDoAparelho(ua: string): string {
+  const sistema = /Windows/i.test(ua) ? "Windows" : /iPhone|iPad/i.test(ua) ? "iPhone/iPad" : /Android/i.test(ua) ? "Android" : /Mac OS/i.test(ua) ? "Mac" : /Linux/i.test(ua) ? "Linux" : "";
+  const navegador = /Edg\//.test(ua) ? "Edge" : /Firefox\//.test(ua) ? "Firefox" : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : "";
+  return [navegador, sistema].filter(Boolean).join(" em ") || ua.slice(0, 60);
+}
 
 export default async function MinhaConta() {
   const [eu, dono] = await Promise.all([usuarioAtual(), eDonoDaPlataforma()]);
   const supabase = await criarClienteServidor();
   const { data } = await supabase.auth.mfa.listFactors();
   const temApp = (data?.totp ?? []).some((f) => f.status === "verified");
+  const [{ data: restantes }, { data: sessoes }] = await Promise.all([
+    supabase.rpc("meus_codigos_de_recuperacao"),
+    supabase.rpc("minhas_sessoes"),
+  ]);
   const { data: acessos } = await supabase
     .from("atividades")
     .select("id, descricao, ip, aparelho, criado_em")
@@ -50,6 +62,10 @@ export default async function MinhaConta() {
           {temApp ? (
             <>
               <p className="text-sm text-marca-forte">Ativada: o Handback pede o código do seu celular para entrar.</p>
+              <div id="codigos" className="scroll-mt-20 border-t border-borda pt-3">
+                <h3 className="mb-2 text-sm font-semibold">Códigos de recuperação</h3>
+                <CodigosDeRecuperacao restantes={Number(restantes ?? 0)} />
+              </div>
               <details className="text-sm">
                 <summary className="cursor-pointer font-medium text-marca-forte">Trocar de celular</summary>
                 <div className="mt-3">
@@ -87,6 +103,22 @@ export default async function MinhaConta() {
         <Cartao className="flex flex-col gap-3">
           <h2 className="font-semibold">Aparelhos conectados</h2>
           <p className="text-sm text-suave">Perdeu o celular ou entrou num computador que não é seu? Saia de todos os aparelhos de uma vez.</p>
+          {(sessoes as { id: string; atividade_em: string; aparelho: string; rede: string; esta: boolean }[] | null)?.length ? (
+            <ul aria-label="Aparelhos conectados" className="flex flex-col divide-y divide-borda text-sm">
+              {(sessoes as { id: string; atividade_em: string; aparelho: string; rede: string; esta: boolean }[]).map((x) => (
+                <li key={x.id} className="flex flex-col py-2">
+                  <span className="break-words font-medium">
+                    {x.aparelho ? resumoDoAparelho(x.aparelho) : "Aparelho desconhecido"}
+                    {x.esta ? <span className="ml-2 rounded-full bg-marca-clara px-2 py-0.5 text-xs font-bold text-marca-forte">este aparelho</span> : null}
+                  </span>
+                  <span className="text-xs text-suave">
+                    Última atividade {dataHoraBR(x.atividade_em)}
+                    {x.rede ? ` · rede ${x.rede}` : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
           <FormConfirmado action={sairDeTodos} pergunta={{ titulo: "Sair de todos os aparelhos?", texto: "Você vai precisar entrar de novo em cada um, inclusive neste.", sim: "Sim, sair de todos", perigo: true }}>
             <button
               type="submit"

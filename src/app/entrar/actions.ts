@@ -7,6 +7,7 @@ import { supabaseConfigurado } from "@/lib/supabase/config";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { registrarAcesso, registrarFalhaLogin } from "@/lib/registro";
 import { contarSenhaErrada, mensagemDeTrava, minutosDeTrava, zerarTentativas } from "@/lib/tentativas";
+import { avisarDeTrava } from "@/lib/aviso-de-trava";
 
 export type EstadoEntrar = { ok: boolean; mensagem: string } | null;
 
@@ -34,7 +35,10 @@ export async function entrarComSenha(_a: EstadoEntrar, dados: FormData): Promise
     if (!muitasTentativas(error)) {
       await registrarFalhaLogin(email);
       const trava = await contarSenhaErrada(email);
-      if (trava > 0) return { ok: false, mensagem: mensagemDeTrava(trava) };
+      if (trava > 0) {
+        await avisarDeTrava(email);
+        return { ok: false, mensagem: mensagemDeTrava(trava) };
+      }
     }
     // Mesma mensagem para e-mail inexistente e senha errada (não revela quem tem conta).
     return {

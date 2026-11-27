@@ -8,6 +8,13 @@ import { problemaNaSenha, senhaVazada } from "@/lib/senha";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { registrarAcesso } from "@/lib/registro";
 import { VERSAO_TERMOS } from "@/lib/termos";
+import { createClient } from "@supabase/supabase-js";
+import { lerConfigSupabase } from "@/lib/supabase/config";
+import { criarClienteAdmin } from "@/lib/supabase/admin";
+import { contarSenhaErrada, mensagemDeTrava, minutosDeTrava, zerarTentativas } from "@/lib/tentativas";
+import { guardarSenhaNova, senhaJaUsada } from "@/lib/senhas-antigas";
+import { gerarCodigos, usarCodigo } from "@/lib/recuperacao";
+import { avisarSeguranca } from "@/lib/emails/seguranca";
 
 export type Estado = { ok: boolean; mensagem: string } | null;
 
@@ -24,6 +31,25 @@ export async function definirSenha(_a: Estado, dados: FormData): Promise<Estado>
   const problema = problemaNaSenha(senha, s.email);
   if (problema) return { ok: false, mensagem: problema };
   if (senha !== repetir) return { ok: false, mensagem: "As duas senhas não são iguais." };
+  // Trocar a senha (não é o primeiro acesso nem o "esqueci"): pede a senha de agora, que também tem limite de tentativas.
+  if (s.senhaDefinida && s.viaSenha) {
+    const travado = await minutosDeTrava(s.email, "troca");
+    if (travado > 0) return { ok: false, mensagem: mensagemDeTrava(travado) };
+    const atual = String(dados.get("atual") ?? "");
+    if (!atual) return { ok: false, mensagem: "Digite a senha de agora para trocar." };
+    const config = lerConfigSupabase();
+    if (!config) return { ok: false, mensagem: "O banco de dados ainda não foi ligado." };
+    // Cliente à parte, sem guardar sessão: só confere a senha, sem mexer no login atual.
+    const { error: erroAtual } = await createClient(config.url, config.chave, { auth: { persistSession: false, autoRefreshToken: false } }).auth.signInWithPassword({
+      email: s.email,
+      password: atual,
+    });
+    if (erroAtual) {
+      const trava = await contarSenhaErrada(s.email, "troca");
+      return { ok: false, mensagem: trava > 0 ? mensagemDeTrava(trava) : "A senha de agora está incorreta." };
+    }
+    await zerarTentativas(s.email, "troca");
+  }
   if (await senhaVazada(senha)) {
     return { ok: false, mensagem: "Essa senha já apareceu em vazamentos de dados na internet. Escolha outra." };
   }
@@ -31,6 +57,12 @@ export async function definirSenha(_a: Estado, dados: FormData): Promise<Estado>
   const nome = String(dados.get("nome") ?? "").trim().replace(/\s+/g, " ");
   if (dados.has("nome") && (nome.length < 2 || nome.length > 80)) return { ok: false, mensagem: "Escreva seu nome (de 2 a 80 letras)." };
   const supabase = await criarClienteServidor();
+  // Quem administra não repete uma das últimas 5 senhas.
+  const adminDb = criarClienteAdmin();
+  const { data: eAdministrador } = await supabase.rpc("e_quem_administra");
+  if (eAdministrador === true && adminDb && (await senhaJaUsada(adminDb, s.id, senha))) {
+    return { ok: false, mensagem: "Essa senha já foi usada antes. Escolha uma diferente das últimas 5." };
+  }
   const { error } = await supabase.auth.updateUser({ password: senha, ...(nome ? { data: { nome } } : {}) });
   if (error && !/same|different from the old/i.test(error.message)) {
     return { ok: false, mensagem: /weak|short|characters/i.test(error.message) ? "Senha fraca: use 8 ou mais caracteres, com maiúscula, minúscula, número e caractere especial." : "Não foi possível salvar a senha. Tente de novo." };
@@ -38,12 +70,18 @@ export async function definirSenha(_a: Estado, dados: FormData): Promise<Estado>
   if (!(await marcarSenhaDefinida(s.id))) return { ok: false, mensagem: "Não foi possível salvar a senha. Tente de novo." };
   // Recarrega a sessão para o servidor enxergar a marca nova.
   await supabase.auth.refreshSession();
+  if (adminDb) await guardarSenhaNova(adminDb, s.id, senha).catch(() => undefined);
+  if (s.senhaDefinida) {
+    // Trocou a senha: derruba os outros aparelhos e avisa por e-mail.
+    await supabase.auth.signOut({ scope: "others" });
+    await avisarSeguranca(s.email, "senha-trocada");
+  }
   if (dados.get("aceito") === "on") {
     const { error: erroAceite } = await supabase.rpc("registrar_aceite", { p_versao: VERSAO_TERMOS, p_origem: "senha" });
     if (erroAceite) console.error("[aceite]", erroAceite.message);
   }
   await supabase.rpc("aceitar_convites");
-  await registrarAcesso(supabase, "criou_senha");
+  await registrarAcesso(supabase, s.senhaDefinida ? "trocou_senha" : "criou_senha");
   redirect("/app");
 }
 
@@ -100,6 +138,10 @@ export async function confirmarDuasEtapas(factorId: string, _a: Estado, dados: F
     await supabase.auth.mfa.unenroll({ factorId: f.id });
   }
   await registrarAcesso(supabase, antigos.length ? "trocou_celular" : "ativou_duas_etapas");
+  if (antigos.length) {
+    const { data: u } = await supabase.auth.getUser();
+    if (u.user?.email) await avisarSeguranca(u.user.email, "duas-etapas-trocada");
+  }
   redirect("/app?duas-etapas=ok");
 }
 
@@ -138,4 +180,48 @@ export async function faixaDeSenhasVazadas(prefixo: string): Promise<string> {
   } catch {
     return "";
   }
+}
+
+/** Gera 8 códigos de recuperação novos (os antigos deixam de valer) e mostra uma única vez. */
+export async function gerarCodigosDeRecuperacao(): Promise<{ ok: true; codigos: string[] } | { ok: false; mensagem: string }> {
+  const s = await sessaoBasica();
+  if (!s.temSegundaEtapa || s.nivel !== "aal2") return { ok: false, mensagem: "Entre com o código do celular antes de gerar os códigos." };
+  const admin = criarClienteAdmin();
+  if (!admin) return { ok: false, mensagem: "O servidor ainda não está pronto." };
+  try {
+    const codigos = await gerarCodigos(admin, s.id);
+    const supabase = await criarClienteServidor();
+    await registrarAcesso(supabase, "gerou_codigos_recuperacao");
+    await avisarSeguranca(s.email, "codigos-gerados");
+    return { ok: true, codigos };
+  } catch {
+    return { ok: false, mensagem: "Não foi possível gerar agora. Tente de novo." };
+  }
+}
+
+/**
+ * Perdeu o celular: com a senha (já digitada) e um código de recuperação, desliga a verificação
+ * em duas etapas para cadastrar o celular novo. Cada código vale uma vez; erros travam como a senha.
+ */
+export async function usarCodigoDeRecuperacao(_a: Estado, dados: FormData): Promise<Estado> {
+  const s = await sessaoBasica();
+  if (!s.temSegundaEtapa) redirect("/conta/duas-etapas");
+  if (s.nivel === "aal2") redirect("/conta");
+  const travado = await minutosDeTrava(s.email, "recuperar");
+  if (travado > 0) return { ok: false, mensagem: mensagemDeTrava(travado) };
+  const admin = criarClienteAdmin();
+  if (!admin) return { ok: false, mensagem: "O servidor ainda não está pronto." };
+  const valeu = await usarCodigo(admin, s.id, String(dados.get("codigo") ?? ""));
+  if (!valeu) {
+    const trava = await contarSenhaErrada(s.email, "recuperar");
+    return { ok: false, mensagem: trava > 0 ? mensagemDeTrava(trava) : "Esse código não vale (já foi usado ou está errado)." };
+  }
+  await zerarTentativas(s.email, "recuperar");
+  const { data: lista } = await admin.auth.admin.mfa.listFactors({ userId: s.id });
+  for (const f of lista?.factors ?? []) await admin.auth.admin.mfa.deleteFactor({ id: f.id, userId: s.id });
+  const supabase = await criarClienteServidor();
+  await registrarAcesso(supabase, "usou_codigo_recuperacao");
+  await avisarSeguranca(s.email, "duas-etapas-removida");
+  await supabase.auth.refreshSession();
+  redirect("/conta/duas-etapas");
 }
