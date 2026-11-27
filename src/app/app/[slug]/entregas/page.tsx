@@ -7,6 +7,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FormEntrega } from "@/components/form-entrega";
 import { AnalisarVarias, AprovarProntas } from "@/components/analise";
+import { carregarEscolhas } from "@/lib/ia/escolhas-dados";
 import {
   Dobra,
   Pilula,
@@ -62,6 +63,7 @@ type EntregaLinha = {
   analises: {
     status: string;
     conceito: string | null;
+    conceito_escolhido: boolean;
     checklist: { status: string }[];
     iniciada_em: string;
     enviada_em: string | null;
@@ -197,7 +199,7 @@ export default async function PainelDaAula({
     supabase
       .from("entregas")
       .select(
-        "id, grupo_id, enviada_em, atrasada, status, origem, analises(status, conceito, checklist, iniciada_em, enviada_em, moodle_enviada_em)",
+        "id, grupo_id, enviada_em, atrasada, status, origem, analises(status, conceito, conceito_escolhido, checklist, iniciada_em, enviada_em, moodle_enviada_em)",
       )
       .eq("etapa_id", etapa.id)
       .eq("status", "recebida"),
@@ -242,6 +244,9 @@ export default async function PainelDaAula({
   const total = equipes.length;
   const recebidas = equipes.filter((x) => x.e).length;
   const paraRevisar = equipes.filter((x) => x.situacao === "revisar").length;
+  // "Aprovar as prontas" só vale para o que o professor já escolheu, quando a conta exige que ele escolha o conceito.
+  const esc = await carregarEscolhas(supabase, empresa.id, tId);
+  const aprovaveis = equipes.filter((x) => x.situacao === "revisar" && (!esc.exigirConceito || (x.e?.analises?.conceito_escolhido && x.e.analises.conceito !== "PENDENTE"))).length;
   const aprovadas = equipes.filter(
     (x) => x.situacao === "aprovada" || x.situacao === "enviada",
   ).length;
@@ -337,7 +342,7 @@ export default async function PainelDaAula({
           <AprovarProntas
             slug={slug}
             etapaId={etapa.id}
-            quantas={paraRevisar}
+            quantas={aprovaveis}
           />
           {gmailEmail ? (
             <EnviarVarias

@@ -151,7 +151,7 @@ export function AprovarProntas({ slug, etapaId, quantas }: { slug: string; etapa
           disabled={pendente}
           className="border-marca! text-marca-forte"
           onClick={async () => {
-            if (!(await pedir({ titulo: `Aprovar as ${quantas} devolutivas prontas?`, texto: "Do jeito que a IA escreveu, sem editar. Elas ficam prontas para enviar.", sim: "Sim, aprovar" }))) return;
+            if (!(await pedir({ titulo: `Aprovar as ${quantas} devolutivas prontas?`, texto: "Do jeito que estão, sem editar (só as que você já escolheu o conceito, se a conta pedir). Elas ficam prontas para enviar.", sim: "Sim, aprovar" }))) return;
             iniciar(async () => {
               setMsg(await aprovarProntas(slug, etapaId));
               router.refresh();
