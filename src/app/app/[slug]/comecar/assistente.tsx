@@ -5,6 +5,8 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Aviso, Botao } from "@/components/ui";
 import { generoDe, OPCOES_NOMES, plural, USOS, type Modo } from "@/lib/nomes";
+import { EscolhasIACampos } from "@/components/escolhas-ia";
+import { ESCOLHAS_PADRAO, type EscolhasIA } from "@/lib/ia/escolhas";
 import { concluirPrimeiroAcesso } from "./acoes";
 
 type Campo = "espaco" | "grupo" | "pessoa" | "etapa";
@@ -49,6 +51,7 @@ export function Assistente({ slug }: { slug: string }) {
   const [nomes, setNomes] = useState<Record<Campo, string>>({ espaco: USOS[0].espaco, grupo: USOS[0].grupo, pessoa: USOS[0].pessoa, etapa: USOS[0].etapa });
   const [outros, setOutros] = useState<Record<Campo, string>>({ espaco: "", grupo: "", pessoa: "", etapa: "" });
   const [nomeTurma, setNomeTurma] = useState("");
+  const [ia, setIa] = useState<EscolhasIA>(ESCOLHAS_PADRAO);
   const [erro, setErro] = useState("");
   const [salvando, iniciar] = useTransition();
   const uso = USOS.find((u) => u.id === usoId)!;
@@ -63,7 +66,7 @@ export function Assistente({ slug }: { slug: string }) {
   };
   const esp = valor("espaco") || "…";
   const fem = generoDe(esp) === "f";
-  const total = 4;
+  const total = 5;
 
   function escolherUso(id: string) {
     const u = USOS.find((x) => x.id === id)!;
@@ -87,6 +90,7 @@ export function Assistente({ slug }: { slug: string }) {
         pessoa: valor("pessoa"),
         etapa: valor("etapa"),
         nomeTurma,
+        ia,
       });
       // Pronto: segue direto para as Configurações, com a lista dos primeiros passos.
       if (r.ok) router.push(`/app/${slug}/configuracoes`);
@@ -206,6 +210,17 @@ export function Assistente({ slug }: { slug: string }) {
       {passo === 4 ? (
         <>
           <div>
+            <h2 className="text-2xl font-bold tracking-tight">Como você quer usar a IA?</h2>
+            <p className="text-sm text-suave">Estas escolhas são suas: o Handback só segue o que você marcar. Dá para mudar depois em Configurações, ou turma por turma.</p>
+          </div>
+          <EscolhasIACampos valores={ia} aoMudar={setIa} />
+          <p className="rounded-xl bg-marca-clara px-3 py-2.5 text-xs leading-relaxed text-marca-forte">A decisão e a assinatura das devolutivas são sempre suas. A IA só prepara rascunhos. O Handback não usa os trabalhos dos alunos para treinar IA.</p>
+        </>
+      ) : null}
+
+      {passo === 5 ? (
+        <>
+          <div>
             <h2 className="text-2xl font-bold tracking-tight">
               Crie {fem ? "sua primeira" : "seu primeiro"} {esp.toLowerCase()}
             </h2>
@@ -224,7 +239,7 @@ export function Assistente({ slug }: { slug: string }) {
         </>
       ) : null}
 
-      {passo === 5 ? (
+      {passo === 6 ? (
         <>
           <div className="flex flex-col items-center gap-2 text-center">
             <h2 className="text-2xl font-bold tracking-tight">Tudo pronto!</h2>

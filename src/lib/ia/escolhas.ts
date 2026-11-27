@@ -35,3 +35,14 @@ export function resolverEscolhas(conta: LinhaEscolhas | null | undefined, turma?
     esconderDados: pega(turma?.ia_esconder_dados, conta?.ia_esconder_dados, ESCOLHAS_PADRAO.esconderDados),
   };
 }
+
+/** Os nomes das colunas do banco para guardar as escolhas. */
+export function colunasDasEscolhas(e: EscolhasIA) {
+  return {
+    ia_exigir_conceito: e.exigirConceito,
+    ia_sem_sugestao: e.semSugestao,
+    ia_pedir_motivo: e.pedirMotivo,
+    ia_nome_codigo: e.nomeCodigo,
+    ia_esconder_dados: e.esconderDados,
+  };
+}

@@ -42,7 +42,7 @@ export async function registrarAcesso(supabase: SupabaseClient, acao: AcaoDeAces
 export async function registrarDocumento(
   supabase: SupabaseClient,
   org: string,
-  acao: "abriu_entrega" | "baixou_arquivo" | "abriu_relatorio",
+  acao: "abriu_entrega" | "baixou_arquivo" | "abriu_relatorio" | "baixou_supervisao",
   descricao: string,
   alvo: string | null,
 ): Promise<void> {

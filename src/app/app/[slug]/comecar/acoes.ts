@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { contextoDaEmpresa, mensagemDeErro } from "@/lib/empresa";
+import { colunasDasEscolhas, ESCOLHAS_PADRAO, type EscolhasIA } from "@/lib/ia/escolhas";
 import { montarVocabulario, USOS, type Modo } from "@/lib/nomes";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { turmaAtual } from "@/lib/turma";
@@ -14,6 +15,8 @@ export type RespostasPrimeiroAcesso = {
   pessoa: string;
   etapa: string;
   nomeTurma: string;
+  /** Como a IA ajuda e a proteção dos dados dos alunos (escolhas de quem criou a conta). */
+  ia?: EscolhasIA;
 };
 
 /** Guarda as respostas do primeiro acesso: nomes, modo e a primeira turma. */
@@ -30,7 +33,7 @@ export async function concluirPrimeiroAcesso(slug: string, r: RespostasPrimeiroA
   const supabase = await criarClienteServidor();
   const { error } = await supabase
     .from("organizacoes")
-    .update({ vocabulario: montarVocabulario(palavras), modo_padrao: modo, configurada: true })
+    .update({ vocabulario: montarVocabulario(palavras), modo_padrao: modo, configurada: true, ...colunasDasEscolhas(r.ia ?? ESCOLHAS_PADRAO) })
     .eq("id", empresa.id);
   if (error) return { ok: false, mensagem: mensagemDeErro(error, "Não foi possível salvar. Tente de novo.") };
   const turma = await turmaAtual(empresa.id);

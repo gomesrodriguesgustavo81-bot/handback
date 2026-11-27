@@ -32,6 +32,9 @@ export default async function Relatorios({ params }: PageProps<"/app/[slug]/rela
           ← Entregas
         </Link>
         <h1 className="text-2xl font-bold">Relatórios</h1>
+        <Link href={`/app/${slug}/relatorios/supervisao`} className="mt-1 inline-flex min-h-11 items-center text-sm font-semibold text-marca-forte hover:underline">
+          Registro de supervisão: o que a IA sugeriu e o que você decidiu ›
+        </Link>
         <p className="text-sm text-suave">
           Da turma <strong>{turma.nome}</strong>. Em PDF para imprimir ou guardar, e em planilha para o sistema da escola.
         </p>

@@ -13,6 +13,9 @@ import { salvarTurma } from "../ajustes/acoes";
 import { AcoesLigada } from "../configuracoes/classroom/painel";
 import { BotaoConfirmar } from "@/components/form-acao";
 import { ligarPiloto } from "../turma-acoes";
+import { EscolhasIACampos } from "@/components/escolhas-ia";
+import { COLUNAS_ESCOLHAS, resolverEscolhas, type LinhaEscolhas } from "@/lib/ia/escolhas";
+import { salvarEscolhasTurma } from "../ia-acoes";
 
 export const metadata: Metadata = { title: "Ajustes da turma" };
 
@@ -43,6 +46,11 @@ export default async function AjustesDaTurma({ params }: PageProps<"/app/[slug]/
       : Promise.resolve({ count: 0 }),
   ]);
   const meuId = eu.user?.id ?? "";
+  const [{ data: contaIA }, { data: turmaIA }] = await Promise.all([
+    supabase.from("organizacoes").select(COLUNAS_ESCOLHAS).eq("id", empresa.id).maybeSingle(),
+    supabase.from("turmas").select(COLUNAS_ESCOLHAS).eq("id", turma.id).maybeSingle(),
+  ]);
+  const escolhasIA = resolverEscolhas(contaIA as LinhaEscolhas | null, turmaIA as LinhaEscolhas | null);
   const endereco = enderecoDeRecebimento(turma.caixa_token);
   const lembretes = [t?.lembrete_abre && "quando abre", t?.lembrete_dois_dias && "2 dias antes", t?.lembrete_no_dia && "no dia"].filter(Boolean) as string[];
   const deOutro = (por: string | null | undefined) => Boolean(por && por !== meuId);
@@ -188,6 +196,24 @@ export default async function AjustesDaTurma({ params }: PageProps<"/app/[slug]/
             <input type="checkbox" name="arquivada" defaultChecked={turma.arquivada} className="size-5" />
             Arquivada (some do topo, mas nada é apagado)
           </label>
+        </FormAcao>
+      </BlocoAjuste>
+
+      <BlocoAjuste
+        titulo="IA e proteção de dados"
+        resumo={escolhasIA.semSugestao ? "Sem sugestão de conceito" : escolhasIA.exigirConceito ? "A IA sugere, você escolhe o conceito" : "A IA sugere o conceito"}
+        selo={escolhasIA.nomeCodigo && escolhasIA.esconderDados ? "Dados protegidos" : "Revise"}
+        tom={escolhasIA.nomeCodigo && escolhasIA.esconderDados ? "ok" : "alerta"}
+      >
+        <p className="text-suave">
+          Começa com o que você escolheu ao criar a conta; aqui vale só para <strong>{turma.nome}</strong>. A conta toda se muda em{" "}
+          <a href={`/app/${slug}/configuracoes/ia`} className="font-semibold text-marca-forte underline">
+            Configurações
+          </a>
+          .
+        </p>
+        <FormAcao acao={salvarEscolhasTurma.bind(null, slug)} textoBotao="Salvar escolhas desta turma">
+          <EscolhasIACampos valores={escolhasIA} />
         </FormAcao>
       </BlocoAjuste>
     </div>

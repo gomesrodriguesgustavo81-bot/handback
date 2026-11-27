@@ -119,6 +119,15 @@ export default function Privacidade() {
             “piloto automático” de uma turma, assim que a entrega chega. Em todos os casos, nada vai para o aluno sem a
             aprovação de uma pessoa. Documentos pessoais reconhecidos (como RG ou CPF) nunca são enviados para a IA.
           </p>
+          <p>
+            A IA só prepara um rascunho e sugere um conceito: quem decide o conceito e assina a devolutiva é o professor, e
+            a conta pode exigir que ele escolha o conceito, ou que a IA nem sugira um. Antes de enviar o texto, o Handback
+            troca o nome do aluno ou da equipe por um código e esconde e-mail, telefone e CPF (as duas proteções vêm ligadas
+            e quem administra a conta pode mudá-las). PDFs e imagens vão inteiros, porque não dá para apagar dados de dentro
+            deles; por isso, quando o Handback encontra telefone ou CPF num trabalho, avisa o professor. O Google pode
+            guardar os pedidos por um período limitado, só para detectar abuso, conforme a política dele. O Handback
+            guarda, para o professor, o que a IA sugeriu, o que ele decidiu e quando (registro de supervisão).
+          </p>
         </Secao>
 
         <Secao id="google" titulo="5. Dados da sua Conta do Google">
