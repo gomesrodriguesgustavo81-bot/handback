@@ -34,6 +34,7 @@ export default async function Configuracoes({ params }: PageProps<"/app/[slug]/c
         { nome: "Conceitos e notas", detalhe: "O que vale cada conceito, a nota no Moodle e no Classroom, a regra do checklist e exemplos para a IA", href: `${base}/configuracoes/avaliacao` },
         { nome: "Devolutiva por e-mail", detalhe: "Seu nome no remetente e cópia para você", href: `${base}/configuracoes/email` },
         { nome: "Como a IA ajuda", detalhe: "Quem decide o conceito, motivo da mudança e proteção dos dados dos alunos", href: `${base}/configuracoes/ia` },
+        { nome: "Gasto da IA", detalhe: "Quantos tokens as análises usaram, por mês e por turma", href: `${base}/configuracoes/gasto-ia` },
         { nome: "Registro de supervisão", detalhe: "O que a IA sugeriu, o que você decidiu e quando (PDF e planilha)", href: `${base}/relatorios/supervisao` },
       ],
     },
