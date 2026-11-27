@@ -7,6 +7,7 @@ import { createServer } from "node:http";
 
 const porta = Number(process.argv[2] ?? 4557);
 const emails = new Map();
+const enviados = []; // e-mails que o Handback mandou (POST /emails), para o teste conferir
 
 createServer(async (req, res) => {
   let corpo = "";
@@ -21,6 +22,12 @@ createServer(async (req, res) => {
     emails.set(e.id, e);
     return json(200, { ok: true });
   }
+  // Envio (POST /emails, como a API do Resend) e consulta para o teste (GET /__enviados).
+  if (req.method === "POST" && url.pathname === "/emails" && req.headers.authorization === "Bearer re_teste") {
+    enviados.push(JSON.parse(corpo));
+    return json(200, { id: `env_${enviados.length}` });
+  }
+  if (req.method === "GET" && url.pathname === "/__enviados") return json(200, enviados);
   const baixar = url.pathname.match(/^\/download\/([^/]+)\/(\d+)$/);
   if (baixar) {
     const a = emails.get(baixar[1])?.anexos?.[Number(baixar[2])];

@@ -19,6 +19,17 @@ create table auth.mfa_factors (
   status text not null default 'verified'
 );
 
+create table auth.sessions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz,
+  refreshed_at timestamp,
+  user_agent text,
+  ip inet,
+  not_after timestamptz
+);
+
 create function auth.uid() returns uuid language sql stable as $$
   select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
 $$;

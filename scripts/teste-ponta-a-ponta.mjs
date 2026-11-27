@@ -103,6 +103,11 @@ async function entrar(navegador, email, nome) {
   return { ctx, p };
 }
 
+/** E-mails de segurança que o Handback mandou (o Resend de mentira guarda todos). */
+async function emailsEnviados() {
+  return await (await fetch(`${process.env.RESEND_API_BASE}/__enviados`)).json();
+}
+
 /** Marca "Li e concordo" na criação da senha (só aparece no primeiro acesso). */
 async function marcarAceite(p) {
   const caixa = p.getByRole("checkbox", { name: /Li e concordo/ });
@@ -285,7 +290,7 @@ try {
     await p.getByRole("button", { name: "Entrar", exact: true }).click();
     await p.getByText("E-mail ou senha incorretos.").waitFor();
     confere(true, "senha errada não entra (mensagem não revela se o e-mail existe)");
-    // 5 senhas erradas seguidas travam a entrada por 15 minutos, mesmo com a senha certa.
+    // 5 senhas erradas seguidas travam a entrada (1 minuto na 1ª vez), mesmo com a senha certa.
     const TRAVA = `trava-${sufixo}@escola.test`;
     await criarConta(TRAVA);
     for (let i = 1; i <= 5; i++) {
@@ -299,7 +304,8 @@ try {
       await p.waitForTimeout(400);
     }
     await p.getByText(/a entrada fica travada por mais/).waitFor();
-    confere(true, "a 5ª senha errada trava a entrada por 15 minutos");
+    confere((await p.getByText(/a entrada fica travada por mais/).innerText()).includes("1 minuto"), "a 1ª trava dura 1 minuto (depois 5 e 15)");
+    confere((await emailsEnviados()).some((e) => e.to?.includes(TRAVA) && /Muitas tentativas/.test(e.subject)), "quem teve a entrada travada recebe um e-mail de aviso");
     await p.getByLabel("E-mail").fill(TRAVA);
     await p.getByLabel("Senha").fill(SENHA);
     await p.getByRole("button", { name: "Entrar", exact: true }).click();
@@ -2377,6 +2383,96 @@ try {
     await p.waitForURL(/\/cookies$/);
     confere(await p.getByRole("heading", { name: "Cookies", exact: true }).isVisible() && await p.getByText("hb_tema").isVisible(), "a página de cookies lista os cookies usados");
     await ctx.close();
+  }
+
+
+  // 7i) Segurança da conta: senha de agora, sair dos outros aparelhos, não repetir senha (administrador),
+  //     avisos por e-mail, aparelhos conectados, sessão de 24 horas e códigos de recuperação.
+  {
+    const SEG = `seg-${sufixo}@escola.test`;
+    await criarConta(SEG);
+    sql(`insert into public.membros (org_id, user_id, papel) select o.id, u.id, 'admin' from public.organizacoes o, auth.users u where o.slug = '${SLUG}' and u.email = '${SEG}'`);
+    const a = await entrar(navegador, SEG);
+    const b = await entrar(navegador, SEG);
+    await a.p.goto(`${APP}/conta`);
+    const lista = a.p.getByRole("list", { name: "Aparelhos conectados" });
+    await lista.waitFor();
+    confere((await lista.locator("li").count()) >= 2 && (await lista.getByText("este aparelho").count()) === 1, "Minha conta lista os aparelhos conectados e marca o de agora");
+    await largura(a.p, "minha conta com aparelhos");
+
+    const trocar = async (atual, nova) => {
+      await a.p.goto(`${APP}/definir-senha`);
+      await a.p.getByLabel("Senha de agora").fill(atual);
+      await a.p.getByLabel("Nova senha").fill(nova);
+      await a.p.getByLabel("Repita a senha").fill(nova);
+      await a.p.getByRole("button", { name: "Salvar senha" }).click();
+    };
+    const NOVA1 = "Primeira senha nova 2028!";
+    const NOVA2 = "Segunda senha nova 2029!";
+    await trocar("Errada 999 Senha!", NOVA1);
+    await a.p.getByText("A senha de agora está incorreta.").waitFor();
+    confere(true, "trocar a senha pede a senha de agora (errada, não troca)");
+    await trocar(SENHA, NOVA1);
+    await a.p.waitForURL(/\/app/);
+    confere(true, "com a senha de agora certa, a troca funciona");
+    await b.p.goto(`${APP}/app`);
+    confere(new URL(b.p.url()).pathname === "/entrar", "trocar a senha desconecta os outros aparelhos");
+    confere((await emailsEnviados()).some((e) => e.to?.includes(SEG) && /senha .*foi trocada/i.test(e.subject)), "trocar a senha manda e-mail de aviso");
+    await trocar(NOVA1, NOVA2);
+    await a.p.waitForURL(/\/app/);
+    await trocar(NOVA2, NOVA1);
+    await a.p.getByText(/já foi usada antes/).waitFor();
+    confere(true, "quem administra não repete uma das últimas senhas");
+    // A sessão de quem administra vale 24 horas.
+    sql(`update auth.sessions set created_at = now() - interval '25 hours' where user_id = (select id from auth.users where email = '${SEG}')`);
+    await a.p.goto(`${APP}/app`);
+    await a.p.getByText(/entra de novo a cada 24 horas/).waitFor();
+    confere(new URL(a.p.url()).pathname === "/entrar", "sessão de administrador com mais de 24 horas pede a senha de novo");
+    await a.ctx.close();
+    await b.ctx.close();
+
+    // Códigos de recuperação das duas etapas.
+    const REC = `rec-${sufixo}@escola.test`;
+    await criarConta(REC);
+    const r1 = await entrar(navegador, REC);
+    await r1.p.goto(`${APP}/conta/duas-etapas`);
+    await cadastrarCelular(r1.p, REC);
+    await r1.p.waitForURL(/\/app/);
+    await r1.p.getByRole("status", { name: "Códigos de recuperação" }).waitFor();
+    confere(true, "com as duas etapas ativas e sem códigos, o app lembra de gerar");
+    await r1.p.goto(`${APP}/conta`);
+    await r1.p.getByRole("button", { name: "Gerar códigos", exact: true }).click();
+    await r1.p.getByRole("button", { name: "Sim, gerar" }).click();
+    const codigos = r1.p.getByRole("list", { name: "Códigos de recuperação" });
+    await codigos.waitFor();
+    const todos = (await codigos.locator("li").allInnerTexts()).map((t) => t.trim());
+    confere(todos.length === 8 && todos.every((c) => /^[A-HJ-NP-Z2-9]{5}-[A-HJ-NP-Z2-9]{5}$/.test(c)), "gera 8 códigos de recuperação");
+    await largura(r1.p, "códigos de recuperação");
+    await r1.p.screenshot({ path: `${FOTOS}/39-codigos-recuperacao.png`, fullPage: true });
+    confere(sql(`select count(*) from public.codigos_recuperacao c join auth.users u on u.id = c.user_id where u.email = '${REC}' and c.hash like '%${todos[0].replace("-", "")}%'`) === "0", "os códigos não ficam guardados por extenso");
+    await r1.ctx.close();
+
+    // Perdeu o celular: senha + código desliga as duas etapas.
+    const ctxR = await prepararContexto(navegador, { ...devices["Pixel 7"] });
+    const pr = await ctxR.newPage();
+    await pr.goto(`${APP}/entrar`);
+    await pr.getByLabel("E-mail").fill(REC);
+    await pr.getByLabel("Senha").fill(SENHA);
+    await pr.getByRole("button", { name: "Entrar", exact: true }).click();
+    await pr.waitForURL(/\/entrar\/codigo/);
+    await pr.getByRole("link", { name: "Perdi o celular" }).click();
+    await pr.waitForURL(/\/entrar\/recuperar/);
+    await pr.getByLabel("Código de recuperação").fill("AAAAA-AAAAA");
+    await pr.getByRole("button", { name: "Usar o código" }).click();
+    await pr.getByText(/Esse código não vale/).waitFor();
+    confere(true, "código errado não desliga as duas etapas");
+    await pr.getByLabel("Código de recuperação").fill(todos[0].toLowerCase());
+    await pr.getByRole("button", { name: "Usar o código" }).click();
+    await pr.waitForURL(/\/conta\/duas-etapas/);
+    confere(sql(`select count(*) from auth.mfa_factors f join auth.users u on u.id = f.user_id where u.email = '${REC}'`) === "0", "o código de recuperação desliga as duas etapas para cadastrar o celular novo");
+    confere(sql(`select count(*) from public.codigos_recuperacao c join auth.users u on u.id = c.user_id where u.email = '${REC}' and c.usado_em is null`) === "7", "cada código vale uma vez (sobram 7)");
+    confere((await emailsEnviados()).some((e) => e.to?.includes(REC) && /código de recuperação/i.test(e.subject)), "usar o código manda e-mail de aviso");
+    await ctxR.close();
   }
 
   // 8) O dono bloqueia a escola; a Ana vê o aviso
