@@ -294,6 +294,9 @@ try {
       await p.getByRole("button", { name: "Entrar", exact: true }).click();
       // Espera a tentativa ser contada no banco antes de fazer a próxima (a mensagem da anterior ainda está na tela).
       for (let k = 0; k < 80 && Number(sql(`select coalesce(max(falhas), 0) from public.tentativas_login`)) < i; k++) await p.waitForTimeout(250);
+      // E espera o formulário voltar ao normal: ao terminar, o React limpa os campos, e isso apagaria o que o teste digitar logo em seguida.
+      await p.getByRole("button", { name: "Entrar", exact: true }).waitFor();
+      await p.waitForTimeout(400);
     }
     await p.getByText(/a entrada fica travada por mais/).waitFor();
     confere(true, "a 5ª senha errada trava a entrada por 15 minutos");
