@@ -2,6 +2,17 @@ import type { NextConfig } from "next";
 
 const EM_PRODUCAO = process.env.NODE_ENV === "production";
 
+/** Endereço do Supabase desta instalação (o domínio do projeto, ou o local nos testes). */
+function origemDoSupabase(): string {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "").origin;
+  } catch {
+    return "";
+  }
+}
+const SUPABASE = origemDoSupabase();
+const SUPABASE_WS = SUPABASE.replace(/^http/, "ws");
+
 /**
  * Política de conteúdo: o navegador só carrega scripts, imagens, conexões e
  * quadros dos endereços listados aqui. Os scripts "inline" do próprio Next
@@ -14,16 +25,16 @@ const CSP = [
   // Google Picker (escolher arquivos do Classroom) carrega o script de apis.google.com.
   `script-src 'self' 'unsafe-inline'${EM_PRODUCAO ? "" : " 'unsafe-eval'"} https://apis.google.com https://www.gstatic.com`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://*.supabase.co",
+  `img-src 'self' data: blob: https://*.supabase.co ${SUPABASE}`.trim(),
   "font-src 'self' data:",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://apis.google.com https://www.googleapis.com",
+  `connect-src 'self' https://*.supabase.co wss://*.supabase.co ${SUPABASE} ${SUPABASE_WS} https://apis.google.com https://www.googleapis.com`.trim(),
   "frame-src https://docs.google.com https://drive.google.com https://accounts.google.com",
   "worker-src 'self'",
   "manifest-src 'self'",
   "object-src 'none'",
   "frame-ancestors 'none'",
   "base-uri 'self'",
-  "form-action 'self' https://accounts.google.com https://*.supabase.co",
+  `form-action 'self' https://accounts.google.com https://*.supabase.co ${SUPABASE}`.trim(),
 ].join("; ");
 
 /** Cabeçalhos de segurança em todas as páginas. */
