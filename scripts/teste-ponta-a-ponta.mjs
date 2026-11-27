@@ -1030,7 +1030,8 @@ try {
     const [baixou] = await Promise.all([ana.p.waitForEvent("download"), ana.p.getByRole("button", { name: "Baixar em planilha" }).click()]);
     const csvSup = readFileSync(await baixou.path(), "utf8");
     confere(pediuConfirmacao("Baixar o registro?") && /Equipe Azul/.test(csvSup) && /Contém dados pessoais/.test(csvSup), "baixar o registro pede confirmação e a planilha traz o aviso de dados pessoais");
-    await espera(800);
+    // O registro do download é gravado logo depois da resposta: espera até aparecer (em vez de um tempo fixo).
+    for (let i = 0; i < 40 && sql(`select count(*) from public.atividades where acao = 'baixou_supervisao'`) !== "1"; i++) await espera(250);
     confere(sql(`select count(*) from public.atividades where acao = 'baixou_supervisao'`) === "1", "o download do registro fica no registro de atividades");
 
     // Escolhas da conta (Configurações > Como a IA ajuda)
