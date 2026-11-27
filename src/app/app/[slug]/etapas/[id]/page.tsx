@@ -5,6 +5,7 @@ import Link from "next/link";
 import { BotaoConfirmar, FormAcao } from "@/components/form-acao";
 import { Aviso, Cartao } from "@/components/ui";
 import { SeloConceito } from "@/components/conceito";
+import { resumoDosAlertas, SeloAlertas } from "@/components/alertas";
 import { contextoDaEmpresa } from "@/lib/empresa";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { dataBR, hojeISO, minusc } from "@/lib/textos";
@@ -307,7 +308,7 @@ function TrilhaDoCiclo({ trilha, acao }: { trilha: Trilha; acao: (n: Passo["n"])
   );
 }
 
-type Aluno = { id: string; nome: string; entrega: string | null; situacao: string; tom: string; conceito: string | null; feitos: number; itens: number; ordem: number };
+type Aluno = { id: string; nome: string; entrega: string | null; situacao: string; tom: string; conceito: string | null; feitos: number; itens: number; ordem: number; alertas: number; grave: boolean };
 
 /** Quem entrega neste ciclo: situação, conceito e checklist de cada um (o que precisa de você primeiro). */
 async function alunosDoCiclo(
@@ -321,12 +322,12 @@ async function alunosDoCiclo(
     supabase.from("grupos").select("id, nome").eq("org_id", orgId).eq("turma_id", turmaId).eq("ativo", true).order("nome").limit(2000),
     supabase
       .from("entregas")
-      .select("id, grupo_id, analises(status, conceito, checklist, enviada_em, moodle_enviada_em, classroom_enviada_em)")
+      .select("id, grupo_id, analises(status, conceito, checklist, alertas, enviada_em, moodle_enviada_em, classroom_enviada_em)")
       .eq("etapa_id", etapaId)
       .eq("status", "recebida")
       .limit(2000),
   ]);
-  type A = { status: string; conceito: string | null; checklist: { status: string }[] | null; enviada_em: string | null; moodle_enviada_em: string | null; classroom_enviada_em: string | null };
+  type A = { status: string; conceito: string | null; checklist: { status: string }[] | null; alertas: unknown; enviada_em: string | null; moodle_enviada_em: string | null; classroom_enviada_em: string | null };
   const de = new Map(((entregas ?? []) as unknown as { id: string; grupo_id: string; analises: A | A[] | null }[]).map((e) => [e.grupo_id, e]));
   const passou = Boolean(prazo && hojeISO() > prazo);
   return (grupos ?? [])
@@ -334,7 +335,18 @@ async function alunosDoCiclo(
       const e = de.get(g.id);
       const a = e ? (Array.isArray(e.analises) ? e.analises[0] : e.analises) : null;
       const lista = a?.checklist ?? [];
-      const base = { id: g.id, nome: g.nome as string, entrega: e?.id ?? null, conceito: null as string | null, feitos: lista.filter((c) => c.status === "ENTREGUE").length, itens: lista.length };
+      // Alertas só interessam enquanto falta revisar (depois de aprovada, já foi olhada).
+      const risco = a && a.status === "pronta" ? resumoDosAlertas(a.alertas) : { quantidade: 0, critico: false };
+      const base = {
+        id: g.id,
+        nome: g.nome as string,
+        entrega: e?.id ?? null,
+        conceito: null as string | null,
+        feitos: lista.filter((c) => c.status === "ENTREGUE").length,
+        itens: lista.length,
+        alertas: risco.quantidade,
+        grave: risco.critico,
+      };
       if (!e) return { ...base, situacao: passou ? "Não entregou" : "Aguardando", tom: passou ? "bg-erro-fundo text-erro" : "bg-neutro-fundo text-neutro", ordem: passou ? 5 : 6 };
       if (!a) return { ...base, situacao: "Sem análise", tom: "bg-alerta-fundo text-alerta", ordem: 1 };
       if (a.status === "pronta") return { ...base, conceito: a.conceito, situacao: "Para revisar", tom: "bg-alerta-fundo text-alerta", ordem: 0 };
@@ -345,7 +357,8 @@ async function alunosDoCiclo(
       if (a.status === "analisando") return { ...base, situacao: "Analisando", tom: "bg-info-fundo text-info", ordem: 3 };
       return { ...base, situacao: "Falhou", tom: "bg-erro-fundo text-erro", ordem: 1 };
     })
-    .sort((x, y) => x.ordem - y.ordem || x.nome.localeCompare(y.nome, "pt-BR"));
+    // O que precisa de você primeiro; dentro disso, quem tem alerta grave vem antes.
+    .sort((x, y) => x.ordem - y.ordem || Number(y.grave) - Number(x.grave) || y.alertas - x.alertas || x.nome.localeCompare(y.nome, "pt-BR"));
 }
 
 function ListaDeAlunos({ alunos, base }: { alunos: Aluno[]; base: string }) {
@@ -362,7 +375,10 @@ function ListaDeAlunos({ alunos, base }: { alunos: Aluno[]; base: string }) {
         {alunos.map((x) => {
           const conteudo = (
             <>
-              <b className="min-w-0 truncate text-[15px]">{x.nome}</b>
+              <span className="flex min-w-0 items-center gap-2">
+                <b className="min-w-0 truncate text-[15px]">{x.nome}</b>
+                <SeloAlertas quantidade={x.alertas} critico={x.grave} />
+              </span>
               <span>
                 <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold ${x.tom}`}>{x.situacao}</span>
               </span>

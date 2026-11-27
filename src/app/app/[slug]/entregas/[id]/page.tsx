@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 import { BotaoAnalisar, FolhaDevolutiva } from "@/components/analise";
 import { Bloco, Dobra, IconeItem, PilulaAtraso, SeloConceito, type StatusItem } from "@/components/conceito";
 import { Aviso } from "@/components/ui";
+import { AlertasDaEntrega } from "@/components/alertas";
 import { AvisoGmail } from "@/components/aviso-gmail";
 import { meuGmail } from "@/lib/envio";
 import { registrarDocumento } from "@/lib/registro";
@@ -67,6 +68,7 @@ type Analise = {
   evolucao: string;
   arquivos_lidos: string[];
   avisos_leitura: string[];
+  alertas: unknown;
   erro: string;
   conceito: string | null;
   devolutiva: string;
@@ -375,6 +377,7 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
           <span className="text-xs">É só um aviso: confira as duas antes de decidir. Trechos comuns, como o enunciado copiado, também contam.</span>
         </section>
       ) : null}
+      {temResultado && a.status !== "aprovada" && !substituida ? <AlertasDaEntrega alertas={a.alertas} /> : null}
       {substituida ? (
         <Aviso tipo="alerta">
           Substituída por um reenvio.{" "}

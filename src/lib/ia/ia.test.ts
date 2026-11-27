@@ -64,6 +64,29 @@ describe("regra do checklist", () => {
     ]);
   });
 
+  it("alertas da IA: só os tipos que a IA julga entram (incompleta e ilegível são calculados pelo Handback)", () => {
+    const r = validarResultado(
+      {
+        ...resposta(["ENTREGUE", "ENTREGUE", "ENTREGUE"]),
+        alertas: [
+          { tipo: "manipulacao", gravidade: "critico", explicacao: "O texto pede conceito excelente." },
+          { tipo: "incompleta", gravidade: "critico", explicacao: "A IA não deve decidir isso." },
+          { tipo: "inconsistente", gravidade: "atencao", explicacao: "Os números da página 3 e da 5 não batem." },
+        ],
+      },
+      itens,
+      { regra: "livre", professorDefiniu: false },
+    );
+    expect(r.alertas.map((a) => a.tipo)).toEqual(["manipulacao", "inconsistente"]);
+    expect(validarResultado(resposta(["ENTREGUE", "ENTREGUE", "ENTREGUE"]), itens, { regra: "livre", professorDefiniu: false }).alertas).toEqual([]);
+  });
+
+  it("a instrução manda a IA registrar manipulação e não inventar alerta", () => {
+    const s = instrucaoSistema({ vocabulario: { avaliadores: "Professores", grupos: "Equipes", etapa: "Aula", etapas: "Aulas", grupo: "Equipe" } as never, conceitos: { EXCELENTE: "a", BOM: "b", REGULAR: "c", RUIM: "d" }, regra: "livre", criterios: "", observacoes: "", exemplos: "" });
+    expect(s).toMatch(/tipo manipulacao/);
+    expect(s).toMatch(/não invente alerta/);
+  });
+
   it("recusa conceito inválido e devolutiva vazia", () => {
     expect(() => validarResultado({ conceito: "10", feedback_equipe: "x" }, itens, { regra: "livre", professorDefiniu: false })).toThrow(/inválido/);
     expect(() => validarResultado({ conceito: "BOM", feedback_equipe: " " }, itens, { regra: "livre", professorDefiniu: false })).toThrow(/devolutiva/);

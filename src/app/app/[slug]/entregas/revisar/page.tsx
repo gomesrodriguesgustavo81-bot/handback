@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AlertasDaEntrega } from "@/components/alertas";
 import { LinkBotao } from "@/components/ui";
 import { contextoDaEmpresa } from "@/lib/empresa";
 import { completarVocabulario } from "@/lib/nomes";
@@ -18,7 +19,7 @@ type Linha = {
   grupos: { nome: string } | null;
   arquivos_entrega: { id: string; nome: string }[];
   links: string[];
-  analises: { status: string; conceito_ia: string | null; conceito: string | null; devolutiva: string; justificativa: string; checklist: { item: string; status: string }[] } | null;
+  analises: { status: string; conceito_ia: string | null; conceito: string | null; devolutiva: string; justificativa: string; checklist: { item: string; status: string }[]; alertas: unknown } | null;
 };
 
 /**
@@ -36,7 +37,7 @@ export default async function Revisar({ params, searchParams }: PageProps<"/app/
     supabase.from("etapas").select("id, numero, titulo").eq("id", etapaId).eq("org_id", empresa.id).maybeSingle(),
     supabase
       .from("entregas")
-      .select("id, enviada_em, atrasada, links, grupos(nome), arquivos_entrega(id, nome), analises(status, conceito_ia, conceito, devolutiva, justificativa, checklist)")
+      .select("id, enviada_em, atrasada, links, grupos(nome), arquivos_entrega(id, nome), analises(status, conceito_ia, conceito, devolutiva, justificativa, checklist, alertas)")
       .eq("org_id", empresa.id)
       .eq("etapa_id", etapaId)
       .eq("status", "recebida"),
@@ -102,6 +103,7 @@ export default async function Revisar({ params, searchParams }: PageProps<"/app/
           Parecida com {parecidas.map((p) => `${p.grupo} (${p.percentual}%)`).join(", ")}. Vale conferir antes de aprovar.
         </p>
       ) : null}
+      <AlertasDaEntrega alertas={a.alertas} compacto />
       <RevisarUma
         key={atual.id}
         slug={slug}

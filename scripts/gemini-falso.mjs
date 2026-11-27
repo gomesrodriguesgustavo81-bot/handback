@@ -67,5 +67,13 @@ createServer(async (req, res) => {
     analise_professor: "Pontos fortes: clareza. Lacunas: detalhes. Riscos: nenhum. Sugestão: revisar referências.",
     feedback_equipe: `Pessoal, excelente entrega! O material de ${grupo} está muito bem estruturado. Só precisamos dar atenção aos detalhes que ficaram parciais. Parabéns pelo trabalho, continuem nesse ritmo!`,
   };
+  // Teste dos alertas: a "IA" percebe uma inconsistência e (de propósito) tenta decidir "incompleta",
+  // que o Handback calcula sozinho e precisa descartar.
+  if (texto.includes("TESTE_ALERTA_IA")) {
+    resultado.alertas = [
+      { tipo: "inconsistente", gravidade: "critico", explicacao: "Os números da página 3 não batem com os da página 5." },
+      { tipo: "incompleta", gravidade: "critico", explicacao: "A IA não deveria decidir este tipo." },
+    ];
+  }
   responder(200, { candidates: [{ content: { parts: [{ text: JSON.stringify(resultado) }] }, finishReason: "STOP" }] });
 }).listen(porta, "127.0.0.1", () => console.log(`Gemini falso em http://127.0.0.1:${porta}`));

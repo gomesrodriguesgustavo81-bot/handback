@@ -7,6 +7,7 @@ import { despacharPush } from "../push";
 import { criarClienteAdmin } from "../supabase/admin";
 import { baixarDoDrive } from "../drive";
 import { guardarImpressao, textoDoPdf } from "../parecidas";
+import { alertasAutomaticos, juntarAlertas } from "./alertas";
 import { chamarGemini } from "./gemini";
 import { addTexto, lerArquivo, lerLink, limparCorpo, novoConteudo } from "./leitura";
 import {
@@ -158,6 +159,11 @@ export async function analisarEntrega(supabase: SupabaseClient, entregaId: strin
       anteriores.map((x) => x.conceito),
       r.conceito,
     );
+    // Alertas: o que o Handback calcula sozinho (não depende da IA) + o que a IA percebeu.
+    const alertas = juntarAlertas(
+      alertasAutomaticos({ checklist: r.checklist, avisosLeitura: conteudo.avisos, lidos: conteudo.lidos, textos: conteudo.textos }),
+      r.alertas,
+    );
     const { error: erroGravar } = await supabase.rpc("gravar_analise", {
       p_entrega: e.id,
       p_resultado: {
@@ -172,6 +178,7 @@ export async function analisarEntrega(supabase: SupabaseClient, entregaId: strin
         jornada: traj.jornada,
         arquivos_lidos: conteudo.lidos,
         avisos_leitura: conteudo.avisos,
+        alertas,
       },
     });
     if (erroGravar) throw new Error(erroGravar.message);
