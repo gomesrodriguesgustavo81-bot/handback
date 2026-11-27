@@ -11,7 +11,7 @@ na primeira vez. Todas as contas ficam no **seu nome**, porque o negócio é seu
 2. Toque em **New project**:
    - **Name:** `handback`
    - **Database Password:** crie uma senha forte e **guarde num lugar seguro**.
-   - **Region:** **South America (São Paulo)**, para os dados ficarem no Brasil.
+   - **Region:** **South America (São Paulo)**, para os dados ficarem no Brasil. (O projeto atual do Handback foi criado nos Estados Unidos; trocar de região é mais fácil antes de ter usuários reais. Veja `docs/CONFORMIDADE.md`.)
 3. Espere o projeto ficar pronto (1 a 2 minutos).
 4. Crie as tabelas:
    - No menu da esquerda, abra **SQL Editor** › **New query**.

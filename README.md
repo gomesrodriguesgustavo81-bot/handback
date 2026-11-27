@@ -29,7 +29,7 @@ cliente tem o seu espaço, separado das outras.
 
 ## Tecnologia
 
-Next.js (site), Supabase (banco de dados, login e arquivos, com dados em São Paulo)
+Next.js (site), Supabase (banco de dados, login e arquivos; o projeto atual está nos Estados Unidos, veja docs/CONFORMIDADE.md)
 e Vercel (hospedagem).
 
 ## Para programadores

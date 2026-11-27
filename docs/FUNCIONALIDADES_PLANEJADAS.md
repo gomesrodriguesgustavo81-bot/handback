@@ -12,16 +12,16 @@ não há preço nem plano: só o que cada função é, o que já existe e o que 
 |---|---|---|---|
 | 1 | Alertas de Risco e Integridade | **Feito** (alertas por entrega; falta o "fora do escopo" ser afinado com uso real) | , |
 | 2 | Painel de Calibração e Divergência (IA × avaliador) | **Parte já existe** ("Como a IA está indo": concordância e tendência). Falta mostrar os motivos mais registrados e sugerir ajuste na régua ou no prompt | , |
-| 3 | Comparativo de Evolução por Aluno/Equipe | **Parte já existe** (tela de evolução). Falta mostrar o que foi cobrado em cada ciclo | , |
-| 4 | Visão de Coordenador / Banca | A fazer | Papel novo de "coordenador" que só vê números, sem a correção bruta |
+| 3 | Comparativo de Evolução por Aluno/Equipe | **Feito** (linha do tempo, comparar entregas e comparar com a turma, só números) | , |
+| 4 | Visão de Coordenador / Banca | **Feito** (papel que só vê números e conceitos aprovados, banca só nas turmas escolhidas, nomes opcionais) | , |
 | 5 | Mapa de Gargalos por Etapa do Ciclo | A fazer | Dados que já existem (trilha e entregas) |
 | 6 | Sinalizador de Entregas Críticas para Banca | A fazer | Alertas (1) + evolução (3) |
 | 7 | Radar de Riscos Recorrentes | A fazer | Alertas (1) guardados por tipo |
 | 8 | Resumo Executivo para Reuniões e Atas | A fazer | Alertas (1), gargalos (5), evolução (3) |
-| 9 | Alertas de Atraso e Risco de Abandono | A fazer | Dados que já existem (entregas e prazos) |
+| 9 | **Acompanhamento de Prazos** (antes: "Alertas de Atraso e Risco de Abandono") | A fazer, **só com fatos** (entregou, não entregou, atrasou). **Sem previsão nem perfil do aluno**: predição de evasão e perfilização aparecem como alto risco nas diretrizes do CNE | Dados que já existem (entregas e prazos) |
 | 10 | Pacote de Encerramento do Programa | A fazer | Linha do tempo (12), relatório por eixo (13) |
 | 11 | Lembrete Inteligente de Pendência Antes do Ciclo | A fazer | Lembretes que já existem (`lib/diario.ts`) |
-| 12 | Linha do Tempo Consolidada por Estudante/Equipe | A fazer | Evolução (3) |
+| 12 | Linha do Tempo Consolidada por Estudante/Equipe | **Feito** (junto com o 3) | , |
 | 13 | Relatório de Encerramento por Eixo / Competência | A fazer | Cada item do checklist ter um eixo ou competência |
 
 ## Ordem sugerida de construção
@@ -53,3 +53,15 @@ não há preço nem plano: só o que cada função é, o que já existe e o que 
 - O coordenador ou a banca realmente quer ver um painel, ou prefere um resumo pronto para a ata?
 - Que eixos ou competências o professor já usa para avaliar? (Define a função 13.)
 - Em quais planos cada função faz sentido? (Decidir só depois de ouvir.)
+
+## Decisões de conformidade (novembro de 2026)
+
+- **O professor decide.** A IA só prepara rascunho e sugere. Por padrão o professor escolhe o conceito; há "Sem sugestão de conceito";
+  o motivo da mudança pode ser exigido; tudo fica no **registro de supervisão** (exportável).
+- **Sem selo de IA no produto.** Avisar a turma sobre o uso de IA é decisão do professor ou da instituição; o Handback não carimba nada.
+- **Dados dos alunos:** nome vira código e e-mail, telefone e CPF são escondidos antes de ir à IA (ligado por padrão). PDF e imagem vão inteiros.
+- **Sem previsão nem perfil de alunos** (por isso o item 9 deixou de ser "risco de abandono"). Radar de riscos (7), resumo executivo (8) e
+  sinalizador para banca (6) usam só **números agregados e fatos**, e todo alerta diz que não é prova nem base para punição.
+- **Público de partida:** ensino superior, pós e corporativo. Escolas de educação básica só depois de parecer jurídico e contrato de operador.
+- **Teste de estabilidade da IA** (rodar a mesma entrega várias vezes): só por amostra e como opção de um plano mais caro, no futuro.
+- Detalhes, riscos e pendências: `docs/CONFORMIDADE.md`.
