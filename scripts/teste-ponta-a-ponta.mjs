@@ -996,6 +996,7 @@ try {
 
   // O professor decide: registro de supervisão, escolhas da conta e da turma, tela sem sugestão
   {
+    const urlVoltar = ana.p.url();
     const idSup = sql(`select a.entrega_id from public.analises a join public.organizacoes o on o.id = a.org_id where o.slug = '${SLUG}' and a.status = 'aprovada' and a.conceito_ia is not null limit 1`);
     confere(sql(`select conceito_escolhido::text from public.analises where entrega_id = '${idSup}'`) === "true", "a escolha do conceito fica registrada como do professor");
     await ana.p.goto(`${APP}/app/${SLUG}/relatorios/supervisao`);
@@ -1046,6 +1047,8 @@ try {
       await ana.p.screenshot({ path: `${FOTOS}/16d-sem-sugestao.png`, fullPage: true });
       sql(`update public.organizacoes set ia_sem_sugestao = false where slug = '${SLUG}'`);
     }
+    // As próximas etapas continuam de onde esta folha parou.
+    await ana.p.goto(urlVoltar);
   }
 
   // ===================== FASE 4: envio pelo Gmail =====================
