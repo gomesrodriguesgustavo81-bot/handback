@@ -171,6 +171,14 @@ export default async function Evolucao({ params, searchParams }: PageProps<"/app
                     })}
                   </ol>
                   {ev.atencao ? <p className="text-[13px] font-medium text-alerta">Atenção: {ev.motivos.join("; ")}.</p> : null}
+                  <div className="grid grid-cols-2 gap-2">
+                    <Link href={`${base}/evolucao/${g.id}`} aria-label={`Linha do tempo de ${g.nome}`} className="toque flex min-h-11 items-center justify-center rounded-xl bg-marca-clara px-2 text-[13px] font-bold text-marca-forte hover:underline">
+                      Linha do tempo
+                    </Link>
+                    <Link href={`${base}/evolucao/${g.id}/turma`} aria-label={`Comparar ${g.nome} com a turma`} className="toque flex min-h-11 items-center justify-center rounded-xl border border-borda bg-cartao px-2 text-[13px] font-bold text-marca hover:underline">
+                      Com a turma
+                    </Link>
+                  </div>
                 </li>
               ))}
             </ul>

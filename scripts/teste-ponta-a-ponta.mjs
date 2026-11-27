@@ -1061,6 +1061,57 @@ try {
   confere(await cartaoEvolucao.getByRole("link").first().getAttribute("href").then((h) => /\/entregas\/[0-9a-f-]{36}$/.test(h ?? "")), "tocar no conceito abre a folha da entrega");
   await largura(ana.p, "evolução das equipes");
   await ana.p.screenshot({ path: `${FOTOS}/22-evolucao.png`, fullPage: true });
+  // 7b3a) Linha do tempo por aluno/equipe e as duas comparações opcionais
+  {
+    const linkTempo = ana.p.getByRole("link", { name: "Linha do tempo de Equipe Azul" });
+    const hrefTempo = (await linkTempo.getAttribute("href")) ?? "";
+    confere(/\/entregas\/evolucao\/[0-9a-f-]{36}$/.test(hrefTempo), "evolução: cada cartão tem o botão “Linha do tempo”");
+    await linkTempo.click();
+    await ana.p.getByRole("heading", { name: "Equipe Azul", level: 2 }).waitFor();
+    confere(await ana.p.getByRole("heading", { name: "Linha do tempo", level: 3 }).isVisible(), "linha do tempo abre com o nome da equipe");
+    confere((await ana.p.getByRole("list", { name: "Entregas em ordem" }).getByRole("listitem").count()) >= 1, "linha do tempo lista as entregas em ordem");
+    confere(await ana.p.getByRole("heading", { name: "Comparar (opcional)", level: 3 }).isVisible(), "linha do tempo oferece comparar como opcional");
+    const grupoAzul = hrefTempo.split("/").at(-1);
+    const analisadas = Number(sql(`select count(*) from public.entregas e join public.analises a on a.entrega_id = e.id where e.grupo_id = '${grupoAzul}' and e.status = 'recebida' and a.status in ('pronta','aprovada')`));
+    const temComparar = (await ana.p.getByRole("link", { name: /Com outra entrega/ }).count()) > 0;
+    confere(temComparar === (analisadas >= 2), `comparar com outra entrega só aparece com 2 ou mais analisadas (há ${analisadas})`);
+    if (!temComparar) {
+      confere(await ana.p.getByText(/precisa de pelo menos 2 entregas analisadas/).isVisible(), "sem 2 entregas, o comparar fica apagado e explica o motivo");
+      const r = await ana.p.goto(`${APP}${hrefTempo}/comparar`);
+      confere(r?.status() === 404, "abrir o comparar de entregas sem 2 analisadas dá “não encontrado”");
+    }
+    await ana.p.goto(`${APP}${hrefTempo}`);
+    await largura(ana.p, "linha do tempo do aluno");
+    await ana.p.screenshot({ path: `${FOTOS}/22a-linha-do-tempo.png`, fullPage: true });
+
+    // Comparar com a turma: só números, nunca o nome de colegas
+    await ana.p.getByRole("link", { name: /Com a turma/ }).click();
+    await ana.p.getByRole("heading", { name: "Comparar com a turma", level: 2 }).waitFor();
+    confere(await ana.p.getByText(/não aparece nome nem conceito de colegas/).isVisible(), "comparar com a turma avisa que não mostra colegas");
+    const colegas = sql(`select coalesce(string_agg(g.nome, '|'), '') from public.grupos g where g.turma_id = (select turma_id from public.grupos where id = '${grupoAzul}') and g.id <> '${grupoAzul}' and g.nome <> 'Equipe Azul'`).split("|").filter(Boolean);
+    const textoTurma = await ana.p.locator("main").innerText();
+    confere(colegas.every((n) => !textoTurma.includes(n)), `comparar com a turma não mostra nome de nenhum dos ${colegas.length} colegas`);
+    await largura(ana.p, "comparar com a turma");
+    await ana.p.screenshot({ path: `${FOTOS}/22b-comparar-turma.png`, fullPage: true });
+
+    // Se alguém da turma tem 2 ou mais analisadas, a comparação entre entregas abre de verdade
+    const dupla = sql(`select e.grupo_id from public.entregas e join public.analises a on a.entrega_id = e.id where e.status = 'recebida' and a.status in ('pronta','aprovada') group by e.grupo_id having count(*) >= 2 limit 1`);
+    if (dupla) {
+      const r = await ana.p.goto(`${APP}/app/${SLUG}/entregas/evolucao/${dupla}/comparar`);
+      if (r?.status() === 200) {
+        await ana.p.getByRole("heading", { name: "Comparar entregas", level: 2 }).waitFor();
+        confere(await ana.p.getByRole("heading", { name: /^O que faltou na entrega \d+$/i }).isVisible(), "comparar entregas mostra o que faltou antes");
+        confere(await ana.p.getByRole("heading", { name: /^Como ficou na entrega \d+$/i }).isVisible(), "comparar entregas mostra como ficou depois");
+        await largura(ana.p, "comparar entregas");
+        await ana.p.screenshot({ path: `${FOTOS}/22c-comparar-entregas.png`, fullPage: true });
+      }
+    }
+    // Outra empresa não vê: id inventado dá “não encontrado”
+    const rx = await ana.p.goto(`${APP}/app/${SLUG}/entregas/evolucao/00000000-0000-4000-8000-000000000000`);
+    confere(rx?.status() === 404, "linha do tempo de um id que não existe dá “não encontrado”");
+    await ana.p.goto(`${APP}/app/${SLUG}/entregas/evolucao`);
+  }
+
   await ana.p.getByRole("link", { name: "Precisam de atenção" }).click();
   await ana.p.waitForURL(/ver=atencao/);
   confere(true, "filtro “Precisam de atenção”");
