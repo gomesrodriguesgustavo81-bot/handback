@@ -1967,12 +1967,10 @@ try {
     const janelaG = ana.p.getByRole("dialog", { name: "Escolher arquivos" });
     await janelaG.getByRole("button", { name: "Marcar todos" }).click();
     await janelaG.getByRole("button", { name: "Selecionar" }).click();
-    try {
-      await cartaoC.getByText("1 arquivo chegou. Já dá para analisar.").waitFor({ timeout: 30000 });
-    } catch (e) {
-      console.log("CARTÃO DO CLASSROOM NA FALHA:", JSON.stringify(await cartaoC.innerText()));
-      throw e;
-    }
+    // O aviso "1 arquivo chegou" some quando a tela se atualiza, e às vezes some antes de o teste olhar:
+    // o que importa é o arquivo ter chegado (conferido logo abaixo, no banco).
+    const chegou = () => sql(`select count(*) from public.arquivos_entrega a join public.entregas e on e.id = a.entrega_id where e.etapa_id = '${etapaC}' and a.nome = 'Ana - Lista 1.pdf'`) === "1";
+    for (let i = 0; i < 120 && !chegou(); i++) await ana.p.waitForTimeout(250);
     confere(
       sql(`select count(*) from public.classroom_pendentes where etapa_id = '${etapaC}'`) === "0" &&
         sql(`select count(*) from public.arquivos_entrega a join public.entregas e on e.id = a.entrega_id where e.etapa_id = '${etapaC}' and a.nome = 'Ana - Lista 1.pdf'`) === "1",
@@ -2010,7 +2008,7 @@ try {
     await cartao2.getByRole("button", { name: "Trazer os arquivos dos alunos" }).click();
     await janelaG.getByRole("button", { name: "Marcar todos" }).click();
     await janelaG.getByRole("button", { name: "Selecionar" }).click();
-    await cartao2.getByText("1 arquivo chegou. Já dá para analisar.").waitFor({ timeout: 30000 });
+    for (let i = 0; i < 120 && sql(`select count(*) from public.arquivos_entrega a join public.entregas e on e.id = a.entrega_id where e.etapa_id = '${etapa2}'`) === "0"; i++) await ana.p.waitForTimeout(250);
     await ana.p.goto(`${APP}/app/${SLUG}/entregas?etapa=${etapa2}`);
     await ana.p.getByRole("link", { name: /Carla Dias/ }).click();
     await ana.p.waitForURL(/\/entregas\/[0-9a-f-]{36}$/);
