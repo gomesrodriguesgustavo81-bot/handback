@@ -1843,10 +1843,10 @@ try {
     confere(await ana.p.getByText(/^Passo [1-5] de 5 · |^Concluído$/).first().isVisible(), "ciclos: cada um diz em que passo está");
     await ana.p.locator('ul li a[href*="/etapas/"]').first().click();
     await ana.p.waitForURL(/\/etapas\/[0-9a-f-]{36}$/);
-    const passos = ana.p.getByRole("list", { name: "Passos do ciclo" });
+    const passos = ana.p.getByRole("list", { name: "Passos da entrega" });
     await passos.waitFor();
     const agora = await passos.locator('li[aria-current="step"]').count();
-    const concluido = await ana.p.getByText("Ciclo concluído: tudo enviado. ✓").count();
+    const concluido = await ana.p.getByText("Entrega concluída: tudo enviado. ✓").count();
     confere((await passos.getByRole("listitem").count()) === 5 && agora + concluido === 1, "ciclo: trilha com 5 passos e um só passo atual");
     const r = await ana.p.request.get(`${ana.p.url()}/enviar`);
     confere(r.status() === 200, "ciclo: a tela Enviar abre");

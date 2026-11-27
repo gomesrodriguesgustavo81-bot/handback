@@ -63,7 +63,7 @@ export default async function Revisar({ params, searchParams }: PageProps<"/app/
           Próximo passo: enviar para os alunos
         </LinkBotao>
         <Link href={`/app/${slug}/etapas/${etapa.id}`} className="text-sm font-semibold text-marca-forte hover:underline">
-          Voltar ao ciclo
+          Voltar à entrega
         </Link>
       </section>
     );

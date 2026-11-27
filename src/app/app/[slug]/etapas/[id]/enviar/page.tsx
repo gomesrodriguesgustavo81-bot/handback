@@ -96,7 +96,7 @@ export default async function EnviarCiclo({ params }: PageProps<"/app/[slug]/eta
           <h1 className="text-xl font-extrabold">Nada para enviar agora</h1>
           <p className="text-sm text-suave">Quando você aprovar devolutivas, elas aparecem aqui para sair de uma vez.</p>
           <Link href={voltar} className="font-semibold text-marca-forte hover:underline">
-            Voltar para o ciclo
+            Voltar para a entrega
           </Link>
         </div>
       )}

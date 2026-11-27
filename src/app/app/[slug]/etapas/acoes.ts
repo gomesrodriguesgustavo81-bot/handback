@@ -213,7 +213,7 @@ export async function lembrarQuemNaoEntregou(slug: string, etapaId: string): Pro
     supabase.auth.getUser(),
   ]);
   const admin = criarClienteAdmin();
-  if (!etapa || !eu.user || !admin) return { ok: false, mensagem: "Não encontramos este ciclo." };
+  if (!etapa || !eu.user || !admin) return { ok: false, mensagem: "Não encontramos esta entrega." };
   const r = await lembrarQuemFalta(admin, eu.user.id, etapa.id, hojeISO(), (process.env.HANDBACK_SITE ?? (await origemDoSite())).replace(/\/$/, ""));
   if (!r) return { ok: false, mensagem: "Conecte seu Gmail em Contas conectadas para mandar o lembrete." };
   const partes = [

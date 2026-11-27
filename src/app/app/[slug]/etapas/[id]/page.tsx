@@ -251,7 +251,7 @@ function TrilhaDoCiclo({ trilha, acao }: { trilha: Trilha; acao: (n: Passo["n"])
   const agora = trilha.atual < 6 ? trilha.passos[trilha.atual - 1] : null;
   return (
     <div className="flex flex-col gap-3">
-      <ol aria-label="Passos do ciclo" className="flex flex-col lg:grid lg:grid-cols-5 lg:gap-2">
+      <ol aria-label="Passos da entrega" className="flex flex-col lg:grid lg:grid-cols-5 lg:gap-2">
         {trilha.passos.map((p, i) => {
           const ultimo = i === trilha.passos.length - 1;
           const feito = p.estado === "feito" || trilha.atual === 6;
@@ -301,7 +301,7 @@ function TrilhaDoCiclo({ trilha, acao }: { trilha: Trilha; acao: (n: Passo["n"])
         </section>
       ) : (
         <p role="status" className="rounded-2xl bg-ok-fundo px-4 py-3 text-sm font-semibold text-ok">
-          Ciclo concluído: tudo enviado. ✓
+          Entrega concluída: tudo enviado. ✓
         </p>
       )}
     </div>

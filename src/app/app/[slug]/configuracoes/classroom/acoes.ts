@@ -159,7 +159,7 @@ export async function prepararEscolha(slug: string, etapaId: string): Promise<Es
   if (!simular && (!chave || !app)) return { ok: false, mensagem: "A janela de escolher arquivos do Google ainda não foi configurada no servidor." };
   const { data: pendentes } = await c.supabase.from("classroom_pendentes").select("drive_id").eq("etapa_id", etapaId).limit(500);
   const ids = [...new Set((pendentes ?? []).map((p) => String(p.drive_id)))];
-  if (!ids.length) return { ok: false, mensagem: "Nenhum arquivo esperando neste ciclo." };
+  if (!ids.length) return { ok: false, mensagem: "Nenhum arquivo esperando nesta entrega." };
   const a = await acessoDoClassroom(c.admin, c.user.id);
   if (!a) return { ok: false, mensagem: "A conexão com o Google Classroom expirou. Conecte de novo.", reconectar: true };
   return { ok: true, acesso: a.acesso, chave, app, ids, simular };
@@ -172,7 +172,7 @@ export async function trazerArquivos(slug: string, etapaId: string, ids: string[
   const limpos = ids.filter((x) => typeof x === "string" && /^[A-Za-z0-9_-]{1,200}$/.test(x)).slice(0, 10);
   try {
     const { data: etapa } = await c.supabase.from("etapas").select("id").eq("id", etapaId).eq("turma_id", c.turma.id).maybeSingle();
-    if (!etapa) return { ok: false, mensagem: "Ciclo não encontrado." };
+    if (!etapa) return { ok: false, mensagem: "Entrega não encontrada." };
     const r = await trazerArquivosEscolhidos(c.admin, etapaId, c.user.id, limpos);
     await pilotoDepois(c.admin);
     return { ok: true, mensagem: "", ...r };
@@ -189,7 +189,7 @@ export async function publicarCiclo(slug: string, etapaId: string): Promise<R> {
   if (!c?.podeGerir) return { ok: false, mensagem: "Só quem administra pode publicar no Classroom." };
   try {
     const { data: etapa } = await c.supabase.from("etapas").select("id").eq("id", etapaId).eq("turma_id", c.turma.id).maybeSingle();
-    if (!etapa) return { ok: false, mensagem: "Ciclo não encontrado." };
+    if (!etapa) return { ok: false, mensagem: "Entrega não encontrada." };
     await publicarNoClassroom(c.admin, etapaId, c.user.id);
     revalidatePath(`/app/${slug}`, "layout");
     return { ok: true, mensagem: "Publicada no Classroom. Os alunos já veem a tarefa lá." };

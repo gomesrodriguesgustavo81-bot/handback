@@ -110,8 +110,8 @@ export type Uso = {
 export const USOS: Uso[] = [
   { id: "universidade", nome: "Universidade ou faculdade", descricao: "Alunos entregam para o professor", modo: "individual", espaco: "Turma", grupo: "Grupo", pessoa: "Aluno", etapa: "Aula", avaliador: "Professor", exemploEspaco: "Ex.: Cálculo I — Noturno" },
   { id: "escola", nome: "Escola ou curso", descricao: "Alunos ou grupos entregam para o professor", modo: "grupos", espaco: "Turma", grupo: "Grupo", pessoa: "Aluno", etapa: "Aula", avaliador: "Professor", exemploEspaco: "Ex.: 9º ano B" },
-  { id: "hub", nome: "Hub, aceleradora ou residência", descricao: "Times de residentes entregam para a coordenação", modo: "grupos", espaco: "Programa", grupo: "Time", pessoa: "Residente", etapa: "Ciclo", avaliador: "Mentor", exemploEspaco: "Ex.: Residência 2026" },
-  { id: "consultoria", nome: "Consultoria", descricao: "Equipes entregam para o consultor", modo: "grupos", espaco: "Projeto", grupo: "Equipe", pessoa: "Consultor", etapa: "Ciclo", avaliador: "Revisor", exemploEspaco: "Ex.: Projeto Transformação Digital" },
+  { id: "hub", nome: "Hub, aceleradora ou residência", descricao: "Times de residentes entregam para a coordenação", modo: "grupos", espaco: "Programa", grupo: "Time", pessoa: "Residente", etapa: "Entrega", avaliador: "Mentor", exemploEspaco: "Ex.: Residência 2026" },
+  { id: "consultoria", nome: "Consultoria", descricao: "Equipes entregam para o consultor", modo: "grupos", espaco: "Projeto", grupo: "Equipe", pessoa: "Consultor", etapa: "Entrega", avaliador: "Revisor", exemploEspaco: "Ex.: Projeto Transformação Digital" },
   { id: "empresa", nome: "Empresa", descricao: "Times entregam para o gestor", modo: "grupos", espaco: "Área", grupo: "Time", pessoa: "Colaborador", etapa: "Sprint", avaliador: "Gestor", exemploEspaco: "Ex.: Marketing" },
   { id: "escritorio", nome: "Contabilidade ou advocacia", descricao: "Clientes entregam para o escritório", modo: "individual", espaco: "Carteira", grupo: "Grupo", pessoa: "Cliente", etapa: "Mês", avaliador: "Responsável", exemploEspaco: "Ex.: Clientes PJ" },
 ];

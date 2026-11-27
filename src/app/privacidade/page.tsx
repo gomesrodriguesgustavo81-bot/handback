@@ -67,7 +67,7 @@ export default function Privacidade() {
               com a Conta do Google, a verificação em duas etapas e o papel da pessoa em cada espaço.
             </li>
             <li>
-              <strong>Cadastros:</strong> turmas, etapas (aulas, ciclos, encontros), equipes e nomes e e-mails de quem
+              <strong>Cadastros:</strong> turmas, etapas (aulas, entregas, encontros), equipes e nomes e e-mails de quem
               entrega, digitados por quem avalia ou trazidos do Google Classroom ou do Moodle.
             </li>
             <li>

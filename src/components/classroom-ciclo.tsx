@@ -128,7 +128,7 @@ export function ClassroomDoCiclo({ slug, etapaId, info }: { slug: string; etapaI
 
       {!info.tarefa ? (
         <>
-          <p className="text-sm text-suave">Este ciclo ainda não está no Classroom. Publicando por aqui, o Handback consegue lançar as notas lá depois.</p>
+          <p className="text-sm text-suave">Esta entrega ainda não está no Classroom. Publicando por aqui, o Handback consegue lançar as notas lá depois.</p>
           {info.podePublicar ? (
             <Botao
               type="button"

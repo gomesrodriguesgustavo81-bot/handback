@@ -9,7 +9,7 @@ type Palavras = { organizacao: string; espaco: string; etapa: string; grupo: str
 const CAMPOS: { chave: keyof Palavras; rotulo: string; dica: string }[] = [
   { chave: "organizacao", rotulo: "Como você chama este espaço?", dica: "Ex.: Escola, Escritório, Time, Hub, Agência" },
   { chave: "espaco", rotulo: "Cada turma, programa ou projeto", dica: "Ex.: Turma, Programa, Projeto, Cliente" },
-  { chave: "etapa", rotulo: "Cada etapa de entrega", dica: "Ex.: Aula, Sprint, Ciclo, Encontro" },
+  { chave: "etapa", rotulo: "Cada etapa de entrega", dica: "Ex.: Aula, Sprint, Entrega, Encontro" },
   { chave: "grupo", rotulo: "Quem entrega junto", dica: "Ex.: Equipe, Squad, Time, Grupo" },
   { chave: "pessoa", rotulo: "Cada pessoa", dica: "Ex.: Aluno, Residente, Colaborador" },
   { chave: "avaliador", rotulo: "Quem avalia", dica: "Ex.: Professor, Gestor, Mentor" },

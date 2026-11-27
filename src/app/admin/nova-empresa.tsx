@@ -37,7 +37,7 @@ export function NovaEmpresa() {
             </option>
           ))}
         </select>
-        <span className="text-xs text-suave">Define as palavras usadas (aula, ciclo, competência…). Dá para mudar depois.</span>
+        <span className="text-xs text-suave">Define as palavras usadas (aula, entrega, competência…). Dá para mudar depois.</span>
       </label>
       <Campo
         rotulo="E-mail de quem vai administrar"

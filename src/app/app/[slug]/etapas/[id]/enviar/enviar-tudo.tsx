@@ -102,7 +102,7 @@ export function EnviarTudo({
         </div>
         {erros.length ? <ListaErros erros={erros} reconectar={reconectar} conectarHref={conectarHref} /> : null}
         <Link href={voltar} className="toque inline-flex min-h-12 items-center justify-center rounded-2xl bg-marca px-4 font-bold text-sobre-marca">
-          Voltar para o ciclo
+          Voltar para a entrega
         </Link>
       </div>
     );

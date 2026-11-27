@@ -54,7 +54,7 @@ export const TEXTOS: Record<Idioma, TextosVendas> = {
       integracoes: "Google Classroom · Moodle · E-mail · Google Drive · Google Agenda",
     },
     previa: {
-      ciclo: "Ciclo 3 · Derivadas",
+      ciclo: "Entrega 3 · Derivadas",
       turma: "Cálculo I",
       passos: ["Tarefa", "Receber", "Analisar", "Revisar", "Enviar"],
       aluno: "Ana Souza",
@@ -69,7 +69,7 @@ export const TEXTOS: Record<Idioma, TextosVendas> = {
       aprovar: "Aprovar e próxima",
     },
     como: {
-      titulo: "Cada ciclo em 5 passos. Você sempre sabe o próximo.",
+      titulo: "Cada entrega em 5 passos. Você sempre sabe o próximo.",
       passos: [
         { titulo: "Tarefa pronta", texto: "Você escreve o checklist do que o aluno entrega. Pode publicar a tarefa no Classroom." },
         { titulo: "Receber", texto: "As entregas chegam sozinhas. Quem ainda não entregou recebe um lembrete." },
@@ -83,7 +83,7 @@ export const TEXTOS: Record<Idioma, TextosVendas> = {
       itens: [
         { titulo: "Nada sai sem a sua aprovação", texto: "A IA sugere o conceito e a devolutiva. Quem decide é você, e ela aprende com as suas correções." },
         { titulo: "Piloto automático", texto: "Ligue numa turma e o que chega já é analisado. Você recebe um aviso quando estiver pronto para revisar." },
-        { titulo: "Acompanhe a turma", texto: "Quem melhorou, quem caiu e quem precisa de atenção ao longo dos ciclos, com relatório em PDF." },
+        { titulo: "Acompanhe a turma", texto: "Quem melhorou, quem caiu e quem precisa de atenção ao longo das entregas, com relatório em PDF." },
       ],
     },
     seguranca: {
@@ -133,7 +133,7 @@ export const TEXTOS: Record<Idioma, TextosVendas> = {
       integracoes: "Google Classroom · Moodle · Email · Google Drive · Google Calendar",
     },
     previa: {
-      ciclo: "Cycle 3 · Derivatives",
+      ciclo: "Delivery 3 · Derivatives",
       turma: "Calculus I",
       passos: ["Task", "Receive", "Analyze", "Review", "Send"],
       aluno: "Ana Souza",
@@ -148,7 +148,7 @@ export const TEXTOS: Record<Idioma, TextosVendas> = {
       aprovar: "Approve and next",
     },
     como: {
-      titulo: "Every cycle in 5 steps. You always know what's next.",
+      titulo: "Every delivery in 5 steps. You always know what's next.",
       passos: [
         { titulo: "Task ready", texto: "You write the checklist of what students hand in. You can publish the task to Classroom." },
         { titulo: "Receive", texto: "Submissions arrive on their own. Whoever hasn't submitted gets a reminder." },
@@ -162,7 +162,7 @@ export const TEXTOS: Record<Idioma, TextosVendas> = {
       itens: [
         { titulo: "Nothing goes out without you", texto: "AI suggests the grade and the feedback. You decide, and it learns from your corrections." },
         { titulo: "Autopilot", texto: "Turn it on for a class and new submissions are analyzed right away. You get a notice when they're ready." },
-        { titulo: "Follow the class", texto: "Who improved, who dropped and who needs attention across cycles, with a PDF report." },
+        { titulo: "Follow the class", texto: "Who improved, who dropped and who needs attention across deliveries, with a PDF report." },
       ],
     },
     seguranca: {
@@ -189,7 +189,7 @@ export const TEXTOS: Record<Idioma, TextosVendas> = {
         { p: "Does it work on my phone?", r: "Yes. Handback was designed mobile-first, with notifications." },
       ],
     },
-    final: { titulo: "Grade your next class with Handback", texto: "Tell us how you work. We'll set everything up for your first cycle.", botao: "Request a trial" },
+    final: { titulo: "Grade your next class with Handback", texto: "Tell us how you work. We'll set everything up for your first delivery.", botao: "Request a trial" },
     rodape: { privacidade: "Privacy policy", termos: "Terms of use", contato: "Contact", aviso: "The app is currently in Portuguese; English is coming soon." },
     assuntoEmail: "Handback trial request",
   },
@@ -212,7 +212,7 @@ export const TEXTOS: Record<Idioma, TextosVendas> = {
       integracoes: "Google Classroom · Moodle · Correo · Google Drive · Google Calendar",
     },
     previa: {
-      ciclo: "Ciclo 3 · Derivadas",
+      ciclo: "Entrega 3 · Derivadas",
       turma: "Cálculo I",
       passos: ["Tarea", "Recibir", "Analizar", "Revisar", "Enviar"],
       aluno: "Ana Souza",
@@ -227,7 +227,7 @@ export const TEXTOS: Record<Idioma, TextosVendas> = {
       aprovar: "Aprobar y siguiente",
     },
     como: {
-      titulo: "Cada ciclo en 5 pasos. Siempre sabes el siguiente.",
+      titulo: "Cada entrega en 5 pasos. Siempre sabes el siguiente.",
       passos: [
         { titulo: "Tarea lista", texto: "Escribes la lista de lo que el estudiante entrega. Puedes publicar la tarea en Classroom." },
         { titulo: "Recibir", texto: "Las entregas llegan solas. Quien aún no entregó recibe un recordatorio." },
@@ -241,7 +241,7 @@ export const TEXTOS: Record<Idioma, TextosVendas> = {
       itens: [
         { titulo: "Nada sale sin tu aprobación", texto: "La IA sugiere la nota y la retroalimentación. Tú decides, y aprende con tus correcciones." },
         { titulo: "Piloto automático", texto: "Actívalo en un grupo y lo que llega se analiza al instante. Recibes un aviso cuando está listo." },
-        { titulo: "Sigue al grupo", texto: "Quién mejoró, quién bajó y quién necesita atención a lo largo de los ciclos, con informe en PDF." },
+        { titulo: "Sigue al grupo", texto: "Quién mejoró, quién bajó y quién necesita atención a lo largo de las entregas, con informe en PDF." },
       ],
     },
     seguranca: {
@@ -268,7 +268,7 @@ export const TEXTOS: Record<Idioma, TextosVendas> = {
         { p: "¿Funciona en el celular?", r: "Sí. Handback fue pensado primero para el celular, con avisos." },
       ],
     },
-    final: { titulo: "Corrige tu próximo grupo con Handback", texto: "Cuéntanos cómo trabajas. Preparamos todo para tu primer ciclo.", botao: "Quiero probar" },
+    final: { titulo: "Corrige tu próximo grupo con Handback", texto: "Cuéntanos cómo trabajas. Preparamos todo para tu primera entrega.", botao: "Quiero probar" },
     rodape: { privacidade: "Política de privacidad", termos: "Términos de uso", contato: "Contacto", aviso: "La aplicación está en portugués por ahora; el español llegará pronto." },
     assuntoEmail: "Quiero probar Handback",
   },

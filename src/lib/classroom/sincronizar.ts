@@ -130,7 +130,7 @@ async function atualizarTarefas(admin: SupabaseClient, t: Turma, acesso: string)
       classroom_tarefa: tarefa.id,
       ...extra,
     });
-    if (error && error.code !== "23505") throw new Error(`Não foi possível criar o ciclo ${titulo}: ${error.message}`);
+    if (error && error.code !== "23505") throw new Error(`Não foi possível criar a entrega ${titulo}: ${error.message}`);
   }
   return lista.length;
 }
@@ -279,11 +279,11 @@ export async function publicarNoClassroom(admin: SupabaseClient, etapaId: string
     .select("id, titulo, numero, recebe_ate, entregaveis, criterios, classroom_tarefa, turmas!inner(classroom_curso, classroom_por)")
     .eq("id", etapaId)
     .maybeSingle();
-  if (!e) throw new ErroClassroom("Ciclo não encontrado.");
+  if (!e) throw new ErroClassroom("Entrega não encontrada.");
   const t = e.turmas as unknown as { classroom_curso: string | null; classroom_por: string | null };
   if (!t.classroom_curso) throw new ErroClassroom("Esta turma não está ligada ao Classroom.");
   if (t.classroom_por !== userId) throw new ErroClassroom("Só quem ligou esta turma ao Classroom pode publicar nela.");
-  if (e.classroom_tarefa) throw new ErroClassroom("Este ciclo já está no Classroom.");
+  if (e.classroom_tarefa) throw new ErroClassroom("Esta entrega já está no Classroom.");
   const acesso = await acessoOuErro(admin, userId);
   const itens = ((e.entregaveis as string[] | null) ?? []).filter(Boolean);
   const descricao = [
@@ -311,7 +311,7 @@ export async function apagarNoClassroom(admin: SupabaseClient, etapaId: string, 
   const { data: e } = await admin.from("etapas").select("classroom_tarefa, classroom_nosso, turmas!inner(classroom_curso, classroom_por)").eq("id", etapaId).maybeSingle();
   const t = e?.turmas as unknown as { classroom_curso: string | null; classroom_por: string | null } | undefined;
   if (!e?.classroom_tarefa || !e.classroom_nosso || !t?.classroom_curso) return;
-  if (t.classroom_por !== userId) throw new ErroClassroom("Só quem ligou esta turma ao Classroom pode apagar este ciclo (a tarefa também sai do Classroom).");
+  if (t.classroom_por !== userId) throw new ErroClassroom("Só quem ligou esta turma ao Classroom pode apagar esta entrega (a tarefa também sai do Classroom).");
   await apagarTarefa(await acessoOuErro(admin, userId), t.classroom_curso, e.classroom_tarefa);
 }
 

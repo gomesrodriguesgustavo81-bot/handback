@@ -107,7 +107,7 @@ export function AcoesLigada({ slug, podeDesligar }: { slug: string; podeDesligar
               if (
                 !(await pedir({
                   titulo: "Desligar do Classroom?",
-                  texto: "O Handback para de buscar no Classroom. Os ciclos, alunos e entregas que já vieram continuam aqui.",
+                  texto: "O Handback para de buscar no Classroom. Os alunos, as entregas e os arquivos que já vieram continuam aqui.",
                   sim: "Sim, desligar",
                   perigo: true,
                 }))
