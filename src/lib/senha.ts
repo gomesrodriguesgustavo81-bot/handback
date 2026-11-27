@@ -1,26 +1,6 @@
 import { createHash } from "node:crypto";
 
-/** Regras de senha do Handback (o Supabase também confere tamanho e letras+números). */
-export const TAMANHO_MINIMO = 12;
-
-const COMUNS = ["123456", "senha", "password", "qwerty", "handback", "abc123", "111111", "000000", "brasil"];
-
-/** Devolve o motivo de a senha ser fraca, ou null se estiver boa. */
-export function problemaNaSenha(senha: string, email: string): string | null {
-  if (senha.length < TAMANHO_MINIMO) return `A senha precisa ter pelo menos ${TAMANHO_MINIMO} caracteres.`;
-  if (senha.length > 128) return "A senha pode ter no máximo 128 caracteres.";
-  if (!/[a-zA-Z]/.test(senha) || !/\d/.test(senha)) return "Use letras e números na senha.";
-  if (/^(.)\1+$/.test(senha.replace(/\d/g, "")) && /^(.)\1+$/.test(senha.replace(/\D/g, ""))) {
-    return "A senha é muito repetitiva.";
-  }
-  const minus = senha.toLowerCase();
-  const usuario = email.split("@")[0]?.toLowerCase() ?? "";
-  if (usuario.length >= 4 && minus.includes(usuario)) return "A senha não pode conter o seu e-mail.";
-  if (COMUNS.some((c) => minus.includes(c) && minus.replace(c, "").replace(/\d/g, "").length < 4)) {
-    return "Essa senha é muito comum. Escolha outra.";
-  }
-  return null;
-}
+export { problemaNaSenha, TAMANHO_MINIMO } from "./senha-regras";
 
 /**
  * A senha aparece em vazamentos conhecidos? Consulta a base pública

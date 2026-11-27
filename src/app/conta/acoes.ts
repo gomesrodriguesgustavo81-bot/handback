@@ -33,7 +33,7 @@ export async function definirSenha(_a: Estado, dados: FormData): Promise<Estado>
   const supabase = await criarClienteServidor();
   const { error } = await supabase.auth.updateUser({ password: senha, ...(nome ? { data: { nome } } : {}) });
   if (error && !/same|different from the old/i.test(error.message)) {
-    return { ok: false, mensagem: /weak|short|characters/i.test(error.message) ? "Senha fraca: use pelo menos 12 caracteres com letras e números." : "Não foi possível salvar a senha. Tente de novo." };
+    return { ok: false, mensagem: /weak|short|characters/i.test(error.message) ? "Senha fraca: use 8 ou mais caracteres, com maiúscula, minúscula, número e caractere especial." : "Não foi possível salvar a senha. Tente de novo." };
   }
   if (!(await marcarSenhaDefinida(s.id))) return { ok: false, mensagem: "Não foi possível salvar a senha. Tente de novo." };
   // Recarrega a sessão para o servidor enxergar a marca nova.
@@ -120,4 +120,22 @@ export async function salvarPreferenciasDeEnvio(_a: Estado, dados: FormData): Pr
   const { error } = await supabase.auth.updateUser({ data: { nome, copia_devolutiva: dados.get("copia") === "sim" } });
   if (error) return { ok: false, mensagem: "Não foi possível salvar. Tente de novo." };
   return { ok: true, mensagem: "Salvo." };
+}
+
+/**
+ * Verificação de vazamento sem mandar a senha: o aparelho manda só os 5 primeiros
+ * caracteres do resumo SHA-1 e compara o resto aqui na tela. Devolve a lista pública
+ * "Have I Been Pwned" daquela faixa (sufixo:vezes, uma por linha). Falhou? Lista vazia.
+ */
+export async function faixaDeSenhasVazadas(prefixo: string): Promise<string> {
+  if (!/^[0-9A-F]{5}$/.test(prefixo)) return "";
+  try {
+    const r = await fetch(`https://api.pwnedpasswords.com/range/${prefixo}`, {
+      headers: { "add-padding": "true" },
+      signal: AbortSignal.timeout(3000),
+    });
+    return r.ok ? await r.text() : "";
+  } catch {
+    return "";
+  }
 }

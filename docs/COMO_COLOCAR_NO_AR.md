@@ -255,3 +255,17 @@ Quem entra com Google também precisa criar a senha e usar o código das duas et
 
 O administrador da plataforma remove o fator da pessoa no Supabase
 (**Authentication › Users** › a pessoa › **Remove MFA factors**). No próximo acesso, ela cadastra o celular novo.
+
+
+## Regras de senha (Supabase › Authentication › Sign In / Providers › Email)
+
+O Handback confere a senha no próprio site, mas o Supabase também confere, e o valor dele precisa ser **igual ou mais frouxo**
+que o do site. No painel do projeto de produção, deixe:
+
+- **Minimum password length:** 8
+- **Password requirements:** letras maiúsculas e minúsculas, números e símbolos (`lower_upper_letters_digits_symbols`)
+
+Se o painel estiver com 12 ou mais, quem criar uma senha de 8 a 11 caracteres vai ver "Senha fraca" mesmo cumprindo as regras do site.
+No computador de testes, isso vem do `supabase/config.toml` (reinicie o Supabase local depois de mudar).
+
+Também existe um limite próprio de **5 senhas erradas seguidas** por e-mail: a entrada trava por 15 minutos.

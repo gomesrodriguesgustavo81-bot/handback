@@ -6,6 +6,7 @@ import { caminhoSeguro } from "@/lib/caminhos";
 import { supabaseConfigurado } from "@/lib/supabase/config";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { registrarAcesso, registrarFalhaLogin } from "@/lib/registro";
+import { contarSenhaErrada, mensagemDeTrava, minutosDeTrava, zerarTentativas } from "@/lib/tentativas";
 
 export type EstadoEntrar = { ok: boolean; mensagem: string } | null;
 
@@ -23,10 +24,18 @@ export async function entrarComSenha(_a: EstadoEntrar, dados: FormData): Promise
   const voltar = caminhoSeguro(dados.get("voltar"));
   if (!EMAIL.test(email) || !senha) return { ok: false, mensagem: "Digite o e-mail e a senha." };
 
+  // Já errou 5 vezes seguidas? Fica travado por 15 minutos, mesmo com a senha certa.
+  const travado = await minutosDeTrava(email);
+  if (travado > 0) return { ok: false, mensagem: mensagemDeTrava(travado) };
+
   const supabase = await criarClienteServidor();
   const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
   if (error) {
-    if (!muitasTentativas(error)) await registrarFalhaLogin(email);
+    if (!muitasTentativas(error)) {
+      await registrarFalhaLogin(email);
+      const trava = await contarSenhaErrada(email);
+      if (trava > 0) return { ok: false, mensagem: mensagemDeTrava(trava) };
+    }
     // Mesma mensagem para e-mail inexistente e senha errada (não revela quem tem conta).
     return {
       ok: false,
@@ -35,6 +44,7 @@ export async function entrarComSenha(_a: EstadoEntrar, dados: FormData): Promise
         : "E-mail ou senha incorretos.",
     };
   }
+  await zerarTentativas(email);
   await supabase.rpc("aceitar_convites");
   await registrarAcesso(supabase, "entrou_senha");
   redirect(voltar);

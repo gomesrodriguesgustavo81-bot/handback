@@ -3,13 +3,16 @@
 import Link from "next/link";
 import { useActionState, useState, useTransition } from "react";
 import { comecarDuasEtapas, conferirCodigo, confirmarDuasEtapas, definirSenha, type Estado } from "./acoes";
+import { CampoSenha } from "@/components/campo-senha";
 import { Aviso, Botao, Campo } from "@/components/ui";
 
-export function FormSenha({ pedirNome = false, pedirAceite = false }: { pedirNome?: boolean; pedirAceite?: boolean }) {
+export function FormSenha({ pedirNome = false, pedirAceite = false, email = "" }: { pedirNome?: boolean; pedirAceite?: boolean; email?: string }) {
   const [estado, acao, enviando] = useActionState<Estado, FormData>(definirSenha, null);
   // Guardado aqui para não sumir se a senha for recusada.
   const [nome, setNome] = useState("");
   const [aceito, setAceito] = useState(false);
+  const [senha, setSenha] = useState("");
+  const [repetida, setRepetida] = useState("");
   return (
     <form action={acao} className="flex flex-col gap-4">
       {pedirNome ? (
@@ -26,15 +29,8 @@ export function FormSenha({ pedirNome = false, pedirAceite = false }: { pedirNom
           dica="É este nome que os alunos veem nos e-mails do Handback (devolutivas e lembretes). Dá para trocar depois em Configurações › E-mail."
         />
       ) : null}
-      <Campo
-        rotulo="Nova senha"
-        name="senha"
-        type="password"
-        autoComplete="new-password"
-        required
-        dica="Pelo menos 12 caracteres, com letras e números. Dica: uma frase com números, como “Cafe com leite 2026”."
-      />
-      <Campo rotulo="Repita a senha" name="repetir" type="password" autoComplete="new-password" required />
+      <CampoSenha valor={senha} aoMudar={setSenha} email={email} aoGerar={setRepetida} />
+      <Campo rotulo="Repita a senha" name="repetir" type="password" autoComplete="new-password" required value={repetida} onChange={(e) => setRepetida(e.target.value)} />
       {pedirAceite ? (
         <label className="flex items-start gap-2.5 text-sm">
           <input type="checkbox" name="aceito" required checked={aceito} onChange={(e) => setAceito(e.target.checked)} className="mt-0.5 size-5 shrink-0 accent-[var(--marca)]" />

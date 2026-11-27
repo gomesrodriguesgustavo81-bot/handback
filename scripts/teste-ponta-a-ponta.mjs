@@ -47,7 +47,7 @@ async function linkDoEmail(email) {
 }
 
 // --- Acesso: senha + código do app autenticador (TOTP) ---
-const SENHA = "Cafe com leite 2026";
+const SENHA = "Cafe com leite 2026!";
 const SUPABASE = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
 const SEGREDO_SB = process.env.SUPABASE_SECRET_KEY;
 const chavesTotp = new Map();
@@ -270,7 +270,7 @@ try {
     const cadastro = await fetch(`${SUPABASE}/auth/v1/signup`, {
       method: "POST",
       headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY ?? "", "content-type": "application/json" },
-      body: JSON.stringify({ email: `invasor-${sufixo}@x.test`, password: "Senha forte 123456" }),
+      body: JSON.stringify({ email: `invasor-${sufixo}@x.test`, password: "Senha forte 123456!" }),
     });
     confere(!cadastro.ok, "ninguém cria conta sozinho (só por convite)");
     await ctx.close();
@@ -285,6 +285,26 @@ try {
     await p.getByRole("button", { name: "Entrar", exact: true }).click();
     await p.getByText("E-mail ou senha incorretos.").waitFor();
     confere(true, "senha errada não entra (mensagem não revela se o e-mail existe)");
+    // 5 senhas erradas seguidas travam a entrada por 15 minutos, mesmo com a senha certa.
+    const TRAVA = `trava-${sufixo}@escola.test`;
+    await criarConta(TRAVA);
+    for (let i = 1; i <= 5; i++) {
+      await p.getByLabel("E-mail").fill(TRAVA);
+      await p.getByLabel("Senha").fill(`Errada ${i} 2026!`);
+      await p.getByRole("button", { name: "Entrar", exact: true }).click();
+      await p.getByText(i < 5 ? "E-mail ou senha incorretos." : /a entrada fica travada por mais/).waitFor();
+    }
+    confere(true, "a 5ª senha errada trava a entrada por 15 minutos");
+    await p.getByLabel("E-mail").fill(TRAVA);
+    await p.getByLabel("Senha").fill(SENHA);
+    await p.getByRole("button", { name: "Entrar", exact: true }).click();
+    await p.getByText(/a entrada fica travada por mais/).waitFor();
+    confere(!new URL(p.url()).pathname.startsWith("/app"), "travado: nem a senha certa entra");
+    sql(`delete from public.tentativas_login`);
+    await p.getByLabel("Senha").fill(SENHA);
+    await p.getByRole("button", { name: "Entrar", exact: true }).click();
+    await p.waitForURL(/\/app|\/conta|\/definir-senha|\/entrar\/codigo/);
+    confere(true, "destravado, a senha certa entra");
     await ctx.close();
   }
   const dono = await entrar(navegador, DONO, "1-dono");
@@ -430,12 +450,18 @@ try {
     await p.getByLabel("Seu nome").fill("Pessoa Esquecida");
     await p.getByLabel("Nova senha").fill("curta123");
     await p.getByLabel("Repita a senha").fill("curta123");
+    confere(await p.getByText("Senha fraca", { exact: true }).isVisible(), "a tela mostra ao vivo que a senha é fraca");
+    confere((await p.locator("li", { hasText: "Uma letra maiúscula" }).innerText()).includes("○"), "e mostra o que falta (maiúscula)");
     await marcarAceite(p);
     await p.getByRole("button", { name: "Salvar senha" }).click();
-    await p.getByText(/pelo menos 12 caracteres/).waitFor();
+    await p.getByText(/pelo menos uma letra maiúscula/).waitFor();
     confere(true, "senha fraca é recusada");
-    await p.getByLabel("Nova senha").fill("Outra senha boa 2027");
-    await p.getByLabel("Repita a senha").fill("Outra senha boa 2027");
+    await p.getByLabel("Nova senha").fill("Abcdef1!");
+    confere(await p.getByText("Senha média", { exact: true }).isVisible(), "8 caracteres cumprindo todas as regras é média");
+    await p.getByLabel("Nova senha").fill("Outra senha boa 2027!");
+    await p.getByText("Senha forte", { exact: true }).waitFor();
+    confere(true, "12 caracteres ou mais cumprindo todas as regras é forte");
+    await p.getByLabel("Repita a senha").fill("Outra senha boa 2027!");
     await marcarAceite(p);
     await p.getByRole("button", { name: "Salvar senha" }).click();
     await p.waitForURL(/\/app/);
