@@ -2,9 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import type { Resultado } from "@/components/form-acao";
-import { escolhasDoFormulario } from "@/components/escolhas-ia";
 import { contextoDaEmpresa, mensagemDeErro } from "@/lib/empresa";
-import { COLUNAS_ESCOLHAS, colunasDasEscolhas as paraColunas, resolverEscolhas, type LinhaEscolhas } from "@/lib/ia/escolhas";
+import { COLUNAS_ESCOLHAS, colunasDasEscolhas as paraColunas, escolhasDoFormulario, resolverEscolhas, type LinhaEscolhas } from "@/lib/ia/escolhas";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { turmaAtual } from "@/lib/turma";
 

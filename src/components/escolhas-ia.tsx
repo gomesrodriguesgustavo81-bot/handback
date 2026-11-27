@@ -72,14 +72,3 @@ export function EscolhasIACampos({ valores, aoMudar }: { valores: EscolhasIA; ao
     </div>
   );
 }
-
-/** Lê as escolhas de um formulário que usa os campos acima. */
-export function escolhasDoFormulario(dados: FormData): EscolhasIA {
-  return {
-    semSugestao: dados.get("modo") === "sem",
-    exigirConceito: dados.get("exigir") === "on",
-    pedirMotivo: dados.get("motivo") === "on",
-    nomeCodigo: dados.get("codigo") === "on",
-    esconderDados: dados.get("esconder") === "on",
-  };
-}
