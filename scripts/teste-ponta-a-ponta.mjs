@@ -889,6 +889,7 @@ try {
   confere(await ana.p.getByText(/gemini-flash-latest/).isVisible(), "mostra o modelo usado");
   await largura(ana.p, "análise e devolutiva");
   await ana.p.screenshot({ path: `${FOTOS}/15-analise.png`, fullPage: true });
+  confere(Number(sql(`select count(*) from public.uso_ia where tokens_entrada = 1200 and tokens_saida = 350`)) > 0, "cada análise grava quantos tokens a IA gastou (entrada 1200, saída 350 no teste)");
 
   // Alertas de risco: texto que fala com a IA (calculado pelo Handback) + o que a IA percebe,
   // nas três telas; reanalisar sem isso limpa os alertas. (Reaproveita a Equipe Azul, ainda por revisar.)

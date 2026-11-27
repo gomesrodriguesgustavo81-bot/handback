@@ -75,5 +75,5 @@ createServer(async (req, res) => {
       { tipo: "incompleta", gravidade: "critico", explicacao: "A IA não deveria decidir este tipo." },
     ];
   }
-  responder(200, { candidates: [{ content: { parts: [{ text: JSON.stringify(resultado) }] }, finishReason: "STOP" }] });
+  responder(200, { candidates: [{ content: { parts: [{ text: JSON.stringify(resultado) }] }, finishReason: "STOP" }], usageMetadata: { promptTokenCount: 1200, candidatesTokenCount: 300, thoughtsTokenCount: 50, totalTokenCount: 1550 } });
 }).listen(porta, "127.0.0.1", () => console.log(`Gemini falso em http://127.0.0.1:${porta}`));

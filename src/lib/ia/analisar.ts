@@ -144,7 +144,7 @@ export async function analisarEntrega(supabase: SupabaseClient, entregaId: strin
       avisos: conteudo.avisos,
       textos: conteudo.textos,
     });
-    const { resultado, modelo } = await chamarGemini(
+    const { resultado, modelo, uso } = await chamarGemini(
       sistema,
       [{ text: cabecalho }, ...conteudo.partes, { text: "<<<FIM>>>\nAvalie seguindo rigorosamente as regras." }],
       esquemaAnalise(),
@@ -168,6 +168,8 @@ export async function analisarEntrega(supabase: SupabaseClient, entregaId: strin
       p_entrega: e.id,
       p_resultado: {
         modelo,
+        tokens_entrada: uso.entrada,
+        tokens_saida: uso.saida,
         segundos: Math.round((Date.now() - inicio) / 1000),
         checklist: r.checklist,
         conceito: r.conceito,

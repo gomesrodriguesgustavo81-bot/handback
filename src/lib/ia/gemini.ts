@@ -1,5 +1,6 @@
 import "server-only";
 import type { ParteIA } from "./leitura";
+import { usoDaResposta, type UsoIA } from "./uso";
 
 /**
  * Chama o Gemini tentando: modelo configurado → reservas. Em sobrecarga
@@ -20,7 +21,7 @@ export async function chamarGemini(
   sistema: string,
   partes: ParteIA[],
   esquema: object,
-): Promise<{ resultado: unknown; modelo: string }> {
+): Promise<{ resultado: unknown; modelo: string; uso: UsoIA }> {
   const chave = process.env.GEMINI_API_KEY;
   if (!chave) throw new ErroIA("A chave da IA (GEMINI_API_KEY) ainda não foi configurada no servidor.");
   const base = (process.env.GEMINI_API_BASE ?? "https://generativelanguage.googleapis.com").replace(/\/$/, "");
@@ -67,7 +68,7 @@ export async function chamarGemini(
             .map((p: { text: string }) => p.text)
             .join("");
           if (!saida) throw new Error(`resposta vazia (${cand?.finishReason ?? j.promptFeedback?.blockReason ?? "?"})`);
-          return { resultado: JSON.parse(saida.replace(/^```(json)?\s*|```\s*$/g, "")), modelo };
+          return { resultado: JSON.parse(saida.replace(/^```(json)?\s*|```\s*$/g, "")), modelo, uso: usoDaResposta(j) };
         } catch (e) {
           erros.push(`${modelo}: ${e instanceof Error ? e.message : String(e)}`);
           break;
