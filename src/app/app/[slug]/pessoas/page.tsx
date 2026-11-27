@@ -7,7 +7,8 @@ import { PAPEIS, type Papel } from "@/lib/frentes";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { usuarioAtual } from "@/lib/sessao";
 import { turmasDaEmpresa } from "@/lib/turma";
-import { cancelarConvite, convidar, convidarCoordenacao, mudarPapel, removerPessoa } from "./acoes";
+import { cancelarConvite, convidar, mudarPapel, removerPessoa } from "./acoes";
+import { ConvidarCoordenacao } from "./convidar-coordenacao";
 
 export const metadata: Metadata = { title: "Quem usa o Handback" };
 
@@ -121,44 +122,7 @@ export default async function Pessoas({ params }: PageProps<"/app/[slug]/pessoas
         </FormAcao>
         <h3 className="border-t border-borda pt-4 font-semibold">Convidar coordenador ou banca</h3>
         <p className="-mt-2 text-xs text-suave">Para quem acompanha a escola ou o programa sem corrigir nada. Vê números e conceitos aprovados, nunca devolutivas, arquivos, análise da IA, e-mails nem contas.</p>
-        <FormAcao
-          acao={convidarCoordenacao.bind(null, slug)}
-          textoBotao="Enviar convite"
-          limparAoSalvar
-          confirmar={(d) => ({
-            titulo: "Enviar o convite?",
-            texto: `${String(d.get("email") ?? "")} vai receber um e-mail e poderá ver números e conceitos aprovados${d.get("tipo") === "banca" ? " só das turmas escolhidas" : " de todas as turmas"}. Não verá devolutivas nem arquivos${d.get("nomes") === "on" ? ", mas verá os nomes" : " e não verá nomes"}.`,
-            sim: "Sim, enviar",
-          })}
-        >
-          <Campo rotulo="E-mail da pessoa" name="email" type="email" inputMode="email" required placeholder="coordenacao@escola.com" />
-          <fieldset className="flex flex-col gap-2 rounded-xl border border-borda p-3">
-            <legend className="px-1 text-sm font-medium">Papel</legend>
-            <label className="flex min-h-11 items-start gap-2.5 text-sm">
-              <input type="radio" name="tipo" value="coordenador" defaultChecked className="mt-1 size-4" />
-              <span><b>Coordenador</b><br /><span className="text-xs text-suave">Todas as turmas.</span></span>
-            </label>
-            <label className="flex min-h-11 items-start gap-2.5 text-sm">
-              <input type="radio" name="tipo" value="banca" className="mt-1 size-4" />
-              <span><b>Banca</b><br /><span className="text-xs text-suave">Só as turmas marcadas abaixo.</span></span>
-            </label>
-          </fieldset>
-          {ativas.length ? (
-            <fieldset className="flex flex-col gap-1 rounded-xl border border-borda p-3">
-              <legend className="px-1 text-sm font-medium">Turmas da banca</legend>
-              {ativas.map((t) => (
-                <label key={t.id} className="flex min-h-11 items-center gap-2.5 text-sm">
-                  <input type="checkbox" name="turma" value={t.id} className="size-4" />
-                  {t.nome}
-                </label>
-              ))}
-            </fieldset>
-          ) : null}
-          <label className="flex min-h-11 items-start gap-2.5 text-sm">
-            <input type="checkbox" name="nomes" className="mt-1 size-4" />
-            <span><b>Mostrar nomes</b><br /><span className="text-xs text-suave">Desligado, só aparecem os números da turma. Ligado, aparecem as pessoas ou equipes com o conceito aprovado.</span></span>
-          </label>
-        </FormAcao>
+        <ConvidarCoordenacao slug={slug} turmas={ativas.map((t) => ({ id: t.id, nome: t.nome }))} />
         <ul className="flex flex-col gap-1 text-xs text-suave">
           {(Object.keys(PAPEIS) as Papel[]).map((p) => (
             <li key={p}>
