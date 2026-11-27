@@ -1967,7 +1967,12 @@ try {
     const janelaG = ana.p.getByRole("dialog", { name: "Escolher arquivos" });
     await janelaG.getByRole("button", { name: "Marcar todos" }).click();
     await janelaG.getByRole("button", { name: "Selecionar" }).click();
-    await cartaoC.getByText("1 arquivo chegou. Já dá para analisar.").waitFor({ timeout: 30000 });
+    try {
+      await cartaoC.getByText("1 arquivo chegou. Já dá para analisar.").waitFor({ timeout: 30000 });
+    } catch (e) {
+      console.log("CARTÃO DO CLASSROOM NA FALHA:", JSON.stringify(await cartaoC.innerText()));
+      throw e;
+    }
     confere(
       sql(`select count(*) from public.classroom_pendentes where etapa_id = '${etapaC}'`) === "0" &&
         sql(`select count(*) from public.arquivos_entrega a join public.entregas e on e.id = a.entrega_id where e.etapa_id = '${etapaC}' and a.nome = 'Ana - Lista 1.pdf'`) === "1",
