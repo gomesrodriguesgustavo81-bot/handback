@@ -306,6 +306,10 @@ try {
     await p.getByText(/a entrada fica travada por mais/).waitFor();
     confere(!new URL(p.url()).pathname.startsWith("/app"), "travado: nem a senha certa entra");
     sql(`delete from public.tentativas_login`);
+    // O formulário limpa todos os campos depois de cada resposta: digita e-mail e senha de novo.
+    await p.getByRole("button", { name: "Entrar", exact: true }).waitFor();
+    await p.waitForTimeout(400);
+    await p.getByLabel("E-mail").fill(TRAVA);
     await p.getByLabel("Senha").fill(SENHA);
     await p.getByRole("button", { name: "Entrar", exact: true }).click();
     await p.waitForURL(/\/app|\/conta|\/definir-senha|\/entrar\/codigo/);
