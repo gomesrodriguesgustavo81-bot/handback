@@ -25,7 +25,7 @@ select public.revisar_devolutiva('33000000-0000-0000-0000-000000000001', 'BOM', 
 select pg_temp.confere((select motivo_mudanca = '' from public.analises where entrega_id = '33000000-0000-0000-0000-000000000001'),
   'sem mudança de conceito, sem motivo');
 -- Chamada antiga (sem motivo) continua funcionando.
-select public.revisar_devolutiva('33000000-0000-0000-0000-000000000001', 'BOM', 'Texto', true);
+select public.revisar_devolutiva('33000000-0000-0000-0000-000000000001', 'BOM', 'Texto', true, '', true);
 select pg_temp.confere((select status = 'aprovada' from public.analises where entrega_id = '33000000-0000-0000-0000-000000000001'),
   'revisão sem o motivo continua funcionando');
 reset role;

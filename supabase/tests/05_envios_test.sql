@@ -53,7 +53,7 @@ select pg_temp.confere((select para = array['bia@azul.test'] and copia = '{}'
 -- 2) Só envia devolutiva aprovada.
 select pg_temp.erro_contem($$select public.reservar_envio('33000000-0000-0000-0000-000000000001')$$,
   'Aprove a devolutiva', 'não envia devolutiva sem aprovar');
-select public.revisar_devolutiva('33000000-0000-0000-0000-000000000001', 'BOM', 'Pessoal, boa entrega!', true);
+select public.revisar_devolutiva('33000000-0000-0000-0000-000000000001', 'BOM', 'Pessoal, boa entrega!', true, '', true);
 
 -- 3) Reserva, não deixa enviar duas vezes ao mesmo tempo, e registra o envio.
 select pg_temp.confere((select (r ->> 'devolutiva') = 'Pessoal, boa entrega!' and (r ->> 'conceito') = 'BOM'

@@ -75,7 +75,7 @@ select pg_temp.erro_contem($$select public.revisar_devolutiva('33000000-0000-000
   'Escreva a devolutiva', 'não aprova devolutiva vazia');
 select pg_temp.erro_contem($$select public.revisar_devolutiva('33000000-0000-0000-0000-000000000001', 'NOTA 10', 'x', false)$$,
   'Conceito inválido', 'não aceita conceito fora da lista');
-select public.revisar_devolutiva('33000000-0000-0000-0000-000000000001', 'EXCELENTE', 'Pessoal, excelente entrega!', true);
+select public.revisar_devolutiva('33000000-0000-0000-0000-000000000001', 'EXCELENTE', 'Pessoal, excelente entrega!', true, '', true);
 select pg_temp.confere((select status = 'aprovada' and aprovada_por = auth.uid() from public.analises), 'devolutiva aprovada');
 select pg_temp.erro_contem($$select public.revisar_devolutiva('33000000-0000-0000-0000-000000000001', 'BOM', 'x', false)$$,
   'Reabra', 'devolutiva aprovada não é editada sem reabrir');
