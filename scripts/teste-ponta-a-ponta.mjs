@@ -2380,7 +2380,7 @@ try {
   confere(await pe.getByText(/só a permissão de enviar e-mails/).isVisible(), "página inicial explica o uso do Gmail");
   await largura(pe, "página de vendas");
   await pe.screenshot({ path: `${FOTOS}/25-vendas-pt.png`, fullPage: true });
-  for (const [caminho, frase] of [["/en", "we hand it back checked."], ["/es", "nosotros devolvemos revisado."]]) {
+  for (const [caminho, frase] of [["/en", "you decide."], ["/es", "tú decides."]]) {
     await pe.goto(`${APP}${caminho}`);
     confere(await pe.getByText(frase).isVisible(), `página de vendas em ${caminho}`);
     confere((await pe.locator("[lang]").first().getAttribute("lang")) !== null, `idioma marcado em ${caminho}`);
