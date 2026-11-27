@@ -2331,8 +2331,8 @@ try {
     confere((await p.getByRole("dialog", { name: "Aviso de cookies" }).count()) === 0, "depois de “Entendi”, o aviso não volta");
     const titulo = await p.getByRole("heading", { level: 1 }).innerText();
     confere(/IA prepara o rascunho/.test(titulo) && /você decide/.test(titulo), "a primeira página diz que a IA prepara o rascunho e você decide");
-    confere(await p.getByRole("heading", { name: "O que não fazemos" }).isVisible(), "a primeira página mostra o que pedimos, fazemos e não fazemos");
-    confere(await p.getByRole("heading", { name: "O que pedimos" }).isVisible() && await p.getByRole("heading", { name: "O que fazemos" }).isVisible(), "e os três blocos aparecem");
+    confere(await p.getByRole("heading", { name: "O que não fazemos", exact: true }).isVisible(), "a primeira página mostra o que pedimos, fazemos e não fazemos");
+    confere(await p.getByRole("heading", { name: "O que pedimos", exact: true }).isVisible() && await p.getByRole("heading", { name: "O que fazemos", exact: true }).isVisible(), "e os três blocos aparecem");
     await largura(p, "primeira página");
     await p.screenshot({ path: `${FOTOS}/38-primeira-pagina.png`, fullPage: true });
     await p.getByRole("contentinfo").getByRole("link", { name: "Cookies" }).click();
