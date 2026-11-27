@@ -195,6 +195,9 @@ export function FolhaDevolutiva({
   destinos,
   conectarHref,
   motivo,
+  exigirConceito = true,
+  pedirMotivo = false,
+  conceitoEscolhido = false,
   moodle = null,
   classroom = null,
   children,
@@ -216,6 +219,12 @@ export function FolhaDevolutiva({
   conectarHref: string;
   /** Motivo já salvo de ter mudado o conceito da IA. */
   motivo: string;
+  /** O professor precisa escolher o conceito para aprovar (a sugestão da IA é só rascunho). */
+  exigirConceito?: boolean;
+  /** O motivo da mudança é obrigatório. */
+  pedirMotivo?: boolean;
+  /** O professor já escolheu o conceito desta entrega. */
+  conceitoEscolhido?: boolean;
   /** Entrega de uma tarefa do Moodle: dá para devolver por lá. */
   moodle?: InfoMoodle | null;
   /** Entrega que veio do Google Classroom: dá para lançar a nota lá. */
@@ -223,11 +232,25 @@ export function FolhaDevolutiva({
   children: ReactNode;
 }) {
   const router = useRouter();
-  const [escolhido, setEscolhido] = useState(conceito);
+  // Quando a escolha é exigida, nada vem marcado: a sugestão da IA aparece só como rascunho.
+  const [escolhido, setEscolhido] = useState(exigirConceito && !conceitoEscolhido && !aprovada ? "" : conceito);
+  const [tocou, setTocou] = useState(false);
+  const [motivoTexto, setMotivoTexto] = useState(motivo);
+  const escolher = (c: string) => {
+    setEscolhido(c);
+    setTocou(true);
+  };
   const [estado, enviar, enviando] = useActionState<Resultado, FormData>(revisarDevolutiva.bind(null, slug, entregaId), null);
   const [reabrindo, iniciarReabrir] = useTransition();
   const idForm = `devolutiva-${entregaId}`;
   const ocupado = enviando || reabrindo;
+  const mudou = Boolean(conceitoIa) && escolhido !== "" && escolhido !== conceitoIa;
+  const bloqueio =
+    exigirConceito && (!escolhido || escolhido === "PENDENTE")
+      ? "Escolha o conceito para poder aprovar."
+      : pedirMotivo && mudou && !motivoTexto.trim()
+        ? "Diga o motivo de ter mudado o conceito."
+        : "";
   return (
     <div className="flex flex-col gap-3">
       <form
@@ -244,13 +267,20 @@ export function FolhaDevolutiva({
             <h2 id={`${idForm}-conceito`} className="text-[13px] font-semibold uppercase tracking-wide text-suave">
               Conceito
             </h2>
-            {conceitoIa ? (
+            {!exigirConceito && conceitoIa ? (
               <span className="text-xs text-suave">
                 IA sugeriu <strong className="text-texto">{conceitoIa}</strong>
               </span>
             ) : null}
           </div>
-          <input type="hidden" name="conceito" value={escolhido} />
+          {exigirConceito && conceitoIa && !aprovada ? (
+            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-dashed border-borda px-3 py-2 text-[13px] text-suave">
+              Sugestão da IA: <strong className="text-texto">{conceitoIa}</strong>
+              <span>· rascunho, ainda não vale. Quem decide é você.</span>
+            </p>
+          ) : null}
+          <input type="hidden" name="conceito" value={escolhido || conceito} />
+          <input type="hidden" name="escolhido" value={tocou || conceitoEscolhido ? "1" : "0"} />
           <div role="radiogroup" aria-labelledby={`${idForm}-conceito`} className="grid grid-cols-4 gap-1">
             {CONCEITOS_REVISAO.map((c) => {
               const marcado = c === escolhido;
@@ -262,7 +292,7 @@ export function FolhaDevolutiva({
                   role="radio"
                   aria-checked={marcado}
                   disabled={aprovada || ocupado}
-                  onClick={() => setEscolhido(c)}
+                  onClick={() => escolher(c)}
                   className={`min-h-11 rounded-[10px] px-0.5 text-[11.5px] font-bold tracking-wide sm:text-sm ${
                     marcado ? `border-2 ${e.borda} ${e.fundo} ${e.texto}` : "border border-borda bg-cartao text-suave hover:text-texto"
                   } ${aprovada && !marcado ? "opacity-45" : ""}`}
@@ -272,26 +302,27 @@ export function FolhaDevolutiva({
               );
             })}
           </div>
-          {!aprovada ? (
+          {!aprovada && !exigirConceito ? (
             <button
               type="button"
               role="radio"
               aria-checked={escolhido === "PENDENTE"}
-              onClick={() => setEscolhido(escolhido === "PENDENTE" ? (conceitoIa ?? "BOM") : "PENDENTE")}
+              onClick={() => escolher(escolhido === "PENDENTE" ? (conceitoIa ?? "BOM") : "PENDENTE")}
               className={`self-start text-xs underline-offset-2 hover:underline ${escolhido === "PENDENTE" ? "font-semibold text-texto" : "text-suave"}`}
             >
               {escolhido === "PENDENTE" ? "Marcado como PENDENTE (toque para desfazer)" : "Ou deixar PENDENTE"}
             </button>
           ) : null}
 
-          {!aprovada && conceitoIa && escolhido !== conceitoIa ? (
+          {!aprovada && conceitoIa && escolhido !== "" && escolhido !== conceitoIa ? (
             <label className="flex flex-col gap-1.5 rounded-xl border border-alerta/30 bg-alerta-fundo p-3">
               <span className="text-sm font-medium text-texto">
-                Você mudou de {conceitoIa} para {escolhido}. Por quê? <span className="font-normal text-suave">(opcional)</span>
+                Você mudou de {conceitoIa} para {escolhido}. Por quê? <span className="font-normal text-suave">({pedirMotivo ? "obrigatório" : "opcional"})</span>
               </span>
               <input
                 name="motivo"
-                defaultValue={motivo}
+                value={motivoTexto}
+                onChange={(e) => setMotivoTexto(e.target.value)}
                 maxLength={500}
                 placeholder="Ex.: a pesquisa não tinha dados, só opinião"
                 className="min-h-11 w-full rounded-lg border border-borda bg-cartao px-3 text-base text-texto"
@@ -419,9 +450,14 @@ export function FolhaDevolutiva({
             <Botao type="submit" form={idForm} name="acao" value="salvar" variante="secundario" disabled={ocupado}>
               Salvar rascunho
             </Botao>
-            <Botao type="submit" form={idForm} name="acao" value="aprovar" disabled={ocupado}>
+            <Botao type="submit" form={idForm} name="acao" value="aprovar" disabled={ocupado || Boolean(bloqueio)}>
               {enviando ? "Salvando…" : "Aprovar devolutiva"}
             </Botao>
+            {bloqueio ? (
+              <p className="col-span-2 text-center text-xs font-semibold text-alerta" role="status">
+                {bloqueio}
+              </p>
+            ) : null}
           </>
         )}
       </div>

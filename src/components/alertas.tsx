@@ -27,7 +27,7 @@ export function AlertasDaEntrega({ alertas, compacto = false }: { alertas: unkno
           </li>
         ))}
       </ul>
-      {compacto ? null : <span className="text-xs">São avisos automáticos, só para você conferir: o conceito e a devolutiva continuam sendo seus.</span>}
+      {compacto ? null : <span className="text-xs">São avisos automáticos, só para você conferir. Alerta não é prova nem base para punição: o conceito e a devolutiva continuam sendo seus.</span>}
     </section>
   );
 }

@@ -102,4 +102,18 @@ describe("lista de alertas de qualquer origem", () => {
     expect(temAlertaCritico(r)).toBe(true);
     expect(temAlertaCritico([])).toBe(false);
   });
+
+  it("avisa de telefone ou CPF no trabalho, mas não no corpo do e-mail (a assinatura tem telefone)", () => {
+    const email = "=== CORPO DO E-MAIL ===\nAtt, Ana (11) 99999-8888";
+    expect(alertasAutomaticos({ checklist: [], avisosLeitura: [], lidos: [], textos: [email] }).some((a) => a.tipo === "dado_pessoal")).toBe(false);
+    const arquivo = "=== relatorio.pdf ===\nContato: (11) 99999-8888 e CPF 529.982.247-25";
+    const a = alertasAutomaticos({ checklist: [], avisosLeitura: [], lidos: ["relatorio.pdf"], textos: [email, arquivo], escondido: true }).find((x) => x.tipo === "dado_pessoal");
+    expect(a?.gravidade).toBe("atencao");
+    expect(a?.texto).toMatch(/Telefone e CPF em relatorio\.pdf/);
+    expect(a?.texto).toMatch(/escondidos/);
+  });
+
+  it("e-mail sozinho não gera alerta (é muito comum numa capa)", () => {
+    expect(alertasAutomaticos({ checklist: [], avisosLeitura: [], lidos: [], textos: ["=== a.docx ===\nautor: ana@escola.test"] }).some((a) => a.tipo === "dado_pessoal")).toBe(false);
+  });
 });

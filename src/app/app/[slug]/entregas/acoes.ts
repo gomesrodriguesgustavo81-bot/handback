@@ -17,6 +17,7 @@ import { enviarDevolutiva } from "@/lib/envio";
 import { decifrar, ErroGmail, revogar } from "@/lib/gmail";
 import { criarClienteAdmin } from "@/lib/supabase/admin";
 import { registrarAcesso } from "@/lib/registro";
+import { carregarEscolhas, turmaDaEtapa } from "@/lib/ia/escolhas-dados";
 
 export type ArquivoEnviado = { caminho: string; nome: string; tamanho: number; tipo: string };
 
@@ -125,6 +126,7 @@ export async function revisarDevolutiva(slug: string, entregaId: string, _a: Res
     p_devolutiva: String(dados.get("devolutiva") ?? "").trim(),
     p_aprovar: aprovar,
     p_motivo: String(dados.get("motivo") ?? "").trim().slice(0, 500),
+    p_escolhido: dados.get("escolhido") === "1",
   });
   if (error) return { ok: false, mensagem: mensagemDeErro(error, "Não foi possível salvar. Tente de novo.") };
   revalidatePath(`/app/${slug}`, "layout");
@@ -149,13 +151,19 @@ export async function aprovarProntas(slug: string, etapaId: string): Promise<{ o
   const supabase = await criarClienteServidor();
   const { data } = await supabase
     .from("entregas")
-    .select("id, analises(status, conceito, devolutiva)")
+    .select("id, analises(status, conceito, devolutiva, conceito_escolhido)")
     .eq("org_id", empresa.id)
     .eq("etapa_id", etapaId)
     .eq("status", "recebida");
-  type Linha = { id: string; analises: { status: string; conceito: string | null; devolutiva: string } | null };
+  type Linha = { id: string; analises: { status: string; conceito: string | null; devolutiva: string; conceito_escolhido: boolean } | null };
+  const esc = await carregarEscolhas(supabase, empresa.id, await turmaDaEtapa(supabase, etapaId));
+  // Quando a conta exige que o professor escolha o conceito, só entram as que ele já escolheu (aprovar tudo às cegas não vale).
   const prontas = ((data ?? []) as unknown as Linha[]).filter(
-    (e) => e.analises?.status === "pronta" && e.analises.conceito && e.analises.devolutiva.trim(),
+    (e) =>
+      e.analises?.status === "pronta" &&
+      e.analises.conceito &&
+      e.analises.devolutiva.trim() &&
+      (!esc.exigirConceito || (e.analises.conceito_escolhido && e.analises.conceito !== "PENDENTE")),
   );
   let feitas = 0;
   for (const e of prontas) {
@@ -164,11 +172,19 @@ export async function aprovarProntas(slug: string, etapaId: string): Promise<{ o
       p_conceito: e.analises!.conceito,
       p_devolutiva: e.analises!.devolutiva,
       p_aprovar: true,
+      p_escolhido: e.analises!.conceito_escolhido,
     });
     if (!error) feitas++;
   }
   revalidatePath(`/app/${slug}`, "layout");
-  if (!prontas.length) return { ok: false, mensagem: "Nenhuma devolutiva pronta para aprovar." };
+  if (!prontas.length) {
+    return {
+      ok: false,
+      mensagem: esc.exigirConceito
+        ? "Nenhuma devolutiva com o conceito escolhido por você. Abra cada uma, escolha o conceito e aprove."
+        : "Nenhuma devolutiva pronta para aprovar.",
+    };
+  }
   return feitas === prontas.length
     ? { ok: true, mensagem: `${feitas} devolutiva(s) aprovada(s).` }
     : { ok: false, mensagem: `${feitas} de ${prontas.length} aprovadas. Abra as que faltaram para ver o motivo.` };

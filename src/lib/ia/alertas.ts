@@ -10,12 +10,14 @@
  * Alerta não muda o conceito nem bloqueia nada: só avisa. Quem decide é quem avalia.
  */
 
-export type TipoAlerta = "incompleta" | "ilegivel" | "fora_do_escopo" | "manipulacao" | "inconsistente";
+import { acharDadosPessoais } from "./privacidade";
+
+export type TipoAlerta = "incompleta" | "ilegivel" | "fora_do_escopo" | "manipulacao" | "inconsistente" | "dado_pessoal";
 export type Gravidade = "atencao" | "critico";
 export type Alerta = { tipo: TipoAlerta; gravidade: Gravidade; texto: string };
 
 /** Ordem em que aparecem na tela (dentro da mesma gravidade). */
-export const TIPOS_ALERTA: TipoAlerta[] = ["manipulacao", "inconsistente", "fora_do_escopo", "incompleta", "ilegivel"];
+export const TIPOS_ALERTA: TipoAlerta[] = ["manipulacao", "inconsistente", "fora_do_escopo", "dado_pessoal", "incompleta", "ilegivel"];
 /** Os que só a IA consegue julgar (o resto é calculado aqui). */
 export const TIPOS_DA_IA: TipoAlerta[] = ["fora_do_escopo", "manipulacao", "inconsistente"];
 
@@ -25,6 +27,7 @@ export const ROTULO_ALERTA: Record<TipoAlerta, string> = {
   fora_do_escopo: "Fora do que foi pedido",
   manipulacao: "Tentativa de manipular a IA",
   inconsistente: "Inconsistência no trabalho",
+  dado_pessoal: "Dado pessoal no trabalho",
 };
 export const ROTULO_GRAVIDADE: Record<Gravidade, string> = { atencao: "Atenção", critico: "Olhar com cuidado" };
 
@@ -71,7 +74,35 @@ type Entrada = {
   avisosLeitura: string[];
   lidos: string[];
   textos: string[];
+  /** Os dados pessoais foram escondidos do texto enviado à IA (só muda o que o aviso diz). */
+  escondido?: boolean;
 };
+
+/** Telefone ou CPF dentro do que o aluno entregou (arquivos e links; o corpo do e-mail não conta, a assinatura tem telefone). */
+export function alertaDeDadoPessoal(textos: string[], escondido: boolean): Alerta | null {
+  const onde: string[] = [];
+  let cpf = 0;
+  let telefone = 0;
+  for (const bloco of textos) {
+    const m = String(bloco ?? "").match(/^=== (.*?) ===\n/);
+    const rotulo = m?.[1] ?? "";
+    if (/^(CORPO DO E-MAIL|COMENTÁRIO)$/i.test(rotulo)) continue;
+    const a = acharDadosPessoais(bloco);
+    if (a.cpf || a.telefone) {
+      cpf += a.cpf;
+      telefone += a.telefone;
+      if (rotulo && onde.length < 3) onde.push(rotulo);
+    }
+  }
+  if (!cpf && !telefone) return null;
+  const o = [telefone ? "telefone" : "", cpf ? "CPF" : ""].filter(Boolean).join(" e ");
+  const lugar = onde.length ? ` em ${onde.join(", ")}` : "";
+  return {
+    tipo: "dado_pessoal",
+    gravidade: "atencao",
+    texto: `${o.charAt(0).toUpperCase()}${o.slice(1)}${lugar}. ${escondido ? "No texto que a IA leu eles foram escondidos; PDF e imagem vão inteiros." : "A IA leu esses dados."}`,
+  };
+}
 
 /** Alertas que saem só dos números e do que foi lido, sem precisar da IA. */
 export function alertasAutomaticos(d: Entrada): Alerta[] {
@@ -109,6 +140,8 @@ export function alertasAutomaticos(d: Entrada): Alerta[] {
       texto: `Trecho que fala com a IA: “${trechos[0]}”${trechos.length > 1 ? ` (e mais ${trechos.length - 1})` : ""}. Confira antes de aprovar.`,
     });
   }
+  const dado = alertaDeDadoPessoal(d.textos, Boolean(d.escondido));
+  if (dado) alertas.push(dado);
   return alertas;
 }
 

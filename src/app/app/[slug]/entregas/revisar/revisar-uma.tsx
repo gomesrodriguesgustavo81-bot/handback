@@ -22,6 +22,9 @@ export function RevisarUma({
   links,
   completa,
   pularHref,
+  exigirConceito = true,
+  pedirMotivo = false,
+  conceitoEscolhido = false,
 }: {
   slug: string;
   entregaId: string;
@@ -34,8 +37,13 @@ export function RevisarUma({
   links: string[];
   completa: string;
   pularHref: string | null;
+  exigirConceito?: boolean;
+  pedirMotivo?: boolean;
+  conceitoEscolhido?: boolean;
 }) {
-  const [escolhido, setEscolhido] = useState(conceito);
+  // Quando a escolha é exigida, nada vem marcado: a sugestão da IA é só rascunho.
+  const [escolhido, setEscolhido] = useState(exigirConceito && !conceitoEscolhido ? "" : conceito);
+  const [tocou, setTocou] = useState(false);
   const [texto, setTexto] = useState(devolutiva);
   const [motivo, setMotivo] = useState("");
   const [erro, setErro] = useState("");
@@ -45,7 +53,8 @@ export function RevisarUma({
   const aprovar = () => {
     const dados = new FormData();
     dados.set("acao", "aprovar");
-    dados.set("conceito", escolhido);
+    dados.set("conceito", escolhido || conceito);
+    dados.set("escolhido", tocou || conceitoEscolhido ? "1" : "0");
     dados.set("devolutiva", texto);
     dados.set("motivo", motivo);
     setErro("");
@@ -55,6 +64,14 @@ export function RevisarUma({
       else setErro(r?.mensagem ?? "Não foi possível aprovar.");
     });
   };
+
+  const mudou = Boolean(conceitoIa) && escolhido !== "" && escolhido !== conceitoIa;
+  const bloqueio =
+    exigirConceito && (!escolhido || escolhido === "PENDENTE")
+      ? "Escolha o conceito para poder aprovar."
+      : pedirMotivo && mudou && !motivo.trim()
+        ? "Diga o motivo de ter mudado o conceito."
+        : "";
 
   return (
     <div className="flex flex-col gap-3 pb-40 lg:pb-0">
@@ -91,8 +108,9 @@ export function RevisarUma({
         <span className="flex items-baseline justify-between text-xs text-suave">
           <span className="font-semibold uppercase tracking-wide">Conceito</span>
           {conceitoIa ? (
-            <span>
-              IA sugeriu <strong className="text-texto">{conceitoIa}</strong>
+            <span className={exigirConceito ? "rounded-lg border border-dashed border-borda px-2 py-0.5" : ""}>
+              {exigirConceito ? "Sugestão da IA (rascunho): " : "IA sugeriu "}
+              <strong className="text-texto">{conceitoIa}</strong>
             </span>
           ) : null}
         </span>
@@ -106,7 +124,10 @@ export function RevisarUma({
                 type="button"
                 role="radio"
                 aria-checked={marcado}
-                onClick={() => setEscolhido(c)}
+                onClick={() => {
+                  setEscolhido(c);
+                  setTocou(true);
+                }}
                 className={`min-h-12 rounded-[10px] text-[11.5px] font-bold tracking-wide sm:text-sm ${marcado ? `border-2 ${e.borda} ${e.fundo} ${e.texto}` : "border border-borda bg-cartao text-suave"}`}
               >
                 {c}
@@ -114,12 +135,12 @@ export function RevisarUma({
             );
           })}
         </div>
-        {conceitoIa && escolhido !== conceitoIa ? (
+        {conceitoIa && escolhido !== "" && escolhido !== conceitoIa ? (
           <input
             value={motivo}
             onChange={(e) => setMotivo(e.target.value)}
             maxLength={500}
-            placeholder={`Por que ${escolhido} e não ${conceitoIa}? (opcional, a IA aprende)`}
+            placeholder={`Por que ${escolhido} e não ${conceitoIa}? (${pedirMotivo ? "obrigatório" : "opcional, a IA aprende"})`}
             aria-label="Motivo da mudança"
             className="min-h-11 rounded-xl border border-borda bg-cartao px-3 text-base text-texto placeholder:text-suave"
           />
@@ -135,7 +156,7 @@ export function RevisarUma({
           className="min-h-40 w-full rounded-xl border border-borda bg-cartao px-3 py-2.5 text-base leading-relaxed text-texto [field-sizing:content]"
         />
       </label>
-      {erro ? <Aviso tipo="erro">{erro}</Aviso> : null}
+      {erro ? <Aviso tipo="erro">{erro}</Aviso> : bloqueio ? <p role="status" className="text-xs font-semibold text-alerta">{bloqueio}</p> : null}
 
       {/* No celular, os botões ficam presos em cima da barra de baixo, sempre à mão. */}
       <div className="fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 rounded-2xl border border-borda bg-cartao/95 px-4 py-2.5 shadow-lg backdrop-blur lg:static lg:shadow-none">
@@ -157,7 +178,7 @@ export function RevisarUma({
           <button
             type="button"
             onClick={aprovar}
-            disabled={indo || texto.trim().length < 2}
+            disabled={indo || texto.trim().length < 2 || Boolean(bloqueio)}
             className="inline-flex min-h-12 flex-1 items-center justify-center rounded-xl bg-marca px-4 font-bold text-sobre-marca disabled:opacity-60"
           >
             {indo ? "Aprovando…" : "Aprovar e próxima"}

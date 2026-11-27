@@ -8,6 +8,7 @@ import { completarVocabulario } from "@/lib/nomes";
 import { parecidasDe } from "@/lib/parecidas";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { dataHoraBR } from "@/lib/textos";
+import { carregarEscolhas, turmaDaEtapa } from "@/lib/ia/escolhas-dados";
 import { RevisarUma } from "./revisar-uma";
 
 export const metadata: Metadata = { title: "Revisar uma por uma" };
@@ -19,7 +20,7 @@ type Linha = {
   grupos: { nome: string } | null;
   arquivos_entrega: { id: string; nome: string }[];
   links: string[];
-  analises: { status: string; conceito_ia: string | null; conceito: string | null; devolutiva: string; justificativa: string; checklist: { item: string; status: string }[]; alertas: unknown } | null;
+  analises: { status: string; conceito_escolhido: boolean; conceito_ia: string | null; conceito: string | null; devolutiva: string; justificativa: string; checklist: { item: string; status: string }[]; alertas: unknown } | null;
 };
 
 /**
@@ -37,12 +38,13 @@ export default async function Revisar({ params, searchParams }: PageProps<"/app/
     supabase.from("etapas").select("id, numero, titulo").eq("id", etapaId).eq("org_id", empresa.id).maybeSingle(),
     supabase
       .from("entregas")
-      .select("id, enviada_em, atrasada, links, grupos(nome), arquivos_entrega(id, nome), analises(status, conceito_ia, conceito, devolutiva, justificativa, checklist, alertas)")
+      .select("id, enviada_em, atrasada, links, grupos(nome), arquivos_entrega(id, nome), analises(status, conceito_escolhido, conceito_ia, conceito, devolutiva, justificativa, checklist, alertas)")
       .eq("org_id", empresa.id)
       .eq("etapa_id", etapaId)
       .eq("status", "recebida"),
   ]);
   if (!etapa) notFound();
+  const esc = await carregarEscolhas(supabase, empresa.id, await turmaDaEtapa(supabase, etapa.id));
   const fila = ((data ?? []) as unknown as Linha[])
     .filter((e) => e.analises?.status === "pronta")
     .sort((a, b) => (a.grupos?.nome ?? "").localeCompare(b.grupos?.nome ?? "", "pt-BR"));
@@ -108,8 +110,11 @@ export default async function Revisar({ params, searchParams }: PageProps<"/app/
         key={atual.id}
         slug={slug}
         entregaId={atual.id}
-        conceitoIa={a.conceito_ia}
-        conceito={a.conceito ?? a.conceito_ia ?? "BOM"}
+        conceitoIa={esc.semSugestao ? null : a.conceito_ia}
+        conceito={a.conceito ?? (esc.semSugestao ? "PENDENTE" : (a.conceito_ia ?? "BOM"))}
+        exigirConceito={esc.exigirConceito}
+        pedirMotivo={esc.pedirMotivo && !esc.semSugestao}
+        conceitoEscolhido={Boolean(a.conceito_escolhido)}
         devolutiva={a.devolutiva}
         justificativa={a.justificativa}
         checklist={(a.checklist ?? []).map((c) => ({ item: c.item, status: c.status }))}

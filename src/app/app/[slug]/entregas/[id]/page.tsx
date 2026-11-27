@@ -5,6 +5,7 @@ import { IconeDrive, pastaDaEquipeNoDrive } from "@/lib/pastas-drive";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BotaoAnalisar, FolhaDevolutiva } from "@/components/analise";
+import { carregarEscolhas, turmaDaEtapa } from "@/lib/ia/escolhas-dados";
 import { Bloco, Dobra, IconeItem, PilulaAtraso, SeloConceito, type StatusItem } from "@/components/conceito";
 import { Aviso } from "@/components/ui";
 import { AlertasDaEntrega } from "@/components/alertas";
@@ -61,6 +62,7 @@ type Analise = {
   justificativa: string;
   analise_interna: string;
   motivo_mudanca: string;
+  conceito_escolhido: boolean;
   envio_status: "enviando" | "enviada" | "erro" | null;
   enviada_em: string | null;
   enviada_para: string[];
@@ -109,6 +111,7 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
     entrega.origem === "classroom" ? supabase.from("classroom_pendentes").select("nome").eq("entrega_id", entrega.id) : Promise.resolve({ data: [] as { nome: string }[] }),
   ]);
 
+  const esc = await carregarEscolhas(supabase, empresa.id, await turmaDaEtapa(supabase, entrega.etapa_id));
   const [{ data: analiseBruta }, { data: daEtapa }, { data: doGrupo }, gmail, { data: destinos }, { data: org }] = await Promise.all([
     supabase.from("analises").select("*").eq("entrega_id", entrega.id).maybeSingle(),
     // Outras equipes desta etapa (para as setas ‹ ›) e envios anteriores desta equipe.
@@ -250,10 +253,15 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
 
   const detalhes = (
     <>
-      {temResultado ? (
+      {temResultado && !esc.semSugestao ? (
         <Dobra titulo="Análise interna" extra="só quem avalia vê" aberta>
           <AnaliseInterna conceito={a.conceito_ia} justificativa={a.justificativa} texto={a.analise_interna} />
         </Dobra>
+      ) : null}
+      {temResultado && esc.semSugestao ? (
+        <p className="rounded-2xl border border-borda bg-cartao px-4 py-3 text-sm text-suave">
+          Esta turma está em <strong className="text-texto">Sem sugestão de conceito</strong>: a IA conferiu o checklist e escreveu o rascunho, e o que ela achou do conceito fica guardado só no registro de supervisão.
+        </p>
       ) : null}
 
       <Dobra titulo="Histórico de entregas" extra={temResultado ? a.evolucao : undefined}>
@@ -410,8 +418,11 @@ export default async function FolhaDaEquipe({ params, searchParams }: PageProps<
           key={`${a.status}-${a.concluida_em}`}
           slug={slug}
           entregaId={entrega.id}
-          conceito={a.conceito ?? a.conceito_ia ?? "PENDENTE"}
-          conceitoIa={a.conceito_ia}
+          conceito={a.conceito ?? (esc.semSugestao ? "PENDENTE" : (a.conceito_ia ?? "PENDENTE"))}
+          conceitoIa={esc.semSugestao ? null : a.conceito_ia}
+          exigirConceito={esc.exigirConceito}
+          pedirMotivo={esc.pedirMotivo && !esc.semSugestao}
+          conceitoEscolhido={Boolean(a.conceito_escolhido)}
           devolutiva={a.devolutiva}
           aprovada={a.status === "aprovada"}
           aprovadaEm={a.aprovada_em ? dataHoraBR(a.aprovada_em) : ""}

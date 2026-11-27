@@ -8,6 +8,8 @@ import { criarClienteAdmin } from "../supabase/admin";
 import { baixarDoDrive } from "../drive";
 import { guardarImpressao, textoDoPdf } from "../parecidas";
 import { alertasAutomaticos, juntarAlertas } from "./alertas";
+import { COLUNAS_ESCOLHAS, resolverEscolhas, type LinhaEscolhas } from "./escolhas";
+import { codigoDoGrupo, mascarar } from "./privacidade";
 import { chamarGemini } from "./gemini";
 import { addTexto, lerArquivo, lerLink, limparCorpo, novoConteudo } from "./leitura";
 import {
@@ -34,9 +36,9 @@ type EntregaCompleta = {
   status: string;
   comentario: string;
   links: string[];
-  etapas: { numero: number; titulo: string; entregaveis: string[]; criterios: string; observacoes_ia: string } | null;
+  etapas: { numero: number; titulo: string; entregaveis: string[]; criterios: string; observacoes_ia: string; turma_id: string | null } | null;
   grupos: { nome: string; tema: string } | null;
-  organizacoes: { vocabulario: Vocabulario; conceitos: Record<Conceito, string>; regra_checklist: RegraChecklist; exemplos_devolutiva: string; limite_analises_mes: number | null } | null;
+  organizacoes: ({ vocabulario: Vocabulario; conceitos: Record<Conceito, string>; regra_checklist: RegraChecklist; exemplos_devolutiva: string; limite_analises_mes: number | null } & LinhaEscolhas) | null;
   arquivos_entrega: { caminho: string | null; nome: string; tipo: string; drive_id: string | null; drive_por: string | null }[];
 };
 
@@ -49,7 +51,7 @@ export async function analisarEntrega(supabase: SupabaseClient, entregaId: strin
   const { data, error } = await supabase
     .from("entregas")
     .select(
-      "id, org_id, etapa_id, grupo_id, origem, assunto, enviada_em, atrasada, status, comentario, links, etapas(numero, titulo, entregaveis, criterios, observacoes_ia), grupos(nome, tema), organizacoes(vocabulario, conceitos, regra_checklist, exemplos_devolutiva, limite_analises_mes), arquivos_entrega(caminho, nome, tipo, drive_id, drive_por)",
+      `id, org_id, etapa_id, grupo_id, origem, assunto, enviada_em, atrasada, status, comentario, links, etapas(numero, titulo, entregaveis, criterios, observacoes_ia, turma_id), grupos(nome, tema), organizacoes(vocabulario, conceitos, regra_checklist, exemplos_devolutiva, limite_analises_mes, ${COLUNAS_ESCOLHAS}), arquivos_entrega(caminho, nome, tipo, drive_id, drive_por)`,
     )
     .eq("id", entregaId)
     .maybeSingle();
@@ -117,6 +119,18 @@ export async function analisarEntrega(supabase: SupabaseClient, entregaId: strin
     }
     for (const l of e.links.slice(0, 10)) await lerLink(conteudo, l);
 
+    // 1b) Proteção dos dados do aluno: as escolhas da conta e da turma valem para o que vai à IA.
+    const { data: turmaLinha } = e.etapas.turma_id
+      ? await supabase.from("turmas").select(COLUNAS_ESCOLHAS).eq("id", e.etapas.turma_id).maybeSingle()
+      : { data: null };
+    const esc = resolverEscolhas(e.organizacoes, turmaLinha as LinhaEscolhas | null);
+    const { data: pessoas } = await supabase.from("integrantes").select("nome").eq("grupo_id", e.grupo_id);
+    const nomes = [e.grupos?.nome ?? "", ...((pessoas ?? []) as { nome?: string | null }[]).map((p) => String(p.nome ?? ""))];
+    const codigo = esc.nomeCodigo ? codigoDoGrupo(e.grupo_id, v.grupo) : null;
+    const esconde = (t: string) => (esc.esconderDados ? mascarar(t, nomes) : t);
+    // Só o que vai à IA é mascarado; o que fica guardado para o professor continua inteiro.
+    const paraIA = { textos: conteudo.textos.map(esconde), lidos: conteudo.lidos.map(esconde), avisos: conteudo.avisos.map(esconde) };
+
     // 2) Histórico do grupo nas etapas anteriores e exemplos de estilo.
     const [anteriores, exemplos, correcoes] = await Promise.all([historico(supabase, e), exemplosDeEstilo(supabase, e), correcoesAnteriores(supabase, e)]);
 
@@ -127,22 +141,22 @@ export async function analisarEntrega(supabase: SupabaseClient, entregaId: strin
       regra: e.organizacoes.regra_checklist,
       criterios: e.etapas.criterios,
       observacoes: e.etapas.observacoes_ia,
-      exemplos,
-      correcoes,
+      exemplos: esconde(exemplos),
+      correcoes: correcoes.map((c) => ({ ...c, motivo: esconde(c.motivo) })),
     });
     const cabecalho = cabecalhoEntrega({
       vocabulario: v,
-      grupo: e.grupos?.nome ?? "",
+      grupo: codigo ?? e.grupos?.nome ?? "",
       tema: e.grupos?.tema ?? "",
       etapaNumero: e.etapas.numero,
       etapaTitulo: e.etapas.titulo,
       enviadaEm: dataHoraBR(e.enviada_em),
       atrasada: e.atrasada,
       itens,
-      historico: anteriores.map((x) => ({ etapa: x.etapa, conceito: x.conceito, justificativa: x.justificativa })),
-      lidos: conteudo.lidos,
-      avisos: conteudo.avisos,
-      textos: conteudo.textos,
+      historico: anteriores.map((x) => ({ etapa: x.etapa, conceito: x.conceito, justificativa: esconde(x.justificativa) })),
+      lidos: paraIA.lidos,
+      avisos: paraIA.avisos,
+      textos: paraIA.textos,
     });
     const { resultado, modelo, uso } = await chamarGemini(
       sistema,
@@ -151,17 +165,19 @@ export async function analisarEntrega(supabase: SupabaseClient, entregaId: strin
     );
 
     // 4) Regras do checklist, evolução e gravação.
-    const r = validarResultado(resultado as ResultadoIA, itens, {
+    const validado = validarResultado(resultado as ResultadoIA, itens, {
       regra: e.organizacoes.regra_checklist,
       professorDefiniu: professorDefiniuConceito(e.etapas.observacoes_ia),
     });
+    // A IA viu um código no lugar do nome: na tela do professor volta o nome de verdade.
+    const r = codigo && e.grupos?.nome ? (JSON.parse(JSON.stringify(validado).split(codigo).join(JSON.stringify(e.grupos.nome).slice(1, -1))) as typeof validado) : validado;
     const traj = trajetoria(
       anteriores.map((x) => x.conceito),
       r.conceito,
     );
     // Alertas: o que o Handback calcula sozinho (não depende da IA) + o que a IA percebeu.
     const alertas = juntarAlertas(
-      alertasAutomaticos({ checklist: r.checklist, avisosLeitura: conteudo.avisos, lidos: conteudo.lidos, textos: conteudo.textos }),
+      alertasAutomaticos({ checklist: r.checklist, avisosLeitura: conteudo.avisos, lidos: conteudo.lidos, textos: conteudo.textos, escondido: esc.esconderDados }),
       r.alertas,
     );
     const { error: erroGravar } = await supabase.rpc("gravar_analise", {
