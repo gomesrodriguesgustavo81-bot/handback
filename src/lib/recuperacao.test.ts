@@ -40,6 +40,14 @@ describe("aviso de segurança", () => {
     expect(m.texto).toMatch(/Se não foi você/);
     expect(m.texto).toMatch(/12:00|horário de Brasília/);
   });
+  it("diz que não recebe respostas e aponta o contato, se houver", () => {
+    const sem = montarAvisoDeSeguranca("entrada-travada", new Date(), "");
+    expect(sem.texto).toMatch(/não recebe respostas/);
+    expect(sem.texto).not.toMatch(/responda este e-mail/i);
+    const com = montarAvisoDeSeguranca("entrada-travada", new Date(), "contato@handback.com.br");
+    expect(com.texto).toMatch(/escreva para contato@handback\.com\.br/);
+    expect(com.html).toMatch(/não recebe respostas/);
+  });
   it("não leva senha nem código nenhum", () => {
     for (const e of ["senha-trocada", "duas-etapas-trocada", "duas-etapas-removida", "entrada-travada", "codigos-gerados"] as const) {
       expect(montarAvisoDeSeguranca(e).texto).not.toMatch(/\b[A-Z0-9]{5}-[A-Z0-9]{5}\b/);

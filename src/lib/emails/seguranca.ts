@@ -36,13 +36,21 @@ const TEXTOS: Record<EventoDeSeguranca, { assunto: string; titulo: string; texto
   },
 };
 
-const SE_NAO_FOI_VOCE = "Se não foi você, troque a senha agora em Minha conta e saia de todos os aparelhos. Em caso de dúvida, responda este e-mail.";
+const SE_NAO_FOI_VOCE = "Se não foi você, troque a senha agora em Minha conta e saia de todos os aparelhos.";
 
-export function montarAvisoDeSeguranca(evento: EventoDeSeguranca, quando = new Date()) {
+/** Este endereço só envia: ninguém lê as respostas. Se houver um contato configurado, aponta para ele. */
+function avisoSemResposta(contato = process.env.HANDBACK_CONTATO?.trim() ?? ""): string {
+  return contato
+    ? `Este e-mail é automático e não recebe respostas. Em caso de dúvida, escreva para ${contato}.`
+    : "Este e-mail é automático e não recebe respostas.";
+}
+
+export function montarAvisoDeSeguranca(evento: EventoDeSeguranca, quando = new Date(), contato?: string) {
   const t = TEXTOS[evento];
+  const semResposta = avisoSemResposta(contato);
   const hora = quando.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" });
-  const texto = `${t.titulo}\n\n${t.texto}\nQuando: ${hora} (horário de Brasília)\n\n${SE_NAO_FOI_VOCE}\n\nHandback`;
-  const html = `<div style="font-family:system-ui,sans-serif;max-width:480px"><h2 style="margin:0 0 12px">${t.titulo}</h2><p>${t.texto}</p><p style="color:#5a6478">Quando: ${hora} (horário de Brasília)</p><p>${SE_NAO_FOI_VOCE}</p><p style="color:#5a6478">Handback</p></div>`;
+  const texto = `${t.titulo}\n\n${t.texto}\nQuando: ${hora} (horário de Brasília)\n\n${SE_NAO_FOI_VOCE}\n\n${semResposta}\n\nHandback`;
+  const html = `<div style="font-family:system-ui,sans-serif;max-width:480px"><h2 style="margin:0 0 12px">${t.titulo}</h2><p>${t.texto}</p><p style="color:#5a6478">Quando: ${hora} (horário de Brasília)</p><p>${SE_NAO_FOI_VOCE}</p><p style="color:#5a6478">${semResposta}</p><p style="color:#5a6478">Handback</p></div>`;
   return { assunto: t.assunto, texto, html };
 }
 
