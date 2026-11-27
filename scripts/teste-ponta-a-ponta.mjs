@@ -140,7 +140,14 @@ async function salvarCiclo(p) {
 
 /** Troca a turma na caixa do topo e espera a tela mostrar a escolhida. */
 async function trocarTurma(p, nome) {
+  const valor = await p.locator('select[name="turma"]').evaluate((s, n) => [...s.options].find((o) => o.textContent === n)?.value ?? "", nome);
   await p.locator('select[name="turma"]').selectOption({ label: nome });
+  // O navegador já mostra a turma nova antes de o servidor guardar a escolha: espera o cookie de verdade
+  // (senão uma navegação logo em seguida cancela a troca e o teste segue na turma errada).
+  for (let i = 0; i < 100; i++) {
+    if ((await p.context().cookies()).some((c) => c.name.startsWith("hb_turma_") && c.value === valor)) break;
+    await p.waitForTimeout(150);
+  }
   await p.waitForFunction((n) => {
     const s = document.querySelector('select[name="turma"]');
     return s && !s.disabled && s.selectedOptions[0]?.textContent === n;
