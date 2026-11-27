@@ -2402,6 +2402,7 @@ try {
 
     const trocar = async (atual, nova) => {
       await a.p.goto(`${APP}/definir-senha`);
+      if (await a.p.getByLabel("Seu nome").count()) await a.p.getByLabel("Seu nome").fill("Pessoa Segura");
       await a.p.getByLabel("Senha de agora").fill(atual);
       await a.p.getByLabel("Nova senha").fill(nova);
       await a.p.getByLabel("Repita a senha").fill(nova);
@@ -2438,8 +2439,10 @@ try {
     await r1.p.goto(`${APP}/conta/duas-etapas`);
     await cadastrarCelular(r1.p, REC);
     await r1.p.waitForURL(/\/app/);
-    await r1.p.getByRole("status", { name: "Códigos de recuperação" }).waitFor();
-    confere(true, "com as duas etapas ativas e sem códigos, o app lembra de gerar");
+    await r1.p.goto(`${APP}/conta`);
+    confere(await r1.p.getByText("Você ainda não gerou os códigos de recuperação.").isVisible(), "em Minha conta, avisa que ainda não gerou os códigos");
+    await r1.p.goto(`${APP}/app`);
+    // REC não tem espaço: o lembrete aparece no Início de quem tem espaço; aqui basta o aviso em Minha conta.
     await r1.p.goto(`${APP}/conta`);
     await r1.p.getByRole("button", { name: "Gerar códigos", exact: true }).click();
     await r1.p.getByRole("button", { name: "Sim, gerar" }).click();

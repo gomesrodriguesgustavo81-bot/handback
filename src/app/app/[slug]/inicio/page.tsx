@@ -6,6 +6,7 @@ import { completarVocabulario } from "@/lib/nomes";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { hojeISO } from "@/lib/textos";
 import { turmasDaEmpresa } from "@/lib/turma";
+import { AvisoCodigos } from "@/components/aviso-codigos";
 import { ConviteAvisos } from "./convite-avisos";
 import { SemanaInterativa } from "./semana";
 
@@ -173,6 +174,7 @@ export default async function Inicio({ params, searchParams }: PageProps<"/app/[
 
   return (
     <div className="flex max-w-5xl flex-col gap-5">
+      <AvisoCodigos />
       <h1 className="text-[26px] font-extrabold leading-tight tracking-tight sm:text-3xl">
         {grupos.length ? (
           <>
