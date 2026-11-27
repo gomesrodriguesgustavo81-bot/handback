@@ -21,6 +21,8 @@ const ANA = `ana-${sufixo}@escola.test`;
 const CURIOSO = `curioso-${sufixo}@qualquer.test`;
 const SLUG = `escola-alfa-${sufixo}`;
 const PROF = `prof-${sufixo}@escola.test`;
+const COORD = `coord-${sufixo}@escola.test`;
+const BANCA = `banca-${sufixo}@escola.test`;
 
 mkdirSync(FOTOS, { recursive: true });
 let falhas = 0;
@@ -488,8 +490,8 @@ try {
 
   // F4) Ana convida um professor
   await ana.p.goto(`${APP}/app/${SLUG}/pessoas`);
-  await ana.p.getByLabel("E-mail").fill(PROF);
-  await ana.p.getByRole("button", { name: "Convidar" }).click();
+  await ana.p.getByLabel("E-mail", { exact: true }).fill(PROF);
+  await ana.p.getByRole("button", { name: "Convidar", exact: true }).click();
   await ana.p.getByText(`Convite enviado para ${PROF}`).waitFor();
   confere(await ana.p.getByText("Convites aguardando (1)").isVisible(), "convite aparece na lista");
   await largura(ana.p, "pessoas");
@@ -516,6 +518,76 @@ try {
   await prof.p.getByRole("button", { name: /Equipe Azul/ }).click();
   confere(await prof.p.getByText("a2@aluno.test").isVisible(), "professor vê os e-mails das equipes");
   await prof.p.screenshot({ path: `${FOTOS}/9-professor.png`, fullPage: true });
+
+  // F5b) Coordenador e banca: só números, nunca a correção
+  {
+    const idEntrega = sql(`select e.id from public.entregas e join public.organizacoes o on o.id = e.org_id where o.slug = '${SLUG}' limit 1`).split("\n")[0];
+    await ana.p.goto(`${APP}/app/${SLUG}/pessoas`);
+    // Banca sem nenhuma turma é recusada
+    await ana.p.getByLabel("E-mail da pessoa").fill(BANCA);
+    await ana.p.getByRole("radio", { name: /Banca/ }).check();
+    await ana.p.getByRole("button", { name: "Enviar convite" }).click();
+    await ana.p.getByText("Escolha pelo menos uma turma para a banca.").waitFor();
+    confere(true, "coordenação: banca sem turma é recusada");
+    // Coordenador de todas as turmas, sem nomes
+    await ana.p.getByLabel("E-mail da pessoa").fill(COORD);
+    await ana.p.getByRole("radio", { name: /Coordenador/ }).check();
+    await ana.p.getByRole("button", { name: "Enviar convite" }).click();
+    await ana.p.getByText(`Convite enviado para ${COORD}`).waitFor();
+    confere(await ana.p.getByText("Coordenador: todas as turmas · só números, sem nomes").isVisible(), "coordenação: o convite mostra o que a pessoa vai ver");
+    await largura(ana.p, "pessoas com convite de coordenação");
+    await ana.p.screenshot({ path: `${FOTOS}/8c-convidar-coordenacao.png`, fullPage: true });
+    // Banca de uma turma, com nomes
+    await ana.p.getByLabel("E-mail da pessoa").fill(BANCA);
+    await ana.p.getByRole("radio", { name: /Banca/ }).check();
+    await ana.p.getByRole("group", { name: "Turmas da banca" }).getByRole("checkbox").first().check();
+    await ana.p.getByRole("checkbox", { name: /Mostrar nomes/ }).check();
+    await ana.p.getByRole("button", { name: "Enviar convite" }).click();
+    await ana.p.getByText(`Convite enviado para ${BANCA}`).waitFor();
+    confere(await ana.p.getByText(/Banca: .* · vê os nomes/).isVisible(), "coordenação: convite da banca mostra a turma e que vê os nomes");
+
+    const coord = await primeiroAcesso(navegador, COORD);
+    await coord.p.goto(`${APP}/app`);
+    await coord.p.waitForURL(new RegExp(`/app/${SLUG}/coordenacao$`));
+    const abasC = (await coord.p.getByRole("navigation", { name: "Seções da empresa" }).getByRole("link").allInnerTexts()).filter(Boolean);
+    confere(abasC.join("|") === "Coordenação", `coordenação: só uma aba no menu (${abasC.join(", ")})`);
+    confere(await coord.p.getByRole("heading", { name: "Coordenação", level: 1 }).isVisible() && await coord.p.getByText("Só leitura").isVisible(), "coordenação: painel abre, marcado como só leitura");
+    confere(await coord.p.getByText("Entregas recebidas").isVisible() && await coord.p.getByText("Já aprovadas").isVisible(), "coordenação: painel mostra os números");
+    await largura(coord.p, "painel da coordenação");
+    await coord.p.screenshot({ path: `${FOTOS}/8d-painel-coordenacao.png`, fullPage: true });
+    await coord.p.locator("main a[href*='/coordenacao/']").first().click();
+    await coord.p.waitForURL(/\/coordenacao\/[0-9a-f-]{36}$/);
+    await coord.p.getByRole("heading", { name: "Conceito aprovado em cada entrega" }).waitFor();
+    const textoC = await coord.p.locator("main").innerText();
+    confere(/não aparecem para a coordenação/.test(textoC) && !/Equipe Azul|Equipe Roxa|a2@aluno\.test/.test(textoC), "coordenação: turma só com números, sem nome de equipe nem e-mail");
+    await largura(coord.p, "turma na coordenação");
+    await coord.p.screenshot({ path: `${FOTOS}/8e-turma-coordenacao.png`, fullPage: true });
+    for (const caminho of ["inicio", "etapas", "grupos", "pessoas", `entregas/${idEntrega}`, "entregas/revisar", "relatorios"]) {
+      await coord.p.goto(`${APP}/app/${SLUG}/${caminho}`);
+      confere(coord.p.url().endsWith("/coordenacao/sem-acesso"), `coordenação não abre ${caminho.replace(/[0-9a-f-]{36}/, "…")}: cai no aviso`);
+    }
+    await coord.p.getByRole("heading", { name: "Essa parte é de quem avalia" }).waitFor();
+    await largura(coord.p, "sem acesso à correção");
+    await coord.p.screenshot({ path: `${FOTOS}/8f-sem-acesso.png`, fullPage: true });
+    await coord.p.getByRole("link", { name: "Voltar à coordenação" }).click();
+    await coord.p.waitForURL(/\/coordenacao$/);
+    confere(sql(`select count(*) from public.atividades where acao = 'abriu_coordenacao' and email = '${COORD}'`) === "1", "coordenação: a abertura do painel fica no registro (uma vez)");
+    await coord.ctx.close();
+
+    const banca = await primeiroAcesso(navegador, BANCA);
+    await banca.p.goto(`${APP}/app`);
+    await banca.p.waitForURL(new RegExp(`/app/${SLUG}/coordenacao$`));
+    await banca.p.locator("main a[href*='/coordenacao/']").first().click();
+    await banca.p.waitForURL(/\/coordenacao\/[0-9a-f-]{36}$/);
+    await banca.p.getByRole("heading", { name: "Conceito aprovado em cada entrega" }).waitFor();
+    const textoB = await banca.p.locator("main").innerText();
+    confere(/Equipe Azul/.test(textoB) && !/a2@aluno\.test/.test(textoB), "banca: com a opção ligada vê o nome da equipe, mas nunca o e-mail");
+    await banca.p.screenshot({ path: `${FOTOS}/8g-banca.png`, fullPage: true });
+    await banca.ctx.close();
+
+    await ana.p.goto(`${APP}/app/${SLUG}/pessoas`);
+    confere(await ana.p.getByText("Coordenação.").first().isVisible() || (await ana.p.getByText("Convites aguardando").isVisible()), "coordenação: a lista de pessoas mostra o escopo");
+  }
 
   // F6) Ana troca o vocabulário: Aula → Encontro
   await ana.p.goto(`${APP}/app/${SLUG}/ajustes`);
@@ -2188,6 +2260,7 @@ try {
     ["Criar “Equipe Azul”?", "criar equipe"],
     ["Adicionar ", "adicionar pessoa ou aula"],
     ["Convidar esta pessoa?", "convidar"],
+    ["Enviar o convite?", "convidar coordenação ou banca"],
     ["Criar esta turma?", "criar turma"],
     ["Registrar esta entrega?", "registrar entrega à mão"],
     [/^Analisar \d+ entregas? com a IA\?/, "analisar várias com a IA"],
