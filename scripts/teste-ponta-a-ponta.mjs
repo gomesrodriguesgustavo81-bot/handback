@@ -292,8 +292,10 @@ try {
       await p.getByLabel("E-mail").fill(TRAVA);
       await p.getByLabel("Senha").fill(`Errada ${i} 2026!`);
       await p.getByRole("button", { name: "Entrar", exact: true }).click();
-      await p.getByText(i < 5 ? "E-mail ou senha incorretos." : /a entrada fica travada por mais/).waitFor();
+      // Espera a tentativa ser contada no banco antes de fazer a próxima (a mensagem da anterior ainda está na tela).
+      for (let k = 0; k < 80 && Number(sql(`select coalesce(max(falhas), 0) from public.tentativas_login`)) < i; k++) await p.waitForTimeout(250);
     }
+    await p.getByText(/a entrada fica travada por mais/).waitFor();
     confere(true, "a 5ª senha errada trava a entrada por 15 minutos");
     await p.getByLabel("E-mail").fill(TRAVA);
     await p.getByLabel("Senha").fill(SENHA);
