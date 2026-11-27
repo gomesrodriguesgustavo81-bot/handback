@@ -7,6 +7,7 @@ import { sessaoBasica } from "@/lib/sessao";
 import { problemaNaSenha, senhaVazada } from "@/lib/senha";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { registrarAcesso } from "@/lib/registro";
+import { VERSAO_TERMOS } from "@/lib/termos";
 
 export type Estado = { ok: boolean; mensagem: string } | null;
 
@@ -18,6 +19,8 @@ export async function definirSenha(_a: Estado, dados: FormData): Promise<Estado>
   if (s.temSegundaEtapa && s.nivel !== "aal2") redirect("/entrar/codigo?voltar=/definir-senha");
   const senha = String(dados.get("senha") ?? "");
   const repetir = String(dados.get("repetir") ?? "");
+  // Primeira senha = primeiro acesso: é aqui que a pessoa aceita os Termos (convidados também).
+  if (!s.senhaDefinida && dados.get("aceito") !== "on") return { ok: false, mensagem: "Para continuar, aceite os Termos de uso e a Política de privacidade." };
   const problema = problemaNaSenha(senha, s.email);
   if (problema) return { ok: false, mensagem: problema };
   if (senha !== repetir) return { ok: false, mensagem: "As duas senhas não são iguais." };
@@ -35,6 +38,10 @@ export async function definirSenha(_a: Estado, dados: FormData): Promise<Estado>
   if (!(await marcarSenhaDefinida(s.id))) return { ok: false, mensagem: "Não foi possível salvar a senha. Tente de novo." };
   // Recarrega a sessão para o servidor enxergar a marca nova.
   await supabase.auth.refreshSession();
+  if (dados.get("aceito") === "on") {
+    const { error: erroAceite } = await supabase.rpc("registrar_aceite", { p_versao: VERSAO_TERMOS, p_origem: "senha" });
+    if (erroAceite) console.error("[aceite]", erroAceite.message);
+  }
   await supabase.rpc("aceitar_convites");
   await registrarAcesso(supabase, "criou_senha");
   redirect("/app");

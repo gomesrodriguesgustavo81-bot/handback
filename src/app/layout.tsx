@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
+import { AvisoCookies } from "@/components/aviso-cookies";
 import "./globals.css";
 
 // Letra da marca: Plus Jakarta Sans (arredondada e fácil de ler) nos títulos e no texto.
@@ -30,7 +31,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* Aplica o tema escolhido (claro/escuro) antes de desenhar a tela, para não piscar. */}
         <script dangerouslySetInnerHTML={{ __html: TEMA }} />
       </head>
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">{children}
+        <AvisoCookies />
+      </body>
     </html>
   );
 }

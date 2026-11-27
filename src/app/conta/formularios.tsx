@@ -1,13 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useState, useTransition } from "react";
 import { comecarDuasEtapas, conferirCodigo, confirmarDuasEtapas, definirSenha, type Estado } from "./acoes";
 import { Aviso, Botao, Campo } from "@/components/ui";
 
-export function FormSenha({ pedirNome = false }: { pedirNome?: boolean }) {
+export function FormSenha({ pedirNome = false, pedirAceite = false }: { pedirNome?: boolean; pedirAceite?: boolean }) {
   const [estado, acao, enviando] = useActionState<Estado, FormData>(definirSenha, null);
   // Guardado aqui para não sumir se a senha for recusada.
   const [nome, setNome] = useState("");
+  const [aceito, setAceito] = useState(false);
   return (
     <form action={acao} className="flex flex-col gap-4">
       {pedirNome ? (
@@ -33,6 +35,22 @@ export function FormSenha({ pedirNome = false }: { pedirNome?: boolean }) {
         dica="Pelo menos 12 caracteres, com letras e números. Dica: uma frase com números, como “Cafe com leite 2026”."
       />
       <Campo rotulo="Repita a senha" name="repetir" type="password" autoComplete="new-password" required />
+      {pedirAceite ? (
+        <label className="flex items-start gap-2.5 text-sm">
+          <input type="checkbox" name="aceito" required checked={aceito} onChange={(e) => setAceito(e.target.checked)} className="mt-0.5 size-5 shrink-0 accent-[var(--marca)]" />
+          <span>
+            Li e concordo com os{" "}
+            <Link href="/termos" target="_blank" className="font-medium text-marca-forte underline">
+              Termos de uso
+            </Link>{" "}
+            e com a{" "}
+            <Link href="/privacidade" target="_blank" className="font-medium text-marca-forte underline">
+              Política de privacidade
+            </Link>
+            . Guardamos a data e a versão que você aceitou.
+          </span>
+        </label>
+      ) : null}
       {estado && !estado.ok ? <Aviso tipo="erro">{estado.mensagem}</Aviso> : null}
       <Botao type="submit" disabled={enviando}>
         {enviando ? "Salvando…" : "Salvar senha"}

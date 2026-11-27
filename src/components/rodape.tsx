@@ -12,6 +12,9 @@ export function Rodape() {
         <Link href="/termos" className="hover:text-texto hover:underline">
           Termos de uso
         </Link>
+        <Link href="/cookies" className="hover:text-texto hover:underline">
+          Cookies
+        </Link>
       </div>
     </footer>
   );

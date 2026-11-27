@@ -103,6 +103,12 @@ async function entrar(navegador, email, nome) {
   return { ctx, p };
 }
 
+/** Marca "Li e concordo" na criação da senha (só aparece no primeiro acesso). */
+async function marcarAceite(p) {
+  const caixa = p.getByRole("checkbox", { name: /Li e concordo/ });
+  if (await caixa.count()) await caixa.check();
+}
+
 /** Primeiro acesso por convite: link do e-mail → cria a senha → cadastra o celular. */
 async function primeiroAcesso(navegador, email, nome) {
   const ctx = await prepararContexto(navegador, { ...devices["Pixel 7"] });
@@ -114,6 +120,8 @@ async function primeiroAcesso(navegador, email, nome) {
   await p.getByLabel("Seu nome").fill(email === ANA ? "Ana Martins" : "Prof. Pedro");
   await p.getByLabel("Nova senha").fill(SENHA);
   await p.getByLabel("Repita a senha").fill(SENHA);
+  confere(await p.getByRole("checkbox", { name: /Li e concordo/ }).isVisible(), "primeiro acesso pede o aceite dos Termos");
+  await marcarAceite(p);
   await p.getByRole("button", { name: "Salvar senha" }).click();
   // Conta nova: entra só com a senha e vê o lembrete (14 dias para ativar).
   await p.waitForURL(/\/app/);
@@ -183,7 +191,10 @@ const confirmacoes = [];
 const semCarregando = (p) => p.waitForFunction(() => !document.querySelector('[role="status"][aria-label="Carregando"]'), null, { timeout: 30000 }).catch(() => {});
 async function prepararContexto(navegador, opcoes) {
   // Sem animações no teste (o app respeita "reduzir movimento"): nada de esperar transição.
-  const ctx = await navegador.newContext({ reducedMotion: "reduce", ...opcoes });
+  const { vendoAviso, ...resto } = opcoes ?? {};
+  const ctx = await navegador.newContext({ reducedMotion: "reduce", ...resto });
+  // O aviso de cookies fica por cima da tela de baixo: nos testes ele já foi visto (o teste do aviso usa vendoAviso).
+  if (!vendoAviso) await ctx.addCookies([{ name: "hb_aviso_cookies", value: "1", url: APP }]);
   ctx.on("page", (p) => {
     const original = p.waitForURL.bind(p);
     p.waitForURL = async (...args) => {
@@ -414,11 +425,13 @@ try {
     await p.getByLabel("Seu nome").fill("Pessoa Esquecida");
     await p.getByLabel("Nova senha").fill("curta123");
     await p.getByLabel("Repita a senha").fill("curta123");
+    await marcarAceite(p);
     await p.getByRole("button", { name: "Salvar senha" }).click();
     await p.getByText(/pelo menos 12 caracteres/).waitFor();
     confere(true, "senha fraca é recusada");
     await p.getByLabel("Nova senha").fill("Outra senha boa 2027");
     await p.getByLabel("Repita a senha").fill("Outra senha boa 2027");
+    await marcarAceite(p);
     await p.getByRole("button", { name: "Salvar senha" }).click();
     await p.waitForURL(/\/app/);
     confere(true, "esqueci minha senha: cria senha nova pelo link do e-mail");
@@ -2286,6 +2299,36 @@ try {
     await nova.ctx.close();
     confere(sql(`select vocabulario ->> 'organizacao' || ':' || limite_analises_mes from public.organizacoes where nome = 'Mentoria Alfa ${sufixo}'`) === "Mentoria:200",
       "espaço do cadastro guarda a palavra escolhida e o limite de IA");
+  }
+
+  // 7h) Aceite dos Termos guardado (cadastro e criação da senha) + primeira página + aviso de cookies
+  {
+    confere(sql(`select count(*) from public.aceites_termos where origem = 'cadastro' and versao = '2026-11-27' and email = 'nova-${sufixo}@cadastro.test'`) === "1",
+      "o cadastro guarda o aceite dos Termos com a versão");
+    confere(Number(sql(`select count(*) from public.aceites_termos where origem = 'senha' and versao = '2026-11-27' and user_id is not null`)) >= 1,
+      "criar a senha pelo convite guarda o aceite dos Termos");
+    const ctx = await prepararContexto(navegador, { ...devices["Pixel 7"], vendoAviso: true });
+    const p = await ctx.newPage();
+    await p.goto(`${APP}/`);
+    const aviso = p.getByRole("dialog", { name: "Aviso de cookies" });
+    await aviso.waitFor();
+    confere((await aviso.innerText()).includes("Não usamos cookies de anúncio nem de rastreamento"), "o aviso de cookies diz que só usa os necessários");
+    await p.screenshot({ path: `${FOTOS}/37-aviso-cookies.png`, fullPage: false });
+    await aviso.getByRole("button", { name: "Entendi" }).click();
+    await aviso.waitFor({ state: "detached" });
+    await p.reload();
+    await p.getByRole("heading", { level: 1 }).waitFor();
+    confere((await p.getByRole("dialog", { name: "Aviso de cookies" }).count()) === 0, "depois de “Entendi”, o aviso não volta");
+    const titulo = await p.getByRole("heading", { level: 1 }).innerText();
+    confere(/IA prepara o rascunho/.test(titulo) && /você decide/.test(titulo), "a primeira página diz que a IA prepara o rascunho e você decide");
+    confere(await p.getByRole("heading", { name: "O que não fazemos" }).isVisible(), "a primeira página mostra o que pedimos, fazemos e não fazemos");
+    confere(await p.getByRole("heading", { name: "O que pedimos" }).isVisible() && await p.getByRole("heading", { name: "O que fazemos" }).isVisible(), "e os três blocos aparecem");
+    await largura(p, "primeira página");
+    await p.screenshot({ path: `${FOTOS}/38-primeira-pagina.png`, fullPage: true });
+    await p.getByRole("contentinfo").getByRole("link", { name: "Cookies" }).click();
+    await p.waitForURL(/\/cookies$/);
+    confere(await p.getByRole("heading", { name: "Cookies", exact: true }).isVisible() && await p.getByText("hb_tema").isVisible(), "a página de cookies lista os cookies usados");
+    await ctx.close();
   }
 
   // 8) O dono bloqueia a escola; a Ana vê o aviso

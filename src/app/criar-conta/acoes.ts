@@ -7,6 +7,7 @@ import { convidarPorEmail } from "@/lib/acesso";
 import { eFrente } from "@/lib/frentes";
 import { plural } from "@/lib/nomes";
 import { criarClienteAdmin } from "@/lib/supabase/admin";
+import { VERSAO_TERMOS } from "@/lib/termos";
 
 export type Cadastro = { ok: boolean; mensagem: string; email?: string; nome?: string; jaTemConta?: boolean } | null;
 
@@ -52,6 +53,9 @@ export async function criarConta(_a: Cadastro, dados: FormData): Promise<Cadastr
     console.error("[cadastro]", error.message);
     return { ok: false, mensagem: "Não foi possível criar agora. Tente de novo." };
   }
+  // Prova do aceite (data, versão e uma marca embaralhada da rede). Se falhar, o cadastro segue: o aceite é pedido de novo ao criar a senha.
+  const { error: erroAceite } = await admin.from("aceites_termos").insert({ email, versao: VERSAO_TERMOS, origem: "cadastro", ip_hash: ipHash });
+  if (erroAceite) console.error("[aceite]", erroAceite.message);
   const convite = await convidarPorEmail(email, nome, true);
   if (convite === "erro") return { ok: false, mensagem: "O espaço foi criado, mas o e-mail não saiu. Tente de novo daqui a pouco." };
   return { ok: true, mensagem: "", email, nome, jaTemConta: convite === "ja-tem-conta" };

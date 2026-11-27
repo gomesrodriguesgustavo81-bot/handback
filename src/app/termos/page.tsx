@@ -21,7 +21,7 @@ export default function Termos() {
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 px-4 pb-16 pt-6 leading-relaxed sm:px-6 [&_h2]:text-xl [&_h2]:font-semibold">
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold tracking-tight">Termos de uso</h1>
-          <p className="text-sm text-suave">Atualizados em 25 de novembro de 2026</p>
+          <p className="text-sm text-suave">Atualizados em 27 de novembro de 2026</p>
         </div>
         <h2>1. O serviço</h2>
         <p>

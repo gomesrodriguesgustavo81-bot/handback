@@ -173,6 +173,32 @@ export function PaginaDeVendas({ idioma }: { idioma: Idioma }) {
           </div>
         </section>
 
+        {/* O que pedimos, o que fazemos e o que não fazemos */}
+        <section id="transparencia" className="scroll-mt-20 bg-cartao py-16">
+          <div className={secao}>
+            <div className="flex flex-col gap-1">
+              <p className="text-[13px] font-bold uppercase tracking-wider text-suave">{t.transparencia.selo}</p>
+              <h2 className={tituloSecao}>{t.transparencia.titulo}</h2>
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              {[
+                { b: t.transparencia.pedimos, classe: "bg-fundo", cor: "text-marca-forte" },
+                { b: t.transparencia.fazemos, classe: "bg-fundo", cor: "text-ok" },
+                { b: t.transparencia.naoFazemos, classe: "bg-reg-fundo", cor: "text-reg" },
+              ].map(({ b, classe, cor }) => (
+                <section key={b.titulo} className={`flex flex-col gap-3 rounded-[22px] p-6 ${classe}`}>
+                  <h3 className={`text-lg font-extrabold ${cor}`}>{b.titulo}</h3>
+                  <ul className="flex list-disc flex-col gap-2 pl-5 text-[15px] leading-relaxed">
+                    {b.itens.map((i) => (
+                      <li key={i}>{i}</li>
+                    ))}
+                  </ul>
+                </section>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* Segurança */}
         <section id="seguranca" className="scroll-mt-20 bg-barra py-16 text-white">
           <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 sm:px-6 lg:grid-cols-[1fr_1.3fr] lg:items-center">
@@ -237,6 +263,9 @@ export function PaginaDeVendas({ idioma }: { idioma: Idioma }) {
             </Link>
             <Link href="/termos" className="hover:text-texto hover:underline">
               {t.rodape.termos}
+            </Link>
+            <Link href="/cookies" className="hover:text-texto hover:underline">
+              {t.rodape.cookies}
             </Link>
             {email ? (
               <a href={`mailto:${email}`} className="hover:text-texto hover:underline">

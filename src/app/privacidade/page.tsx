@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   description: "Como o Handback trata os dados das turmas, das entregas e das contas do Google e do Moodle de quem avalia.",
 };
 
-const ATUALIZADA = "25 de novembro de 2026";
+const ATUALIZADA = "27 de novembro de 2026";
 
 function Secao({ id, titulo, children }: { id?: string; titulo: string; children: ReactNode }) {
   return (
@@ -273,7 +273,22 @@ export default function Privacidade() {
           </p>
         </Secao>
 
-        <Secao titulo="12. Contato">
+        <Secao id="cookies" titulo="12. Cookies e aceite dos termos">
+          <p>
+            Usamos só cookies necessários para o site funcionar (manter você conectado, lembrar a turma escolhida e o tema
+            claro ou escuro). Não usamos cookies de anúncio nem de rastreamento. A lista completa está na{" "}
+            <Link href="/cookies" className="font-medium text-marca-forte underline">
+              página de cookies
+            </Link>
+            .
+          </p>
+          <p>
+            Ao criar a conta você aceita os Termos de uso e esta política. Guardamos a data, a versão que você aceitou e, no
+            cadastro pela internet, uma marca embaralhada do endereço de rede (não o endereço em si), para comprovar o aceite.
+          </p>
+        </Secao>
+
+        <Secao titulo="13. Contato">
           <p>Dúvidas ou pedidos sobre privacidade: {falar}.</p>
           <p className="text-sm text-suave">
             Podemos atualizar esta política; a data no topo mostra a versão em vigor. Mudanças importantes serão avisadas
