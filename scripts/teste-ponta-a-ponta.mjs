@@ -199,7 +199,7 @@ async function prepararContexto(navegador, opcoes) {
   ctx.on("page", (p) => {
     // Qualquer bloqueio da política de conteúdo (CSP) é bug: o app não pode depender de nada que ela barre.
     p.on("console", (m) => {
-      if (/Content Security Policy|violates the following|Refused to (load|connect|execute|frame)/i.test(m.text())) violacoesCSP.push(`${p.url()} → ${m.text().slice(0, 200)}`);
+      if (/Content Security Policy|violates the following|Refused to (load|connect|execute|frame)/i.test(m.text())) { violacoesCSP.push(`${p.url()} → ${m.text().slice(0, 200)}`); console.log(`CSP BLOQUEOU em ${p.url()}: ${m.text().slice(0, 250)}`); }
     });
     const original = p.waitForURL.bind(p);
     p.waitForURL = async (...args) => {
