@@ -5,7 +5,7 @@ import { sairDoSuporte } from "@/app/admin/actions";
 import { acessoAtivo } from "@/lib/suporte";
 import { criarClienteServidor } from "@/lib/supabase/server";
 import { dataHoraBR } from "@/lib/textos";
-import { contextoDaEmpresa } from "@/lib/empresa";
+import { contextoCoordenacao } from "@/lib/empresa";
 import { Navegacao, Voltar, type GrupoNav, type ItemNav, type Volta } from "./navegacao";
 import { completarVocabulario, o, quemEntrega } from "@/lib/nomes";
 import { turmaAtual, turmasDaEmpresa } from "@/lib/turma";
@@ -24,12 +24,10 @@ export default async function LayoutEmpresa({
   params,
 }: LayoutProps<"/app/[slug]">) {
   const { slug } = await params;
-  const [{ empresa, podeGerir, podeAvaliar }, eu] = await Promise.all([contextoDaEmpresa(slug), usuarioAtual()]);
+  const [{ empresa, podeGerir, podeAvaliar, ehCoordenacao }, eu] = await Promise.all([contextoCoordenacao(slug), usuarioAtual()]);
   const v = completarVocabulario(empresa.vocabulario);
-  const [turmas, atual] = await Promise.all([
-    turmasDaEmpresa(empresa.id),
-    turmaAtual(empresa.id),
-  ]);
+  // Coordenação não lê as turmas direto (só os números, pela própria tela dela).
+  const [turmas, atual] = ehCoordenacao ? [[], null] : await Promise.all([turmasDaEmpresa(empresa.id), turmaAtual(empresa.id)]);
   const ativas = turmas.filter((t) => !t.arquivada);
   const acesso = await acessoAtivo(await criarClienteServidor(), empresa.id);
   const entrega = quemEntrega(v, atual?.modo ?? "grupos");
@@ -42,14 +40,15 @@ export default async function LayoutEmpresa({
   const calendario: ItemNav = { href: `${b}/calendario`, nome: "Calendário", icone: "calendario" };
   // Entregas não é mais uma aba: as entregas ficam dentro de cada ciclo (a aba Ciclos acende nelas).
   ciclos.tambem = [`${b}/entregas`];
-  const abas: ItemNav[] = podeAvaliar ? [inicio, ciclos, alunos, calendario] : [ciclos, calendario];
+  const coordenacao: ItemNav = { href: `${b}/coordenacao`, nome: "Coordenação", icone: "relatorios" };
+  const abas: ItemNav[] = ehCoordenacao ? [coordenacao] : podeAvaliar ? [inicio, ciclos, alunos, calendario] : [ciclos, calendario];
   const grupos: GrupoNav[] = [
-    { nome: "", itens: podeAvaliar ? [inicio, ciclos, alunos, calendario] : [ciclos, calendario] },
+    { nome: "", itens: ehCoordenacao ? [coordenacao] : podeAvaliar ? [inicio, ciclos, alunos, calendario] : [ciclos, calendario] },
     {
       nome: "",
       pequeno: true,
       itens: [
-        ...(podeAvaliar ? [{ href: `${b}/relatorios`, nome: "Relatórios", icone: "relatorios" as const }] : []),
+        ...(podeAvaliar && !ehCoordenacao ? [{ href: `${b}/relatorios`, nome: "Relatórios", icone: "relatorios" as const }] : []),
         ...(podeGerir ? [{ href: `${b}/turma`, nome: `Ajustes d${o(v, "espaco")} ${v.espaco.toLowerCase()}`, icone: "ajustes" as const, tambem: ajustesTurma }] : []),
         ...(podeGerir
           ? [

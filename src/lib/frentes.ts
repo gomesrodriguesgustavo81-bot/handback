@@ -16,6 +16,7 @@ export const PAPEIS = {
   admin: "Administrador",
   avaliador: "Avaliador",
   participante: "Participante",
+  coordenador: "Coordenador ou banca",
 } as const;
 
 export type Papel = keyof typeof PAPEIS;

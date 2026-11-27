@@ -19,7 +19,7 @@ export async function convidar(slug: string, _a: Resultado, dados: FormData): Pr
   const email = String(dados.get("email") ?? "").trim().toLowerCase();
   const papel = dados.get("papel");
   if (!emailValido(email)) return { ok: false, mensagem: "Digite um e-mail válido." };
-  if (!ePapel(papel)) return { ok: false, mensagem: "Escolha o papel da pessoa." };
+  if (!ePapel(papel) || papel === "coordenador") return { ok: false, mensagem: "Escolha o papel da pessoa." };
 
   const supabase = await criarClienteServidor();
   const { data: pessoas } = await supabase.rpc("pessoas_da_org", { org: empresa.id });
@@ -48,6 +48,51 @@ export async function convidar(slug: string, _a: Resultado, dados: FormData): Pr
   };
 }
 
+/** Convida alguém para a coordenação ou a banca: só números, nunca a correção. */
+export async function convidarCoordenacao(slug: string, _a: Resultado, dados: FormData): Promise<Resultado> {
+  const { empresa, podeGerir } = await contextoDaEmpresa(slug);
+  if (!podeGerir) return { ok: false, mensagem: "Você não tem permissão para fazer isso." };
+  const email = String(dados.get("email") ?? "").trim().toLowerCase();
+  const tipo = dados.get("tipo");
+  const nomes = dados.get("nomes") === "on";
+  const turmas = [...new Set(dados.getAll("turma").map(String))].slice(0, 100);
+  if (!emailValido(email)) return { ok: false, mensagem: "Digite um e-mail válido." };
+  if (tipo !== "coordenador" && tipo !== "banca") return { ok: false, mensagem: "Escolha se é coordenador ou banca." };
+  if (tipo === "banca" && !turmas.length) return { ok: false, mensagem: "Escolha pelo menos uma turma para a banca." };
+
+  const supabase = await criarClienteServidor();
+  const { data: pessoas } = await supabase.rpc("pessoas_da_org", { org: empresa.id });
+  if ((pessoas ?? []).some((p: { email: string }) => p.email === email)) {
+    return { ok: false, mensagem: `${email} já faz parte da empresa. Remova o acesso dela primeiro para convidar de novo.` };
+  }
+  const eu = await usuarioAtual();
+  const { error } = await supabase.from("convites").insert({
+    org_id: empresa.id,
+    email,
+    papel: "coordenador",
+    criado_por: eu.id,
+    coord_tipo: tipo,
+    coord_nomes: nomes,
+    coord_turmas: tipo === "banca" ? turmas : [],
+  });
+  if (error) {
+    if (error.code === "23505") return { ok: false, mensagem: `Já existe um convite para ${email}.` };
+    return { ok: false, mensagem: mensagemDeErro(error, "Não foi possível convidar. Tente de novo.") };
+  }
+  revalidatePath(`/app/${slug}/pessoas`);
+  const convite = await convidarPorEmail(email, empresa.nome);
+  return {
+    ok: true,
+    mensagem:
+      convite === "enviado"
+        ? `Convite enviado para ${email}. Ela vai ver só números e conceitos aprovados.`
+        : convite === "ja-tem-conta"
+          ? `${email} já tem conta no Handback: o acesso aparece no próximo login.`
+          : `Convite criado, mas o e-mail não saiu. Peça para ${email} usar “Esqueci minha senha” na tela de entrar.`,
+    vez: Date.now(),
+  };
+}
+
 export async function cancelarConvite(slug: string, id: string): Promise<void> {
   const { empresa, podeGerir } = await contextoDaEmpresa(slug);
   if (!podeGerir) return;
@@ -60,7 +105,8 @@ export async function mudarPapel(slug: string, userId: string, _a: Resultado, da
   const { empresa, podeGerir } = await contextoDaEmpresa(slug);
   if (!podeGerir) return { ok: false, mensagem: "Você não tem permissão para fazer isso." };
   const papel = dados.get("papel");
-  if (!ePapel(papel)) return { ok: false, mensagem: "Escolha um papel." };
+  // Coordenador e banca só entram por convite próprio (com o escopo); aqui não se vira um sem escopo.
+  if (!ePapel(papel) || papel === "coordenador") return { ok: false, mensagem: "Escolha um papel." };
   const supabase = await criarClienteServidor();
   const { error } = await supabase.from("membros").update({ papel }).eq("org_id", empresa.id).eq("user_id", userId);
   if (error) return { ok: false, mensagem: mensagemDeErro(error, "Não foi possível mudar o papel.") };
