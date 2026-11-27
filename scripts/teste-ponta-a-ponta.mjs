@@ -550,7 +550,7 @@ try {
     await coord.p.goto(`${APP}/app`);
     await coord.p.waitForURL(new RegExp(`/app/${SLUG}/coordenacao$`));
     const abasC = (await coord.p.getByRole("navigation", { name: "Seções da empresa" }).getByRole("link").allInnerTexts()).filter(Boolean);
-    confere(abasC.join("|") === "Coordenação", `coordenação: só uma aba no menu (${abasC.join(", ")})`);
+    confere(abasC.every((a) => a === "Coordenação") && !(await coord.p.getByRole("link", { name: /^(Início|Aulas|Equipes|Calendário|Configurações|Relatórios)$/ }).count()), `coordenação: no menu só a Coordenação (${abasC.join(", ") || "sem barra de abas"})`);
     confere(await coord.p.getByRole("heading", { name: "Coordenação", level: 1 }).isVisible() && await coord.p.getByText("Só leitura").isVisible(), "coordenação: painel abre, marcado como só leitura");
     confere(await coord.p.getByText("Entregas recebidas").isVisible() && await coord.p.getByText("Já aprovadas").isVisible(), "coordenação: painel mostra os números");
     await largura(coord.p, "painel da coordenação");
@@ -1591,7 +1591,7 @@ try {
     confere((await rodar("")).status === 401 && (await rodar("errado-errado-errado-errado")).status === 401, "rodada diária não roda sem o segredo");
     const antes = existsSync(process.env.REGISTRO_GMAIL) ? readFileSync(process.env.REGISTRO_GMAIL, "utf8").trim().split("\n").length : 0;
     const r1 = await (await rodar(process.env.CRON_SECRET)).json();
-    confere(r1.ok && r1.lembretes === esperados && esperados > 0, `rodada das 9h manda lembrete a quem não entregou (${r1.lembretes} de ${esperados}) ${JSON.stringify(r1)}`);
+    confere(r1.ok && r1.lembretes === esperados && esperados > 0, `rodada das 9h manda lembrete a quem não entregou (${r1.lembretes} de ${esperados}) ${JSON.stringify(r1)} turmas: ${sql(`select string_agg(nome || ':' || lembrete_dois_dias::text || ':' || (lembrete_por is not null)::text, ' | ') from public.turmas where org_id = '${orgId}'`)}`);
     const novos = readFileSync(process.env.REGISTRO_GMAIL, "utf8").trim().split("\n").slice(antes).map((l) => JSON.parse(l));
     const lembrete = novos.find((m) => /Subject: =\?UTF-8\?B\?/.test(m.cabecalho) && m.texto.includes("Ainda não recebemos"));
     confere(Boolean(lembrete) && /^From: .*professora@gmail\.test/m.test(lembrete.cabecalho) && lembrete.cabecalho.includes(Buffer.from("Profa. Ana Martins").toString("base64")) && lembrete.texto.includes("Como entregar"), "lembrete sai do Gmail da professora, com o que e como entregar");
