@@ -43,8 +43,13 @@ select pg_temp.como('30000000-0000-0000-0000-00000000000b', 'admin@epsilon.test'
 update public.organizacoes set exigir_duas_etapas = false where id = current_setting('t.org')::uuid;
 select pg_temp.como('30000000-0000-0000-0000-00000000000c', 'prof@epsilon.test', 'aal1');
 select pg_temp.confere(public.pode_avaliar_org(current_setting('t.org')::uuid), 'empresa que não exige: senha basta');
+-- Mesmo com a empresa "opcional", quem administra só entra com o código.
 select pg_temp.como('30000000-0000-0000-0000-00000000000b', 'admin@epsilon.test', 'aal1');
-select pg_temp.confere((select count(*) from public.organizacoes where id = current_setting('t.org')::uuid and exigir_duas_etapas = false) = 1, 'admin vê a empresa sem exigir');
+select pg_temp.confere(not public.pode_gerir_org(current_setting('t.org')::uuid), 'empresa opcional: administrador só com a senha não gere');
+select pg_temp.confere((select count(*) from public.organizacoes where id = current_setting('t.org')::uuid) = 0, 'empresa opcional: administrador só com a senha não vê a empresa');
+select pg_temp.confere(public.preciso_de_duas_etapas(), 'empresa opcional: o app avisa que o administrador precisa da segunda etapa');
+select pg_temp.como('30000000-0000-0000-0000-00000000000b', 'admin@epsilon.test', 'aal2');
+select pg_temp.confere(public.pode_gerir_org(current_setting('t.org')::uuid), 'empresa opcional: administrador com o código gere');
 reset role;
 update public.organizacoes set exigir_duas_etapas = true where id = current_setting('t.org')::uuid;
 set role authenticated;

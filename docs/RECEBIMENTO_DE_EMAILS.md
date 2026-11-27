@@ -69,8 +69,15 @@ próprio simples (veja `src/lib/emails/formatos.ts`). Outro formato = mais uma f
 No serviço de recebimento, configure o envio (webhook) para:
 
 ```
-POST https://SEU-SITE/api/emails/entrada?chave=HANDBACK_EMAIL_SEGREDO
+POST https://SEU-SITE/api/emails/entrada
+Authorization: Bearer HANDBACK_EMAIL_SEGREDO
 ```
+
+Se o serviço não deixa mandar cabeçalho, use usuário e senha na própria
+URL (`https://handback:HANDBACK_EMAIL_SEGREDO@SEU-SITE/api/emails/entrada`).
+O segredo **não** vai mais em `?chave=` porque endereços ficam em registros de
+acesso. Quem ainda não conseguiu trocar pode ligar `HANDBACK_EMAIL_CHAVE_NA_URL=sim`
+por um tempo, e deve trocar o segredo depois de migrar.
 
 ## Limites e cuidados
 

@@ -9,9 +9,12 @@ import { levarParaODrive } from "@/lib/drive";
 
 /**
  * Ponto de chegada dos e-mails encaminhados.
- * O serviço de recebimento chama:  POST /api/emails/entrada?chave=SEGREDO
- * (ou com o cabeçalho "Authorization: Bearer SEGREDO", ou usuário/senha
- * "handback:SEGREDO"). O SEGREDO fica na variável HANDBACK_EMAIL_SEGREDO.
+ * O serviço de recebimento chama:  POST /api/emails/entrada  com o cabeçalho
+ * "Authorization: Bearer SEGREDO" (ou usuário/senha "handback:SEGREDO").
+ * O SEGREDO fica na variável HANDBACK_EMAIL_SEGREDO.
+ * O segredo na URL (?chave=) fica desligado: endereços aparecem em registros
+ * de acesso. Só volta se HANDBACK_EMAIL_CHAVE_NA_URL=sim (para quem ainda não
+ * conseguiu trocar a configuração do serviço de recebimento).
  */
 export async function POST(request: NextRequest) {
   const segredo = process.env.HANDBACK_EMAIL_SEGREDO;
@@ -50,7 +53,7 @@ export async function POST(request: NextRequest) {
 function autorizado(request: NextRequest, segredo: string): boolean {
   const candidatos: string[] = [];
   const chave = request.nextUrl.searchParams.get("chave");
-  if (chave) candidatos.push(chave);
+  if (chave && process.env.HANDBACK_EMAIL_CHAVE_NA_URL === "sim") candidatos.push(chave);
   const auth = request.headers.get("authorization") ?? "";
   if (auth.startsWith("Bearer ")) candidatos.push(auth.slice(7));
   if (auth.startsWith("Basic ")) {

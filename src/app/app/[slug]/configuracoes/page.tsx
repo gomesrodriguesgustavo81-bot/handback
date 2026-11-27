@@ -59,7 +59,7 @@ export default async function Configuracoes({ params }: PageProps<"/app/[slug]/c
       itens: [
         {
           nome: "Verificação em duas etapas",
-          detalhe: config?.exigir_duas_etapas === false ? "Opcional (cada pessoa decide)" : "Obrigatória para todos",
+          detalhe: config?.exigir_duas_etapas === false ? "Obrigatória para quem administra; opcional para os demais" : "Obrigatória para todos",
           href: `${base}/configuracoes/seguranca`,
         },
         { nome: "Registro de atividades", detalhe: "Quem fez o quê e quando", href: `${base}/registro` },

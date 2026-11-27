@@ -23,7 +23,7 @@ export default async function Seguranca({ params }: PageProps<"/app/[slug]/confi
     <div className="flex max-w-xl flex-col gap-4">
       <div>
         <h1 className="text-2xl font-bold">Segurança</h1>
-        <p className="text-sm text-suave">Com a verificação em duas etapas, quem descobrir a senha de alguém ainda não consegue entrar.</p>
+        <p className="text-sm text-suave">Com a verificação em duas etapas, quem descobrir a senha de alguém ainda não consegue entrar. Para quem administra, ela é sempre obrigatória.</p>
       </div>
       <div className="rounded-2xl border border-borda bg-cartao p-4">
         <CampoAuto
@@ -34,7 +34,7 @@ export default async function Seguranca({ params }: PageProps<"/app/[slug]/confi
           valor={c?.exigir_duas_etapas === false ? "nao" : "sim"}
           opcoes={[
             { valor: "sim", nome: "Obrigatória para todos (recomendado)" },
-            { valor: "nao", nome: "Opcional (cada pessoa decide)" },
+            { valor: "nao", nome: "Opcional para os demais (quem administra sempre usa)" },
           ]}
         />
       </div>

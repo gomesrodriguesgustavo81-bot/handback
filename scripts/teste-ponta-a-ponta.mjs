@@ -189,6 +189,7 @@ const confirmacoes = [];
  */
 /** Depois de mudar de página, espera o esqueleto de "carregando" sumir (o conteúdo de verdade chegar). */
 const semCarregando = (p) => p.waitForFunction(() => !document.querySelector('[role="status"][aria-label="Carregando"]'), null, { timeout: 30000 }).catch(() => {});
+const violacoesCSP = [];
 async function prepararContexto(navegador, opcoes) {
   // Sem animações no teste (o app respeita "reduzir movimento"): nada de esperar transição.
   const { vendoAviso, ...resto } = opcoes ?? {};
@@ -196,6 +197,10 @@ async function prepararContexto(navegador, opcoes) {
   // O aviso de cookies fica por cima da tela de baixo: nos testes ele já foi visto (o teste do aviso usa vendoAviso).
   if (!vendoAviso) await ctx.addCookies([{ name: "hb_aviso_cookies", value: "1", url: APP }]);
   ctx.on("page", (p) => {
+    // Qualquer bloqueio da política de conteúdo (CSP) é bug: o app não pode depender de nada que ela barre.
+    p.on("console", (m) => {
+      if (/Content Security Policy|violates the following|Refused to (load|connect|execute|frame)/i.test(m.text())) violacoesCSP.push(`${p.url()} → ${m.text().slice(0, 200)}`);
+    });
     const original = p.waitForURL.bind(p);
     p.waitForURL = async (...args) => {
       const r = await original(...args);
@@ -710,9 +715,9 @@ try {
       ],
       Attachments: (campos.anexos ?? []).map((x) => ({ Name: x.nome, ContentType: x.tipo, Content: Buffer.from(x.conteudo).toString("base64") })),
     };
-    const r = await fetch(`${APP}/api/emails/entrada${chave ? `?chave=${chave}` : ""}`, {
+    const r = await fetch(`${APP}/api/emails/entrada`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...(chave ? { authorization: `Bearer ${chave}` } : {}) },
       body: JSON.stringify(corpo),
     });
     return { http: r.status, ...(await r.json()) };
@@ -763,6 +768,10 @@ try {
 
   // E3) Chegam e-mails
   confere((await chegaEmail({ id: "<x@x>", assunto: "[ENTREGA] Encontro 2" }, { chave: "errada" })).http === 401, "sem a senha certa, o Handback recusa");
+  {
+    const naUrl = await fetch(`${APP}/api/emails/entrada?chave=${SEGREDO}`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+    confere(naUrl.status === 401, "o segredo na URL (?chave=) não vale mais");
+  }
   const e1 = await chegaEmail({
     id: `<e1-${sufixo}@aluno>`,
     assunto: "[ENTREGA] Encontro 2 - Equipe Azul",
@@ -2406,6 +2415,8 @@ try {
   ];
   for (const [trecho, oQue] of esperadas) confere(pediuConfirmacao(trecho), `${oQue} pede confirmação antes`);
   if (esperadas.some(([t]) => !pediuConfirmacao(t))) console.log("janelas anotadas:", JSON.stringify(confirmacoes));
+  confere(violacoesCSP.length === 0, "a política de conteúdo (CSP) não barrou nada do app");
+  if (violacoesCSP.length) console.log("bloqueios da CSP:", JSON.stringify([...new Set(violacoesCSP)].slice(0, 10), null, 1));
 } finally {
   await navegador.close();
 }
