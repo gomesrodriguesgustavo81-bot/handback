@@ -229,12 +229,14 @@ O Handback agora funciona assim:
      `supabase/templates/convite.html`.
    - **Reset password**: assunto `Handback: criar uma senha nova`; corpo: cole
      `supabase/templates/nova-senha.html`.
-4. **Authentication › Emails › SMTP Settings** (recomendado: o envio padrão do Supabase manda
-   poucos e-mails por hora). Use o Gmail de suporte do Handback:
-   - No Gmail de suporte, ative a **verificação em duas etapas** e crie uma **senha de app**
-     (myaccount.google.com › Segurança › Senhas de app).
-   - No Supabase: Host `smtp.gmail.com`, Port `465`, Username = o Gmail de suporte,
-     Password = a senha de app, Sender name `Handback`, Sender email = o Gmail de suporte.
+4. **Authentication › Emails › SMTP Settings** (necessário para os e-mails saírem **com o nome Handback**;
+   o envio padrão do Supabase usa o nome e o endereço dele e manda poucos e-mails por hora).
+   Use o Resend, com o domínio `handback.com.br` já verificado nele:
+   - No Resend › **API Keys**, crie uma chave com permissão **Sending access** (guarde-a só no Supabase e no Vercel).
+   - No Supabase: Host `smtp.resend.com`, Port `465`, Username `resend`, Password = a chave do Resend,
+     Sender name `Handback`, Sender email `convite@handback.com.br`.
+   - Os modelos de `supabase/templates/` já têm a cara do Handback. Depois de mudar um modelo no repositório,
+     cole o novo corpo no painel (Authentication › Emails › Templates), porque lá o Supabase não lê o repositório.
 
 ### Primeiro acesso do dono depois da mudança
 
@@ -269,3 +271,9 @@ Se o painel estiver com 12 ou mais, quem criar uma senha de 8 a 11 caracteres va
 No computador de testes, isso vem do `supabase/config.toml` (reinicie o Supabase local depois de mudar).
 
 Também existe um limite próprio de **5 senhas erradas seguidas** por e-mail: a entrada trava por 15 minutos.
+
+## E-mails de segurança (senha trocada, duas etapas, entrada travada)
+
+Saem pelo Resend, do endereço que estiver em `HANDBACK_EMAIL_DE` (ex.: `Handback <seguranca@handback.com.br>`),
+com a chave `RESEND_API_KEY` (permissão de envio). Se `HANDBACK_CONTATO` estiver preenchida, o rodapé cita esse
+endereço para dúvidas; sem ela, o e-mail só diz que é automático e não recebe respostas.

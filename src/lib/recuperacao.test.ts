@@ -35,18 +35,27 @@ describe("senhas antigas", () => {
 
 describe("aviso de segurança", () => {
   it("diz o que aconteceu e o que fazer se não foi a pessoa", () => {
-    const m = montarAvisoDeSeguranca("senha-trocada", new Date("2026-11-27T15:00:00Z"));
+    const m = montarAvisoDeSeguranca("senha-trocada", { quando: new Date("2026-11-27T15:00:00Z"), conta: "ana@escola.test", site: "https://www.exemplo.test" });
     expect(m.assunto).toMatch(/senha/i);
     expect(m.texto).toMatch(/Se não foi você/);
     expect(m.texto).toMatch(/12:00|horário de Brasília/);
+    expect(m.texto).toMatch(/Conta: ana@escola\.test/);
+    expect(m.html).toMatch(/src="https:\/\/www\.exemplo\.test\/email\/handback\.png"/);
+    expect(m.html).toMatch(/href="https:\/\/www\.exemplo\.test\/conta"/);
+    expect(m.html).toMatch(/#2f5bea/);
+    expect(m.html).not.toMatch(/#c6f15a|#0e3b37/);
   });
   it("diz que não recebe respostas e aponta o contato, se houver", () => {
-    const sem = montarAvisoDeSeguranca("entrada-travada", new Date(), "");
+    const sem = montarAvisoDeSeguranca("entrada-travada", { contato: "" });
     expect(sem.texto).toMatch(/não recebe respostas/);
     expect(sem.texto).not.toMatch(/responda este e-mail/i);
-    const com = montarAvisoDeSeguranca("entrada-travada", new Date(), "contato@handback.com.br");
+    const com = montarAvisoDeSeguranca("entrada-travada", { contato: "contato@handback.com.br" });
     expect(com.texto).toMatch(/escreva para contato@handback\.com\.br/);
     expect(com.html).toMatch(/não recebe respostas/);
+  });
+  it("não deixa texto de fora virar HTML (a conta vai escapada)", () => {
+    const m = montarAvisoDeSeguranca("senha-trocada", { conta: 'x"><script>alert(1)</script>@a.b' });
+    expect(m.html).not.toMatch(/<script>/);
   });
   it("não leva senha nem código nenhum", () => {
     for (const e of ["senha-trocada", "duas-etapas-trocada", "duas-etapas-removida", "entrada-travada", "codigos-gerados"] as const) {
